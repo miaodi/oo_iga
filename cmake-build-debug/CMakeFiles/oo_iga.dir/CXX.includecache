@@ -1,0 +1,28 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/Users/dimiao/ClionProjects/oo_iga/KnotVector.cpp
+KnotVector.h
+/Users/dimiao/ClionProjects/oo_iga/KnotVector.h
+
+/Users/dimiao/ClionProjects/oo_iga/KnotVector.h
+vector
+-
+map
+-
+eigen3/Eigen/Dense
+-
+iostream
+-
+
+/Users/dimiao/ClionProjects/oo_iga/main.cpp
+iostream
+-
+KnotVector.h
+/Users/dimiao/ClionProjects/oo_iga/KnotVector.h
+
