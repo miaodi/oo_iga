@@ -1,6 +1,8 @@
 file(REMOVE_RECURSE
   "CMakeFiles/oo_iga.dir/main.cpp.o"
   "CMakeFiles/oo_iga.dir/KnotVector.cpp.o"
+  "CMakeFiles/oo_iga.dir/BsplineBasis.cpp.o"
+  "CMakeFiles/oo_iga.dir/TensorBsplineBasis.cpp.o"
   "oo_iga.pdb"
   "oo_iga"
 )

@@ -48,10 +48,10 @@ RM = /Applications/CLion.app/Contents/bin/cmake/bin/cmake -E remove -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /Users/dimiao/ClionProjects/oo_iga
+CMAKE_SOURCE_DIR = /Users/miaodi/ClionProjects/oo_iga
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /Users/dimiao/ClionProjects/oo_iga/cmake-build-debug
+CMAKE_BINARY_DIR = /Users/miaodi/ClionProjects/oo_iga/cmake-build-debug
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -80,9 +80,9 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /Users/dimiao/ClionProjects/oo_iga/cmake-build-debug/CMakeFiles /Users/dimiao/ClionProjects/oo_iga/cmake-build-debug/CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/CMakeFiles /Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/CMakeFiles/progress.marks
 	$(MAKE) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /Users/dimiao/ClionProjects/oo_iga/cmake-build-debug/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -123,6 +123,33 @@ oo_iga/fast:
 	$(MAKE) -f CMakeFiles/oo_iga.dir/build.make CMakeFiles/oo_iga.dir/build
 .PHONY : oo_iga/fast
 
+BsplineBasis.o: BsplineBasis.cpp.o
+
+.PHONY : BsplineBasis.o
+
+# target to build an object file
+BsplineBasis.cpp.o:
+	$(MAKE) -f CMakeFiles/oo_iga.dir/build.make CMakeFiles/oo_iga.dir/BsplineBasis.cpp.o
+.PHONY : BsplineBasis.cpp.o
+
+BsplineBasis.i: BsplineBasis.cpp.i
+
+.PHONY : BsplineBasis.i
+
+# target to preprocess a source file
+BsplineBasis.cpp.i:
+	$(MAKE) -f CMakeFiles/oo_iga.dir/build.make CMakeFiles/oo_iga.dir/BsplineBasis.cpp.i
+.PHONY : BsplineBasis.cpp.i
+
+BsplineBasis.s: BsplineBasis.cpp.s
+
+.PHONY : BsplineBasis.s
+
+# target to generate assembly for a file
+BsplineBasis.cpp.s:
+	$(MAKE) -f CMakeFiles/oo_iga.dir/build.make CMakeFiles/oo_iga.dir/BsplineBasis.cpp.s
+.PHONY : BsplineBasis.cpp.s
+
 KnotVector.o: KnotVector.cpp.o
 
 .PHONY : KnotVector.o
@@ -149,6 +176,33 @@ KnotVector.s: KnotVector.cpp.s
 KnotVector.cpp.s:
 	$(MAKE) -f CMakeFiles/oo_iga.dir/build.make CMakeFiles/oo_iga.dir/KnotVector.cpp.s
 .PHONY : KnotVector.cpp.s
+
+TensorBsplineBasis.o: TensorBsplineBasis.cpp.o
+
+.PHONY : TensorBsplineBasis.o
+
+# target to build an object file
+TensorBsplineBasis.cpp.o:
+	$(MAKE) -f CMakeFiles/oo_iga.dir/build.make CMakeFiles/oo_iga.dir/TensorBsplineBasis.cpp.o
+.PHONY : TensorBsplineBasis.cpp.o
+
+TensorBsplineBasis.i: TensorBsplineBasis.cpp.i
+
+.PHONY : TensorBsplineBasis.i
+
+# target to preprocess a source file
+TensorBsplineBasis.cpp.i:
+	$(MAKE) -f CMakeFiles/oo_iga.dir/build.make CMakeFiles/oo_iga.dir/TensorBsplineBasis.cpp.i
+.PHONY : TensorBsplineBasis.cpp.i
+
+TensorBsplineBasis.s: TensorBsplineBasis.cpp.s
+
+.PHONY : TensorBsplineBasis.s
+
+# target to generate assembly for a file
+TensorBsplineBasis.cpp.s:
+	$(MAKE) -f CMakeFiles/oo_iga.dir/build.make CMakeFiles/oo_iga.dir/TensorBsplineBasis.cpp.s
+.PHONY : TensorBsplineBasis.cpp.s
 
 main.o: main.cpp.o
 
@@ -186,9 +240,15 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... oo_iga"
+	@echo "... BsplineBasis.o"
+	@echo "... BsplineBasis.i"
+	@echo "... BsplineBasis.s"
 	@echo "... KnotVector.o"
 	@echo "... KnotVector.i"
 	@echo "... KnotVector.s"
+	@echo "... TensorBsplineBasis.o"
+	@echo "... TensorBsplineBasis.i"
+	@echo "... TensorBsplineBasis.s"
 	@echo "... main.o"
 	@echo "... main.i"
 	@echo "... main.s"

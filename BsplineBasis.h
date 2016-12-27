@@ -1,0 +1,226 @@
+//
+// Created by miaodi on 25/12/2016.
+//
+
+#ifndef OO_IGA_BSPLINEBASIS_H
+#define OO_IGA_BSPLINEBASIS_H
+#ifndef NDEBUG
+#   define ASSERT(condition, message) \
+    do { \
+        if (! (condition)) { \
+            std::cerr << "Assertion `" #condition "` failed in " << __FILE__ \
+                      << " line " << __LINE__ << ": " << message << std::endl; \
+            std::terminate(); \
+        } \
+    } while (false)
+#else
+#   define ASSERT(condition, message) do { } while (false)
+#endif
+
+#include "KnotVector.h"
+#include <memory>
+#include <map>
+#include <eigen3/Eigen/Dense>
+
+template<typename T>
+class BsplineBasis {
+public:
+    using vector=Eigen::Matrix<T, Eigen::Dynamic, 1>;
+    using matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
+    using block = Eigen::Block<matrix>;
+
+    BsplineBasis();
+
+    BsplineBasis(KnotVector<T> target);
+
+    unsigned GetDegree() const;
+
+    unsigned GetDof() const;
+
+    virtual ~BsplineBasis();
+
+    unsigned FindSpan(const T &u) const;
+
+    std::unique_ptr<matrix> Eval(const T &u, const unsigned n = 0) const {
+        const unsigned dof = GetDof();
+        const unsigned deg = GetDegree();
+        std::unique_ptr<matrix> ders(new Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>);
+        T *left = new T[2 * (deg + 1)];
+        T *right = &left[deg + 1];
+        matrix ndu(deg + 1, deg + 1);
+        T saved, temp;
+        int j, r;
+        unsigned span = FindSpan(u);
+        (*ders).resize(n + 1, deg + 1);
+
+        ndu(0, 0) = 1.0;
+        for (j = 1; j <= deg; j++) {
+            left[j] = u - _basisKnot[span + 1 - j];
+            right[j] = _basisKnot[span + j] - u;
+            saved = 0.0;
+
+            for (r = 0; r < j; r++) {
+                // Lower triangle
+                ndu(j, r) = right[r + 1] + left[j - r];
+                temp = ndu(r, j - 1) / ndu(j, r);
+                // Upper triangle
+                ndu(r, j) = saved + right[r + 1] * temp;
+                saved = left[j - r] * temp;
+            }
+
+            ndu(j, j) = saved;
+        }
+
+        for (j = deg; j >= 0; --j)
+            (*ders)(0, j) = ndu(j, deg);
+
+        // Compute the derivatives
+        matrix a(deg + 1, deg + 1);
+        for (r = 0; r <= deg; r++) {
+            int s1, s2;
+            s1 = 0;
+            s2 = 1; // alternate rows in array a
+            a(0, 0) = 1.0;
+            // Compute the kth derivative
+            for (int k = 1; k <= n; k++) {
+                T d;
+                int rk, pk, j1, j2;
+                d = 0.0;
+                rk = r - k;
+                pk = deg - k;
+
+                if (r >= k) {
+                    a(s2, 0) = a(s1, 0) / ndu(pk + 1, rk);
+                    d = a(s2, 0) * ndu(rk, pk);
+                }
+
+                if (rk >= -1) {
+                    j1 = 1;
+                } else {
+                    j1 = -rk;
+                }
+
+                if (r - 1 <= pk) {
+                    j2 = k - 1;
+                } else {
+                    j2 = deg - r;
+                }
+
+                for (j = j1; j <= j2; j++) {
+                    a(s2, j) = (a(s1, j) - a(s1, j - 1)) / ndu(pk + 1, rk + j);
+                    d += a(s2, j) * ndu(rk + j, pk);
+                }
+
+                if (r <= pk) {
+                    a(s2, k) = -a(s1, k - 1) / ndu(pk + 1, r);
+                    d += a(s2, k) * ndu(r, pk);
+                }
+                (*ders)(k, r) = d;
+                j = s1;
+                s1 = s2;
+                s2 = j; // Switch rows
+            }
+        }
+
+        // Multiply through by the correct factors
+        r = deg;
+        for (int k = 1; k <= n; k++) {
+            for (j = deg; j >= 0; --j)
+                (*ders)(k, j) *= r;
+            r *= deg - k;
+        }
+        delete[] left;
+        return ders;
+    }
+
+    vector support(const unsigned i) const {
+        const unsigned deg = GetDegree();
+        ASSERT(i < GetDof(), "Invalid index of basis function.");
+        vector res(2);
+        res << _basisKnot[i], _basisKnot[i + deg + 1];
+        return res;
+    }
+
+    T DomainStart() const { return _basisKnot[GetDegree()]; }
+
+    T DomainEnd() const { return _basisKnot[GetDof()]; }
+
+    unsigned NumActive() const { return GetDegree() + 1; }
+
+    bool InDomain(T const &u) const { return ((u >= DomainStart()) && (u <= DomainEnd())); }
+
+    unsigned FirstActive(T u) const {
+        return (InDomain(u) ? FindSpan(u) - GetDegree() : 0);
+    }
+
+    bool IsActive(const unsigned i, const T u) const;
+
+protected:
+    KnotVector<T> _basisKnot;
+
+    BsplineBasis(const BsplineBasis &) {};
+
+    BsplineBasis operator=(const BsplineBasis &) {};
+
+
+};
+
+template<typename T>
+BsplineBasis<T>::BsplineBasis() {
+
+}
+
+template<typename T>
+BsplineBasis<T>::~BsplineBasis() {
+
+}
+
+template<typename T>
+BsplineBasis<T>::BsplineBasis(KnotVector<T> target):_basisKnot(target) {
+
+}
+
+template<typename T>
+unsigned BsplineBasis<T>::GetDegree() const {
+    return _basisKnot.GetDegree();
+}
+
+template<typename T>
+unsigned BsplineBasis<T>::GetDof() const {
+    return _basisKnot.GetSize() - _basisKnot.GetDegree() - 1;
+}
+
+
+
+
+template<typename T>
+unsigned BsplineBasis<T>::FindSpan(const T &u) const {
+    const unsigned dof = GetDof();
+    const unsigned deg = GetDegree();
+    if (u >= _basisKnot[dof])
+        return dof - 1;
+    if (u <= _basisKnot[deg])
+        return deg;
+
+    unsigned low = 0;
+    unsigned high = dof + 1;
+    unsigned mid = (low + high) / 2;
+
+    while (u < _basisKnot[mid] || u >= _basisKnot[mid + 1]) {
+        if (u < _basisKnot[mid])
+            high = mid;
+        else
+            low = mid;
+        mid = (low + high) / 2;
+    }
+    return mid;
+}
+
+template<typename T>
+bool BsplineBasis<T>::IsActive(const unsigned i, const T u) const {
+    vector supp = support(i);
+    return (u >= supp(0)) && (u < supp(1)) ? true : false;
+}
+
+
+#endif //OO_IGA_BSPLINEBASIS_H
