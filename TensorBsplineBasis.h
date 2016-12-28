@@ -7,7 +7,7 @@
 
 #include "BsplineBasis.h"
 
-template<unsigned d, typename T>
+template<unsigned d, typename T=double>
 class TensorBsplineBasis {
 public:
 
@@ -29,7 +29,6 @@ public:
             delete _basis[i];
 
     };
-
 
     unsigned GetDegree(const unsigned i) const;
 
@@ -57,6 +56,8 @@ public:
             res.row(j) = _basis[j]->support(ti(j));
         return res;
     }
+
+    /*
 ///not finished yet
     std::unique_ptr<std::map<unsigned, std::vector<vector<T>>>> TensorEval(const vector &u, const unsigned i = 0) const {
         std::unique_ptr<std::map<unsigned, std::vector<vector<T>>>> result(new std::map<unsigned, std::vector<vector<T>>>);
@@ -94,13 +95,31 @@ public:
             std::cout << index << std::endl << std::endl;
             result->emplace(index,std::vector<vector<T>>());
             for(unsigned p = 0;p !=i+1;++p){
-    
+
 
             }
         }
 
 
         return std::unique_ptr<std::map<unsigned int, std::vector<T>>>();
+    }
+*/
+
+    T EvalSingle(const vector &u, const unsigned n, const std::vector<unsigned> i) {
+        ASSERT((u.size() == d) && (i.size() == d), "Invalid input vector size.");
+        auto tensorindex = TensorIndex(n);
+        T result = 1;
+        for (unsigned direction = 0; direction != d; ++direction) {
+            result *= _basis[direction]->EvalSingle(u(direction), tensorindex(direction), i[direction]);
+        }
+        return result;
+    }
+
+    static std::unique_ptr<std::vector<std::vector<unsigned>>> PartialDerPattern(unsigned i){
+        std::vector<unsigned> kk(i);
+        std::unique_ptr<std::vector<std::vector<unsigned>>> a(new std::vector<std::vector<unsigned>>);
+        func(d,i,kk,0,0, a);
+        return a;
     }
 
 protected:
@@ -109,6 +128,32 @@ protected:
     TensorBsplineBasis(const TensorBsplineBasis<d, T> &) {};
 
     TensorBsplineBasis operator=(const TensorBsplineBasis<d, T> &) {};
+
+private:
+    /// Recursion function for generating the partial derivative pattern. Don't know where to put it.
+    static void func(unsigned D, unsigned i, std::vector<unsigned> &k, unsigned n, unsigned start,
+              std::unique_ptr<std::vector<std::vector<unsigned>>> & a) {
+        if (n == i) {
+            std::vector<unsigned> m;
+            unsigned it = 0;
+            for (unsigned it1 = 0; it1 < D; ++it1) {
+                unsigned amount = 0;
+                while (find(k.begin(), k.end(), it) != k.end()) {
+                    amount++;
+                    it++;
+                }
+                m.push_back(amount);
+                it++;
+            }
+            a->push_back(m);
+        } else {
+            for (unsigned jj = start; jj < D + i - (i - n); ++jj) {
+                k[n] = jj;
+                func(D, i, k, n + 1, jj + 1, a
+                );
+            }
+        }
+    }
 };
 
 template<unsigned d, typename T>
