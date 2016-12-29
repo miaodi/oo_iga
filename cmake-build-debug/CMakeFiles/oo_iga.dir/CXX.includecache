@@ -6,13 +6,13 @@
 
 #IncludeRegexTransform: 
 
-/Users/miaodi/ClionProjects/oo_iga/BsplineBasis.cpp
+/Users/dimiao/ClionProjects/oo_iga/BsplineBasis.cpp
 BsplineBasis.h
-/Users/miaodi/ClionProjects/oo_iga/BsplineBasis.h
+/Users/dimiao/ClionProjects/oo_iga/BsplineBasis.h
 
-/Users/miaodi/ClionProjects/oo_iga/BsplineBasis.h
+/Users/dimiao/ClionProjects/oo_iga/BsplineBasis.h
 KnotVector.h
-/Users/miaodi/ClionProjects/oo_iga/KnotVector.h
+/Users/dimiao/ClionProjects/oo_iga/KnotVector.h
 memory
 -
 map
@@ -20,11 +20,11 @@ map
 eigen3/Eigen/Dense
 -
 
-/Users/miaodi/ClionProjects/oo_iga/KnotVector.cpp
+/Users/dimiao/ClionProjects/oo_iga/KnotVector.cpp
 KnotVector.h
-/Users/miaodi/ClionProjects/oo_iga/KnotVector.h
+/Users/dimiao/ClionProjects/oo_iga/KnotVector.h
 
-/Users/miaodi/ClionProjects/oo_iga/KnotVector.h
+/Users/dimiao/ClionProjects/oo_iga/KnotVector.h
 vector
 -
 map
@@ -34,23 +34,41 @@ eigen3/Eigen/Dense
 iostream
 -
 
-/Users/miaodi/ClionProjects/oo_iga/TensorBsplineBasis.cpp
+/Users/dimiao/ClionProjects/oo_iga/MultiArray.h
+array
+-
+vector
+-
+
+/Users/dimiao/ClionProjects/oo_iga/PhyTensorBsplineBasis.cpp
+PhyTensorBsplineBasis.h
+/Users/dimiao/ClionProjects/oo_iga/PhyTensorBsplineBasis.h
+
+/Users/dimiao/ClionProjects/oo_iga/PhyTensorBsplineBasis.h
 TensorBsplineBasis.h
-/Users/miaodi/ClionProjects/oo_iga/TensorBsplineBasis.h
+/Users/dimiao/ClionProjects/oo_iga/TensorBsplineBasis.h
+MultiArray.h
+/Users/dimiao/ClionProjects/oo_iga/MultiArray.h
 
-/Users/miaodi/ClionProjects/oo_iga/TensorBsplineBasis.h
+/Users/dimiao/ClionProjects/oo_iga/TensorBsplineBasis.cpp
+TensorBsplineBasis.h
+/Users/dimiao/ClionProjects/oo_iga/TensorBsplineBasis.h
+
+/Users/dimiao/ClionProjects/oo_iga/TensorBsplineBasis.h
 BsplineBasis.h
-/Users/miaodi/ClionProjects/oo_iga/BsplineBasis.h
+/Users/dimiao/ClionProjects/oo_iga/BsplineBasis.h
 
-/Users/miaodi/ClionProjects/oo_iga/main.cpp
+/Users/dimiao/ClionProjects/oo_iga/main.cpp
 iostream
 -
 eigen3/Eigen/Dense
 -
 KnotVector.h
-/Users/miaodi/ClionProjects/oo_iga/KnotVector.h
+/Users/dimiao/ClionProjects/oo_iga/KnotVector.h
 BsplineBasis.h
-/Users/miaodi/ClionProjects/oo_iga/BsplineBasis.h
+/Users/dimiao/ClionProjects/oo_iga/BsplineBasis.h
 TensorBsplineBasis.h
-/Users/miaodi/ClionProjects/oo_iga/TensorBsplineBasis.h
+/Users/dimiao/ClionProjects/oo_iga/TensorBsplineBasis.h
+PhyTensorBsplineBasis.h
+/Users/dimiao/ClionProjects/oo_iga/PhyTensorBsplineBasis.h
 

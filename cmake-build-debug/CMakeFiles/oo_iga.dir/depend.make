@@ -8,6 +8,13 @@ CMakeFiles/oo_iga.dir/BsplineBasis.cpp.o: ../KnotVector.h
 CMakeFiles/oo_iga.dir/KnotVector.cpp.o: ../KnotVector.cpp
 CMakeFiles/oo_iga.dir/KnotVector.cpp.o: ../KnotVector.h
 
+CMakeFiles/oo_iga.dir/PhyTensorBsplineBasis.cpp.o: ../BsplineBasis.h
+CMakeFiles/oo_iga.dir/PhyTensorBsplineBasis.cpp.o: ../KnotVector.h
+CMakeFiles/oo_iga.dir/PhyTensorBsplineBasis.cpp.o: ../MultiArray.h
+CMakeFiles/oo_iga.dir/PhyTensorBsplineBasis.cpp.o: ../PhyTensorBsplineBasis.cpp
+CMakeFiles/oo_iga.dir/PhyTensorBsplineBasis.cpp.o: ../PhyTensorBsplineBasis.h
+CMakeFiles/oo_iga.dir/PhyTensorBsplineBasis.cpp.o: ../TensorBsplineBasis.h
+
 CMakeFiles/oo_iga.dir/TensorBsplineBasis.cpp.o: ../BsplineBasis.h
 CMakeFiles/oo_iga.dir/TensorBsplineBasis.cpp.o: ../KnotVector.h
 CMakeFiles/oo_iga.dir/TensorBsplineBasis.cpp.o: ../TensorBsplineBasis.cpp
@@ -15,6 +22,8 @@ CMakeFiles/oo_iga.dir/TensorBsplineBasis.cpp.o: ../TensorBsplineBasis.h
 
 CMakeFiles/oo_iga.dir/main.cpp.o: ../BsplineBasis.h
 CMakeFiles/oo_iga.dir/main.cpp.o: ../KnotVector.h
+CMakeFiles/oo_iga.dir/main.cpp.o: ../MultiArray.h
+CMakeFiles/oo_iga.dir/main.cpp.o: ../PhyTensorBsplineBasis.h
 CMakeFiles/oo_iga.dir/main.cpp.o: ../TensorBsplineBasis.h
 CMakeFiles/oo_iga.dir/main.cpp.o: ../main.cpp
 

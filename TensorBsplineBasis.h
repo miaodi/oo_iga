@@ -24,10 +24,9 @@ public:
 
     TensorBsplineBasis(const std::vector<KnotVector<T>> &KV);
 
-    ~TensorBsplineBasis() {
+    virtual ~TensorBsplineBasis() {
         for (unsigned i = 0; i < d; i++)
             delete _basis[i];
-
     };
 
     unsigned GetDegree(const unsigned i) const;
@@ -36,24 +35,33 @@ public:
 
     unsigned GetDof(const unsigned i) const;
 
-    vector TensorIndex(const unsigned &m) const {
-        vector ind(d);
+    std::vector<unsigned> TensorIndex(const unsigned &m) const {
+        ASSERT(m<GetDof(),"Input index is invalid.");
+        std::vector<unsigned> ind(d);
         int mm = m;
         ///unsigned always >=0.
         for (int i = static_cast<int>(d - 1); i >= 0; --i) {
-            ind(i) = mm % GetDof(i);
-            mm -= ind(i);
+            ind[i] = mm % GetDof(i);
+            mm -= ind[i];
             mm /= GetDof(i);
         }
         return ind;
     }
 
+    unsigned Index(const std::vector<unsigned> &ts) const{
+        unsigned index=0;
+        for (unsigned direction = 0; direction < d; ++direction) {
+            index += ts[direction];
+            if (direction != d - 1) { index *= GetDof(direction + 1); }
+        }
+        return index;
+    }
 
     matrix Support(const unsigned &i) const {
-        matrix res(d, 2);
-        matrix ti = TensorIndex(i);
+        matrix res(static_cast<int>(d), 2);
+        auto ti = TensorIndex(i);
         for (unsigned j = 0; j != d; ++j)
-            res.row(j) = _basis[j]->Support(ti(j));
+            res.row(j) = _basis[j]->Support(ti[j]);
         return res;
     }
 
@@ -127,7 +135,7 @@ public:
         auto tensorindex = TensorIndex(n);
         T result = 1;
         for (unsigned direction = 0; direction != d; ++direction) {
-            result *= _basis[direction]->EvalSingle(u(direction), tensorindex(direction), i[direction]);
+            result *= _basis[direction]->EvalSingle(u(direction), tensorindex[direction], i[direction]);
         }
         return result;
     }

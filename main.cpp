@@ -3,6 +3,7 @@
 #include "KnotVector.h"
 #include "BsplineBasis.h"
 #include "TensorBsplineBasis.h"
+#include "PhyTensorBsplineBasis.h"
 
 using namespace Eigen;
 using namespace std;
@@ -10,7 +11,7 @@ using namespace std;
 int main() {
     KnotVector<double> a({0, 0, 0, 1, 1, 1});
     KnotVector<double> b({0, 0, .5, 1, 1});
-    KnotVector<double> c({0, 0, 0, 0, 1, 1, 1, 1});
+    KnotVector<double> c({0, 0, 0, 0,.2,.4,.4,.7, 1, 1, 1, 1});
 
     BsplineBasis<double> l(b);
     BsplineBasis<double> m(c);
@@ -19,7 +20,7 @@ int main() {
     TensorBsplineBasis<2> k(n);
     TensorBsplineBasis<2> g;
     VectorXd u(2);
-    u<<.6,.6;
+    u<<.8,.8;
 
 
     auto f = TensorBsplineBasis<2>::PartialDerPattern(2);
@@ -38,6 +39,14 @@ int main() {
         }
         cout<<endl<<endl;
     }
-    cout<<k.EvalSingle(u,10,{1,1});
+
+
+    auto fff=k.TensorIndex(15);
+    for(auto it=fff.begin();it!=fff.end();++it)
+        cout<<*it<<" ";
+    cout<<endl;
+    cout<<k.Index({2,7})<<endl;
+    vector<VectorXd> ff(24,u);
+    PhyTensorBsplineBasis<2> hahaming(n,ff);
     return 0;
 }
