@@ -135,7 +135,7 @@ public:
 
     T EvalSingle(const T & u, const unsigned n, const unsigned i = 0);
 
-    vector support(const unsigned i) const {
+    vector Support(const unsigned i) const {
         const unsigned deg = GetDegree();
         ASSERT(i < GetDof(), "Invalid index of basis function.");
         vector res(2);
@@ -217,7 +217,7 @@ unsigned BsplineBasis<T>::FindSpan(const T &u) const {
 
 template<typename T>
 bool BsplineBasis<T>::IsActive(const unsigned i, const T u) const {
-    vector supp = support(i);
+    vector supp = Support(i);
     return (u >= supp(0)) && (u < supp(1)) ? true : false;
 }
 

@@ -49,18 +49,23 @@ public:
     }
 
 
-    matrix support(const unsigned &i) const {
+    matrix Support(const unsigned &i) const {
         matrix res(d, 2);
         matrix ti = TensorIndex(i);
         for (unsigned j = 0; j != d; ++j)
-            res.row(j) = _basis[j]->support(ti(j));
+            res.row(j) = _basis[j]->Support(ti(j));
         return res;
     }
 
-    /*
-///not finished yet
-    std::unique_ptr<std::map<unsigned, std::vector<vector<T>>>> TensorEval(const vector &u, const unsigned i = 0) const {
-        std::unique_ptr<std::map<unsigned, std::vector<vector<T>>>> result(new std::map<unsigned, std::vector<vector<T>>>);
+    unsigned NumActive() const;
+
+    unsigned NumActive(const unsigned &i) const;
+
+    ///not finished yet
+    std::unique_ptr<std::vector<std::pair<unsigned, std::vector<std::vector<T>>>>>
+    EvalTensor(const vector &u, const unsigned i = 0) const {
+        std::unique_ptr<std::vector<std::pair<unsigned, std::vector<std::vector<T>>>>> result(
+                new std::vector<std::pair<unsigned, std::vector<std::vector<T>>>>);
         std::unique_ptr<matrix> functionValue[d];
         unsigned deg[d];
         unsigned firstBasis[d];
@@ -74,36 +79,48 @@ public:
             numActive[direction] = _basis[direction]->NumActive();
             dof[direction] = GetDof(direction);
         }
-        unsigned totActive = 1;
-        for (unsigned it = 0; it != d; ++it)
-            totActive *= numActive[it];
+        unsigned totActive = NumActive();
         for (unsigned it = 0; it != totActive; ++it) {
             unsigned index = 0;
-            vector ind(d);
+            std::vector<unsigned> ind(d);
             int mm = it;
             for (int direction = static_cast<int>(d - 1); direction >= 0; --direction) {
                 ///unsigned always >=0.
-                ind(direction) = mm % numActive[direction];
-                mm -= ind(direction);
+                ind[direction] = mm % numActive[direction];
+                mm -= ind[direction];
                 mm /= numActive[direction];
             }
-            std::cout << ind << std::endl << std::endl;
             for (unsigned direction = 0; direction < d; ++direction) {
-                index += (firstBasis[direction] + ind(direction));
-                if (direction != d - 1) { index *= dof[direction+1]; }
+                index += (firstBasis[direction] + ind[direction]);
+                if (direction != d - 1) { index *= dof[direction + 1]; }
             }
-            std::cout << index << std::endl << std::endl;
-            result->emplace(index,std::vector<vector<T>>());
-            for(unsigned p = 0;p !=i+1;++p){
+            result->emplace_back(std::make_pair(index, std::vector<std::vector<T>>()));
+            for (unsigned p = 0; p != i + 1; ++p) {
+                result->back().second.emplace_back(std::vector<T>());
+                if (p == 0) {
+                    T tmp = 1;
+                    for (unsigned direction1 = 0; direction1 != d; ++direction1)
+                        tmp *= (*functionValue[direction1])(0, ind[direction1]);
+                    result->back().second.back().emplace_back(tmp);
+                } else {
+                    for (unsigned partialdirection = 0;
+                         partialdirection != _derivativePattern[p - 1]->size(); ++partialdirection) {
+                        T tmp = 1;
+                        for (unsigned direction1 = 0; direction1 != d; ++direction1) {
+                            unsigned pattern = (*_derivativePattern[p - 1])[partialdirection][direction1];
+                            tmp *= (*functionValue[direction1])(pattern, ind[direction1]);
+                        }
+                        result->back().second.back().emplace_back(tmp);
+                    }
 
+                }
 
             }
         }
 
 
-        return std::unique_ptr<std::map<unsigned int, std::vector<T>>>();
+        return result;
     }
-*/
 
     T EvalSingle(const vector &u, const unsigned n, const std::vector<unsigned> i) {
         ASSERT((u.size() == d) && (i.size() == d), "Invalid input vector size.");
@@ -115,10 +132,10 @@ public:
         return result;
     }
 
-    static std::unique_ptr<std::vector<std::vector<unsigned>>> PartialDerPattern(unsigned i){
+    static std::unique_ptr<std::vector<std::vector<unsigned>>> PartialDerPattern(unsigned i) {
         std::vector<unsigned> kk(i);
         std::unique_ptr<std::vector<std::vector<unsigned>>> a(new std::vector<std::vector<unsigned>>);
-        func(d,i,kk,0,0, a);
+        func(d, i, kk, 0, 0, a);
         return a;
     }
 
@@ -132,7 +149,7 @@ protected:
 private:
     /// Recursion function for generating the partial derivative pattern. Don't know where to put it.
     static void func(unsigned D, unsigned i, std::vector<unsigned> &k, unsigned n, unsigned start,
-              std::unique_ptr<std::vector<std::vector<unsigned>>> & a) {
+                     std::unique_ptr<std::vector<std::vector<unsigned>>> &a) {
         if (n == i) {
             std::vector<unsigned> m;
             unsigned it = 0;
@@ -154,6 +171,8 @@ private:
             }
         }
     }
+
+    std::vector<std::unique_ptr<std::vector<std::vector<unsigned>>>> _derivativePattern;
 };
 
 template<unsigned d, typename T>
@@ -166,6 +185,9 @@ template<unsigned d, typename T>
 TensorBsplineBasis<d, T>::TensorBsplineBasis(BsplineBasis<T> *baseX) {
     ASSERT(d == 1, "Invalid dimension.");
     _basis[0] = baseX;
+    for (unsigned i = 1; i != 4; ++i)
+        _derivativePattern.emplace_back(PartialDerPattern(i));
+
 }
 
 template<unsigned d, typename T>
@@ -173,6 +195,8 @@ TensorBsplineBasis<d, T>::TensorBsplineBasis(BsplineBasis<T> *baseX, BsplineBasi
     ASSERT(d == 2, "Invalid dimension.");
     _basis[0] = baseX;
     _basis[1] = baseY;
+    for (unsigned i = 1; i != 4; ++i)
+        _derivativePattern.emplace_back(PartialDerPattern(i));
 }
 
 template<unsigned d, typename T>
@@ -181,6 +205,8 @@ TensorBsplineBasis<d, T>::TensorBsplineBasis(BsplineBasis<T> *baseX, BsplineBasi
     _basis[0] = baseX;
     _basis[1] = baseY;
     _basis[2] = baseZ;
+    for (unsigned i = 1; i != 4; ++i)
+        _derivativePattern.emplace_back(PartialDerPattern(i));
 }
 
 template<unsigned d, typename T>
@@ -188,6 +214,8 @@ TensorBsplineBasis<d, T>::TensorBsplineBasis(const std::vector<KnotVector<T>> &k
     ASSERT(d == knotVectors.size(), "Invalid number of knot-vectors given.");
     for (unsigned i = 0; i != d; ++i)
         _basis[i] = new BsplineBasis<T>(knotVectors[i]);
+    for (unsigned i = 1; i != 4; ++i)
+        _derivativePattern.emplace_back(PartialDerPattern(i));
 }
 
 template<unsigned d, typename T>
@@ -206,6 +234,19 @@ unsigned TensorBsplineBasis<d, T>::GetDof() const {
 template<unsigned d, typename T>
 unsigned TensorBsplineBasis<d, T>::GetDof(const unsigned i) const {
     return _basis[i]->GetDof();
+}
+
+template<unsigned d, typename T>
+unsigned TensorBsplineBasis<d, T>::NumActive(const unsigned &i) const {
+    return _basis[i]->NumActive();
+}
+
+template<unsigned d, typename T>
+unsigned TensorBsplineBasis<d, T>::NumActive() const {
+    unsigned active = 1;
+    for (unsigned i = 0; i != d; ++i)
+        active *= _basis[i]->NumActive();
+    return active;
 }
 
 
