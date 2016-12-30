@@ -26,6 +26,8 @@ public:
 
     PhyTensorBsplineBasis(const std::vector<KnotVector<T>> &KV, GeometryVector geometry);
 
+    EigenVector AffineMap(const EigenVector & u) const;
+
     virtual ~PhyTensorBsplineBasis() {
 
     }
@@ -43,6 +45,17 @@ template<unsigned d, typename T>
 PhyTensorBsplineBasis<d, T>::PhyTensorBsplineBasis(const std::vector<KnotVector<T>> &KV, GeometryVector geometry) : TensorBsplineBasis<d,T>(KV) {
     ASSERT((this->TensorBsplineBasis<d,T>::GetDof())==geometry.size(),"Invalid geometrical information input, check size bro.");
     _geometricInfo=geometry;
+}
+
+template<unsigned d, typename T>
+typename PhyTensorBsplineBasis<d, T>::EigenVector PhyTensorBsplineBasis<d, T>::AffineMap(const PhyTensorBsplineBasis<d, T>::EigenVector &u) const {
+    PhyTensorBsplineBasis<d,T>::EigenVector result(d);
+    result.setZero();
+    auto p=this->TensorBsplineBasis<d,T>::EvalTensor(u);
+    for(auto it=p->begin();it!=p->end();++it){
+        result+=_geometricInfo[it->first]*(it->second)[0][0];
+    }
+    return result;
 }
 
 

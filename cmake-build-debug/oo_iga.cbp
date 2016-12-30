@@ -8,38 +8,38 @@
 		<Option virtualFolders="CMake Files\;"/>
 		<Build>
 			<Target title="all">
-				<Option working_dir="/Users/dimiao/ClionProjects/oo_iga/cmake-build-debug"/>
+				<Option working_dir="/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug"/>
 				<Option type="4"/>
 				<MakeCommands>
-					<Build command="/usr/bin/make -j4 -f &quot;/Users/dimiao/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 all"/>
-					<CompileFile command="/usr/bin/make -j4 -f &quot;/Users/dimiao/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
-					<Clean command="/usr/bin/make -j4 -f &quot;/Users/dimiao/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
-					<DistClean command="/usr/bin/make -j4 -f &quot;/Users/dimiao/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<Build command="/usr/bin/make -j8 -f &quot;/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 all"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
 				</MakeCommands>
 			</Target>
 			<Target title="edit_cache">
-				<Option working_dir="/Users/dimiao/ClionProjects/oo_iga/cmake-build-debug"/>
+				<Option working_dir="/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug"/>
 				<Option type="4"/>
 				<MakeCommands>
-					<Build command="/usr/bin/make -j4 -f &quot;/Users/dimiao/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 edit_cache"/>
-					<CompileFile command="/usr/bin/make -j4 -f &quot;/Users/dimiao/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
-					<Clean command="/usr/bin/make -j4 -f &quot;/Users/dimiao/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
-					<DistClean command="/usr/bin/make -j4 -f &quot;/Users/dimiao/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<Build command="/usr/bin/make -j8 -f &quot;/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 edit_cache"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
 				</MakeCommands>
 			</Target>
 			<Target title="rebuild_cache">
-				<Option working_dir="/Users/dimiao/ClionProjects/oo_iga/cmake-build-debug"/>
+				<Option working_dir="/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug"/>
 				<Option type="4"/>
 				<MakeCommands>
-					<Build command="/usr/bin/make -j4 -f &quot;/Users/dimiao/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 rebuild_cache"/>
-					<CompileFile command="/usr/bin/make -j4 -f &quot;/Users/dimiao/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
-					<Clean command="/usr/bin/make -j4 -f &quot;/Users/dimiao/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
-					<DistClean command="/usr/bin/make -j4 -f &quot;/Users/dimiao/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<Build command="/usr/bin/make -j8 -f &quot;/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 rebuild_cache"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
 				</MakeCommands>
 			</Target>
 			<Target title="oo_iga">
-				<Option output="/Users/dimiao/ClionProjects/oo_iga/cmake-build-debug/oo_iga" prefix_auto="0" extension_auto="0"/>
-				<Option working_dir="/Users/dimiao/ClionProjects/oo_iga/cmake-build-debug"/>
+				<Option output="/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/oo_iga" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug"/>
 				<Option object_output="./"/>
 				<Option type="1"/>
 				<Option compiler="gcc"/>
@@ -53,15 +53,15 @@
 					<Add directory="/Library/Developer/CommandLineTools/usr/bin/../include/c++/v1"/>
 				</Compiler>
 				<MakeCommands>
-					<Build command="/usr/bin/make -j4 -f &quot;/Users/dimiao/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 oo_iga"/>
-					<CompileFile command="/usr/bin/make -j4 -f &quot;/Users/dimiao/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
-					<Clean command="/usr/bin/make -j4 -f &quot;/Users/dimiao/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
-					<DistClean command="/usr/bin/make -j4 -f &quot;/Users/dimiao/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<Build command="/usr/bin/make -j8 -f &quot;/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 oo_iga"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
 				</MakeCommands>
 			</Target>
 			<Target title="oo_iga/fast">
-				<Option output="/Users/dimiao/ClionProjects/oo_iga/cmake-build-debug/oo_iga" prefix_auto="0" extension_auto="0"/>
-				<Option working_dir="/Users/dimiao/ClionProjects/oo_iga/cmake-build-debug"/>
+				<Option output="/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/oo_iga" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug"/>
 				<Option object_output="./"/>
 				<Option type="1"/>
 				<Option compiler="gcc"/>
@@ -75,44 +75,44 @@
 					<Add directory="/Library/Developer/CommandLineTools/usr/bin/../include/c++/v1"/>
 				</Compiler>
 				<MakeCommands>
-					<Build command="/usr/bin/make -j4 -f &quot;/Users/dimiao/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 oo_iga/fast"/>
-					<CompileFile command="/usr/bin/make -j4 -f &quot;/Users/dimiao/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
-					<Clean command="/usr/bin/make -j4 -f &quot;/Users/dimiao/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
-					<DistClean command="/usr/bin/make -j4 -f &quot;/Users/dimiao/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<Build command="/usr/bin/make -j8 -f &quot;/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 oo_iga/fast"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
 				</MakeCommands>
 			</Target>
 		</Build>
-		<Unit filename="/Users/dimiao/ClionProjects/oo_iga/BsplineBasis.cpp">
+		<Unit filename="/Users/miaodi/ClionProjects/oo_iga/BsplineBasis.cpp">
 			<Option target="oo_iga"/>
 		</Unit>
-		<Unit filename="/Users/dimiao/ClionProjects/oo_iga/BsplineBasis.h">
+		<Unit filename="/Users/miaodi/ClionProjects/oo_iga/BsplineBasis.h">
 			<Option target="oo_iga"/>
 		</Unit>
-		<Unit filename="/Users/dimiao/ClionProjects/oo_iga/KnotVector.cpp">
+		<Unit filename="/Users/miaodi/ClionProjects/oo_iga/KnotVector.cpp">
 			<Option target="oo_iga"/>
 		</Unit>
-		<Unit filename="/Users/dimiao/ClionProjects/oo_iga/KnotVector.h">
+		<Unit filename="/Users/miaodi/ClionProjects/oo_iga/KnotVector.h">
 			<Option target="oo_iga"/>
 		</Unit>
-		<Unit filename="/Users/dimiao/ClionProjects/oo_iga/MultiArray.h">
+		<Unit filename="/Users/miaodi/ClionProjects/oo_iga/MultiArray.h">
 			<Option target="oo_iga"/>
 		</Unit>
-		<Unit filename="/Users/dimiao/ClionProjects/oo_iga/PhyTensorBsplineBasis.cpp">
+		<Unit filename="/Users/miaodi/ClionProjects/oo_iga/PhyTensorBsplineBasis.cpp">
 			<Option target="oo_iga"/>
 		</Unit>
-		<Unit filename="/Users/dimiao/ClionProjects/oo_iga/PhyTensorBsplineBasis.h">
+		<Unit filename="/Users/miaodi/ClionProjects/oo_iga/PhyTensorBsplineBasis.h">
 			<Option target="oo_iga"/>
 		</Unit>
-		<Unit filename="/Users/dimiao/ClionProjects/oo_iga/TensorBsplineBasis.cpp">
+		<Unit filename="/Users/miaodi/ClionProjects/oo_iga/TensorBsplineBasis.cpp">
 			<Option target="oo_iga"/>
 		</Unit>
-		<Unit filename="/Users/dimiao/ClionProjects/oo_iga/TensorBsplineBasis.h">
+		<Unit filename="/Users/miaodi/ClionProjects/oo_iga/TensorBsplineBasis.h">
 			<Option target="oo_iga"/>
 		</Unit>
-		<Unit filename="/Users/dimiao/ClionProjects/oo_iga/main.cpp">
+		<Unit filename="/Users/miaodi/ClionProjects/oo_iga/main.cpp">
 			<Option target="oo_iga"/>
 		</Unit>
-		<Unit filename="/Users/dimiao/ClionProjects/oo_iga/CMakeLists.txt">
+		<Unit filename="/Users/miaodi/ClionProjects/oo_iga/CMakeLists.txt">
 			<Option virtualFolder="CMake Files\"/>
 		</Unit>
 	</Project>

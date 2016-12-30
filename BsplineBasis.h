@@ -4,7 +4,7 @@
 
 #ifndef OO_IGA_BSPLINEBASIS_H
 #define OO_IGA_BSPLINEBASIS_H
-#ifndef NDEB_basisKnotG
+#ifndef NDEBUG
 #   define ASSERT(condition, message) \
     do { \
         if (! (condition)) { \

@@ -1,4 +1,4 @@
-# Install script for directory: /Users/dimiao/ClionProjects/oo_iga
+# Install script for directory: /Users/miaodi/ClionProjects/oo_iga
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -35,5 +35,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/Users/dimiao/ClionProjects/oo_iga/cmake-build-debug/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

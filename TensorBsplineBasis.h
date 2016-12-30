@@ -36,7 +36,7 @@ public:
     unsigned GetDof(const unsigned i) const;
 
     std::vector<unsigned> TensorIndex(const unsigned &m) const {
-        ASSERT(m<GetDof(),"Input index is invalid.");
+        ASSERT(m < GetDof(), "Input index is invalid.");
         std::vector<unsigned> ind(d);
         int mm = m;
         ///unsigned always >=0.
@@ -48,8 +48,8 @@ public:
         return ind;
     }
 
-    unsigned Index(const std::vector<unsigned> &ts) const{
-        unsigned index=0;
+    unsigned Index(const std::vector<unsigned> &ts) const {
+        unsigned index = 0;
         for (unsigned direction = 0; direction < d; ++direction) {
             index += ts[direction];
             if (direction != d - 1) { index *= GetDof(direction + 1); }
@@ -69,7 +69,8 @@ public:
 
     unsigned NumActive(const unsigned &i) const;
 
-    ///not finished yet
+
+
     std::unique_ptr<std::vector<std::pair<unsigned, std::vector<std::vector<T>>>>>
     EvalTensor(const vector &u, const unsigned i = 0) const {
         std::unique_ptr<std::vector<std::pair<unsigned, std::vector<std::vector<T>>>>> result(
@@ -125,8 +126,6 @@ public:
 
             }
         }
-
-
         return result;
     }
 
