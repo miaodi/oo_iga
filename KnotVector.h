@@ -4,7 +4,18 @@
 
 #ifndef OO_IGA_KNOTVECTOR_H
 #define OO_IGA_KNOTVECTOR_H
-
+#ifndef NDEBUG
+#   define ASSERT(condition, message) \
+    do { \
+        if (! (condition)) { \
+            std::cerr << "Assertion `" #condition "` failed in " << __FILE__ \
+                      << " line " << __LINE__ << ": " << message << std::endl; \
+            std::terminate(); \
+        } \
+    } while (false)
+#else
+#   define ASSERT(condition, message) do { } while (false)
+#endif
 #include <vector>
 #include <map>
 #include <eigen3/Eigen/Dense>
@@ -42,6 +53,14 @@ public:
     unsigned GetDegree() const;
 
     unsigned GetSize() const;
+
+    void InitClosed(unsigned _deg, T first=T(0.0), T last=T(1.0));
+
+    void InitClosedUniform(unsigned _dof, unsigned _deg, T first=T(0.0), T last=T(1.0));
+
+    KnotVector UniKnotUnion(const KnotVector & vb) const;
+
+    std::vector<std::pair<T,T>> KnotSpans() const;
 
 private:
     //Knots with repetitions {0,0,0,.5,1,1,1}

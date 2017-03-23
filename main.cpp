@@ -12,7 +12,17 @@ int main() {
     KnotVector<double> a({0, 0, 0, 1, 1, 1});
     KnotVector<double> b({0, 0, .5, 1, 1});
     KnotVector<double> c({0, 0, 0, 0, .2, .4, .4, .7, 1, 1, 1, 1});
-
+    KnotVector<double> d;
+    d.InitClosedUniform(10,8);
+    d.printKnotVector();
+    d.UniformRefine(2,2);
+    d.printKnotVector();
+    KnotVector<double> e(c.UniKnotUnion(d));
+    auto kk=c.KnotSpans();
+    for(auto it = kk.begin();it!=kk.end();++it){
+        cout<<it->first<<" "<<it->second<<" ";
+    }
+    /*
     BsplineBasis<double> l(b);
     BsplineBasis<double> m(c);
 
@@ -49,5 +59,6 @@ int main() {
                            (VectorXd(2) << 2.0, 2.0).finished()};
     PhyTensorBsplineBasis<2> hahaming(n, ff);
     cout << hahaming.AffineMap(u) << endl;
+    */
     return 0;
 }

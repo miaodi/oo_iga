@@ -97,15 +97,58 @@ Eigen::Matrix<T, Eigen::Dynamic, 1> KnotVector<T>::MapToEigen() const {
     return Eigen::Matrix<T, -1, 1, 0, -1, 1>::Map(_multiKnots.data(), _multiKnots.size());
 }
 
-template <typename T>
+template<typename T>
 unsigned KnotVector<T>::GetSize() const {
     return static_cast<unsigned>(_multiKnots.size());
 }
 
 template<typename T>
-const T& KnotVector<T>::operator[](unsigned i) const {
+const T &KnotVector<T>::operator[](unsigned i) const {
     return _multiKnots[i];
 }
 
+template<typename T>
+void KnotVector<T>::InitClosed(unsigned _deg, T first, T last) {
+    uniContainer tmp;
+    tmp.emplace(first, _deg + 1);
+    tmp.emplace(last, _deg + 1);
+    _uniKnots.insert(tmp.begin(), tmp.end());
+    MultiPle();
+}
 
-template  class KnotVector<double>;
+template<typename T>
+void KnotVector<T>::InitClosedUniform(unsigned _dof, unsigned _deg, T first, T last) {
+    ASSERT(_dof > _deg + 1, "Degree of freedom is too small.");
+    InitClosed(_deg, first, last);
+    const T interval = (last - first) / double(_dof - _deg);
+    T knot = interval;
+    uniContainer tmp;
+    for (int i = 1; i < _dof - _deg; ++i) {
+        tmp.emplace(knot, 1);
+        knot += interval;
+    }
+    _uniKnots.insert(tmp.begin(), tmp.end());
+    MultiPle();
+}
+
+template<typename T>
+KnotVector<T> KnotVector<T>::UniKnotUnion(const KnotVector &vb) const {
+    uniContainer tmp=_uniKnots;
+    tmp.insert(vb._uniKnots.begin(),vb._uniKnots.end());
+    for (auto &e : tmp) {
+        e.second=1;
+    }
+    return KnotVector(tmp);
+}
+template<typename T>
+std::vector<std::pair<T, T>> KnotVector<T>::KnotSpans() const {
+    std::vector<std::pair<T, T>> tmp;
+    for(auto it = _uniKnots.begin();it!=std::prev(_uniKnots.end());++it){
+        tmp.push_back(std::make_pair(it->first,std::next(it,1)->first));
+    }
+    return tmp;
+}
+
+
+template
+class KnotVector<double>;
