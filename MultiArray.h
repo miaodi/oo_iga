@@ -23,4 +23,6 @@ struct MultiDimArray<T, I>
     using type = std::array<T, I>;
     // typedef std::array<T, I> type;
 };
+
+
 #endif //OO_IGA_MULTIARRAY_H

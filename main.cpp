@@ -17,9 +17,14 @@ int main() {
 
 
     BsplineBasis<double> l(c);
-    BsplineBasis<double>::BasisFunValPac_ptr result=l.Eval(.00001,4);
-    for( auto i=result->begin();i!=result->end();++i){
-        cout<<i->first<<" "<<i->second<<endl;
-    }
+    BsplineBasis<double> m(c);
+
+    TensorBsplineBasis<2, double> twoDdomain(l, m);
+    cout << twoDdomain.GetDof() << endl;
+    VectorXd u(2);
+    u << 1, 1;
+    for (int i = 0; i < 10000; ++i)
+        TensorBsplineBasis<2, double>::BasisFunValPac_ptr test = twoDdomain.EvalTensor(u);
+
     return 0;
 }

@@ -8,7 +8,7 @@
 #include "TensorBsplineBasis.h"
 #include "MultiArray.h"
 
-template<unsigned d, typename T=double>
+template<unsigned d,  typename T=double>
 class PhyTensorBsplineBasis : public TensorBsplineBasis<d, T> {
 
 public:

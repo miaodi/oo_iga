@@ -169,10 +169,6 @@ public:
 protected:
     KnotVector<T> _basisKnot;
 
-    BsplineBasis(const BsplineBasis &) {};
-
-    BsplineBasis operator=(const BsplineBasis &) {};
-
 
 };
 
