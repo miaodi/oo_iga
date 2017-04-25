@@ -25,9 +25,13 @@
 template<typename T=double>
 class BsplineBasis {
 public:
-    using vector=Eigen::Matrix<T, Eigen::Dynamic, 1>;
+    using vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
     using matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
     using block = Eigen::Block<matrix>;
+
+    typedef std::pair<unsigned, T> BasisFunVal;
+    typedef std::vector<BasisFunVal> BasisFunValPac;
+    typedef std::unique_ptr<BasisFunValPac> BasisFunValPac_ptr;
 
     BsplineBasis();
 
@@ -41,17 +45,17 @@ public:
 
     unsigned FindSpan(const T &u) const;
 
-    std::unique_ptr<matrix> Eval(const T &u, const unsigned i = 0) const {
+    BasisFunValPac_ptr Eval(const T &u, const unsigned i = 0) const {
         const unsigned dof = GetDof();
         const unsigned deg = GetDegree();
-        std::unique_ptr<matrix> ders(new Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>);
+        matrix ders;
         T *left = new T[2 * (deg + 1)];
         T *right = &left[deg + 1];
         matrix ndu(deg + 1, deg + 1);
         T saved, temp;
         int j, r;
         unsigned span = FindSpan(u);
-        (*ders).resize(i + 1, deg + 1);
+        ders.resize(i + 1, deg + 1);
 
         ndu(0, 0) = 1.0;
         for (j = 1; j <= deg; j++) {
@@ -72,7 +76,7 @@ public:
         }
 
         for (j = deg; j >= 0; --j)
-            (*ders)(0, j) = ndu(j, deg);
+            ders(0, j) = ndu(j, deg);
 
         // Compute the derivatives
         matrix a(deg + 1, deg + 1);
@@ -115,7 +119,7 @@ public:
                     a(s2, k) = -a(s1, k - 1) / ndu(pk + 1, r);
                     d += a(s2, k) * ndu(r, pk);
                 }
-                (*ders)(k, r) = d;
+                ders(k, r) = d;
                 j = s1;
                 s1 = s2;
                 s2 = j; // Switch rows
@@ -126,14 +130,19 @@ public:
         r = deg;
         for (int k = 1; k <= i; k++) {
             for (j = deg; j >= 0; --j)
-                (*ders)(k, j) *= r;
+                ders(k, j) *= r;
             r *= deg - k;
         }
         delete[] left;
-        return ders;
+        BasisFunValPac_ptr result(new BasisFunValPac);
+        unsigned firstIndex = FirstActive(u);
+        for (unsigned ii = 0; ii != ders.cols(); ++ii) {
+            result->push_back(BasisFunVal(firstIndex+ii, ders(i, ii)));
+        }
+        return result;
     }
 
-    T EvalSingle(const T & u, const unsigned n, const unsigned i = 0);
+    T EvalSingle(const T &u, const unsigned n, const unsigned i = 0);
 
     vector Support(const unsigned i) const {
         const unsigned deg = GetDegree();
@@ -221,13 +230,13 @@ bool BsplineBasis<T>::IsActive(const unsigned i, const T u) const {
     return (u >= supp(0)) && (u < supp(1)) ? true : false;
 }
 
-template <typename T>
+template<typename T>
 T BsplineBasis<T>::EvalSingle(const T &u, const unsigned n, const unsigned int i) {
     unsigned p = GetDegree();
-    T* ders;
-    T** N;
-    T* ND;
-    N = new T*[p + 1];
+    T *ders;
+    T **N;
+    T *ND;
+    N = new T *[p + 1];
     for (int k = 0; k < p + 1; k++)
         N[k] = new T[p + 1];
     ND = new T[i + 1];
@@ -260,8 +269,7 @@ T BsplineBasis<T>::EvalSingle(const T &u, const unsigned n, const unsigned int i
             if (N[j + 1][k - 1] == 0) {
                 N[j][k] = saved;
                 saved = 0;
-            }
-            else {
+            } else {
                 double temp = 0;
                 if (_basisKnotright != _basisKnotleft)
                     temp = N[j + 1][k - 1] / (_basisKnotright - _basisKnotleft);
@@ -284,8 +292,7 @@ T BsplineBasis<T>::EvalSingle(const T &u, const unsigned n, const unsigned int i
                 if (ND[j + 1] == 0) {
                     ND[j] = (p - k + jj) * saved;
                     saved = 0;
-                }
-                else {
+                } else {
                     double temp = 0;
                     if (_basisKnotright != _basisKnotleft)
                         temp = ND[j + 1] / (_basisKnotright - _basisKnotleft);
