@@ -34,9 +34,11 @@ public:
 
     KnotVector(const uniContainer &target);
 
-    KnotVector(const KnotVector &target);
-
     const T& operator[](unsigned i) const;
+
+    T& operator()(unsigned i);
+
+    T& operator()(int i);
 
     void Insert(T knot);
 
@@ -54,6 +56,8 @@ public:
 
     unsigned GetSize() const;
 
+    unsigned GetDOF() const;
+
     void InitClosed(unsigned _deg, T first=T(0.0), T last=T(1.0));
 
     void InitClosedUniform(unsigned _dof, unsigned _deg, T first=T(0.0), T last=T(1.0));
@@ -65,14 +69,10 @@ public:
 private:
     //Knots with repetitions {0,0,0,.5,1,1,1}
     knotContainer _multiKnots;
-    //Unique knots associated with multiplicity {0:3,.5:1,1:3}
-    uniContainer _uniKnots;
-    //
 
+    void UniQue(uniContainer &) const;
 
-    void UniQue();
-
-    void MultiPle();
+    void MultiPle(const uniContainer &);
 
 };
 

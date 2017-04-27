@@ -4,27 +4,21 @@
 #include "BsplineBasis.h"
 #include "TensorBsplineBasis.h"
 #include "PhyTensorBsplineBasis.h"
+#include "MultiArray.h"
 
 using namespace Eigen;
 using namespace std;
+using namespace Accessory;
 
 int main() {
     KnotVector<double> a({0, 0, 0, 1, 1, 1});
-    KnotVector<double> b({0, 0, .5, 1, 1});
-    KnotVector<double> c({0, 0, 0, 0, .2, .4, .4, .7, 1, 1, 1, 1});
-    KnotVector<double> d;
-    KnotVector<double> e(c.UniKnotUnion(d));
-
-
-    BsplineBasis<double> l(c);
-    BsplineBasis<double> m(c);
-
-    TensorBsplineBasis<2, double> twoDdomain(l, m);
-    cout << twoDdomain.GetDof() << endl;
-    VectorXd u(2);
-    u << 1, 1;
-    for (int i = 0; i < 10000; ++i)
-        TensorBsplineBasis<2, double>::BasisFunValPac_ptr test = twoDdomain.EvalTensor(u);
-
+    Vector2d point1(0, 0);
+    Vector2d point2(1, 1);
+    Vector2d point3(2, 2);
+    Matrix<Matrix<double, 2, 1>, Dynamic, 1> points(3);
+    points << point1, point2, point3;
+    degreeElevate<double, 2>(1, a, points);
+    for(int i=0;i<points.rows();i++)
+        cout<<points(i).transpose()<<endl;
     return 0;
 }
