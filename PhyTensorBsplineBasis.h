@@ -372,13 +372,20 @@ void PhyTensorBsplineBasis<d, N, T>::DegreeElevateX(unsigned r) {
     std::vector<unsigned> MultiIndex(d);
     std::function<void(std::vector<unsigned> &, const std::vector<unsigned> &, unsigned)> recursive;
 
-    recursive = [this, &MultiIndex, &recursive](std::vector<unsigned> &indexes, const std::vector<unsigned> &endPerIndex,
-                                   unsigned direction) {
+    recursive = [this, &MultiIndex, &recursive](std::vector<unsigned> &indexes,
+                                                const std::vector<unsigned> &endPerIndex,
+                                                unsigned direction) {
         if (direction == indexes.size()) {
-            T result = 1;
-            for (unsigned i = 0; i < d; i++)
-                result *= Value[i];
-            Result->push_back(BasisFunVal(Index(MultiIndex), result));
+            Accessory::ContPtrList ElevateList;
+            for (unsigned i = 0; i != endPerIndex[0]; ++i) {
+                MultiIndex[0]=i;
+                auto index = this->Index(MultiIndex);
+                temp.push_back(_geometricInfo[index]);
+            }
+            KnotVector tmp(_basis[0].Knots());
+
+        } else if (direction == 0) {
+            recursive(indexes, endPerIndex, direction + 1);
         } else {
             for (indexes[direction] = 0; indexes[direction] != endPerIndex[direction]; indexes[direction]++) {
                 MultiIndex[direction] = indexes[direction];

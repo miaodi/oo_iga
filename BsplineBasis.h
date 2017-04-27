@@ -158,6 +158,10 @@ public:
 
     unsigned NumActive() const { return GetDegree() + 1; }
 
+    const KnotVector<T>& Knots() const{
+        return _basisKnot;
+    }
+
     bool InDomain(T const &u) const { return ((u >= DomainStart()) && (u <= DomainEnd())); }
 
     unsigned FirstActive(T u) const {
