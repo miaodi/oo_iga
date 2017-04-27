@@ -12,7 +12,7 @@
 namespace Accessory {
     using namespace Eigen;
     template<typename T, unsigned N>
-    using ContPtrList = Matrix<Matrix<T, N, 1>, Dynamic, 1>;
+    using ContPtrList = std::vector<Matrix<T, N, 1>>;
 
     template<typename T>
     void binomialCoef(Matrix<T, Dynamic, Dynamic> &Bin) {
@@ -33,9 +33,8 @@ namespace Accessory {
     }
 
     template<typename T, unsigned N>
-    void degreeElevate(int t, KnotVector<T> U, ContPtrList<T,N>& P) {
+    void degreeElevate(int t, KnotVector<T> &U, ContPtrList<T, N> &P) {
         ASSERT(t > 0, "Invalid geometrical information input, check size bro.");
-
         int i, j, k;
         auto dof = U.GetDOF();
         auto cP = P;
@@ -47,7 +46,8 @@ namespace Accessory {
         int ph2 = ph / 2;
         Matrix<T, Dynamic, Dynamic> bezalfs(p + t + 1, p + 1); // coefficients for degree elevating the Bezier segment
         Matrix<Matrix<T, N, 1>, Dynamic, 1> bpts(p + 1); // pth-degree Bezier control points of the current segment
-        Matrix<Matrix<T, N, 1>, Dynamic, 1> ebpts(p + t + 1); // (p+t)th-degree Bezier control points of the  current segment
+        Matrix<Matrix<T, N, 1>, Dynamic, 1> ebpts(
+                p + t + 1); // (p+t)th-degree Bezier control points of the  current segment
         Matrix<Matrix<T, N, 1>, Dynamic, 1> Nextbpts(p - 1); // leftmost control points of the next Bezier segment
         Matrix<T, Dynamic, 1> alphas(p - 1); // knot instertion alphas.
         // Compute the binomial coefficients
@@ -74,8 +74,8 @@ namespace Accessory {
                 bezalfs(i, j) = bezalfs(ph - i, p - j);
         }
 
-        P.conservativeResize(cP.rows() * t * 3); // Allocate more control points than necessary
-
+        P.resize(cP.size() * t * 3); // Allocate more control points than necessary
+        U.resize(cP.size() * t * 3 + ph + 1);
         int mh = ph;
         int kind = ph + 1;
         T ua = U(0);
@@ -91,14 +91,14 @@ namespace Accessory {
         int first, last, kj;
         T den, bet, gam, numer;
 
-        P(0) = cP(0);
+        P[0] = cP[0];
         for (i = 0; i <= ph; i++) {
             U(i) = ua;
         }
 
         // Initialize the first Bezier segment
         for (i = 0; i <= p; i++)
-            bpts(i) = cP(i);
+            bpts(i) = cP[i];
         while (b < m) { // Big loop thru knot vector
             i = b;
             while (b < m && cU(b) == cU(b + 1)) // for some odd reasons... == doesn't work
@@ -152,7 +152,7 @@ namespace Accessory {
                     while (j - i > tr) { // Loop and compute the new control points for one removal step
                         if (i < cind) {
                             alf = (ub - U(i)) / (ua - U(i));
-                            P(i) = alf * P(i) + (1.0 - alf) * P(i - 1);
+                            P[i] = alf * P[i] + (1.0 - alf) * P[i - 1];
                         }
                         if (j >= lbz) {
                             if (j - tr <= kind - ph + oldr) {
@@ -176,14 +176,14 @@ namespace Accessory {
                     U(kind++) = ua;
                 }
             for (j = lbz; j <= rbz; j++) { // load control points onto the curve
-                P(cind++) = ebpts(j);
+                P[cind++] = ebpts(j);
             }
 
             if (b < m) { // Set up for next pass thru loop
                 for (j = 0; j < r; j++)
                     bpts(j) = Nextbpts(j);
                 for (j = r; j <= p; j++)
-                    bpts(j) = cP(b - p + j);
+                    bpts(j) = cP[b - p + j];
                 a = b;
                 b++;
                 ua = ub;
@@ -192,30 +192,124 @@ namespace Accessory {
                     U(kind + i) = ub;
             }
         }
-        P.conservativeResize(mh - ph); // Resize to the proper number of control points
+        P.resize(mh - ph); // Resize to the proper number of control points
+        U.resize(mh + 1);
+    }
+
+    template<typename T, unsigned N>
+    void knotInsertion(T u, int r, KnotVector<T> &U, ContPtrList<T, N> &P) {
+
+        int n = U.GetDOF();
+        int p = U.GetDegree();
+        auto cP = P;
+        auto cU = U;
+        int m = n + p;
+        int nq = n + r;
+        int k, s = 0;
+        int i, j;
+        k = U.FindSpan(u);
+        P.resize(nq);
+        U.resize(nq + p + 1);
+        for (i = 0; i <= k; i++)
+            U(i) = cU(i);
+        for (i = 1; i <= r; i++)
+            U(k + i) = u;
+        for (i = k + 1; i <= m; i++)
+            U(i + r) = cU(i);
+
+        ContPtrList<T, N> R(p + 1);
+        for (i = 0; i <= k - p; i++)
+            P[i] = cP[i];
+        for (i = k - s; i < n; i++)
+            P[i + r] = cP[i];
+        for (i = 0; i <= p - s; i++)
+            R[i] = cP[k - p + i];
+        int L;
+        T alpha;
+        for (j = 1; j <= r; j++) {
+            L = k - p + j;
+            for (i = 0; i <= p - j - s; i++) {
+                alpha = (u - cU(L + i)) / (cU(i + k + 1) - cU(L + i));
+                R[i] = alpha * R[i + 1] + (1.0 - alpha) * R(i);
+            }
+            P[L] = R[0];
+            P[k + r - j - s] = R[p - j - s];
+        }
+        for (i = L + 1; i < k - s; i++)
+            P[i] = R[i - L];
 
     }
 
+    template<typename T, unsigned N>
+    void refineKnotVectorCurve(const KnotVector<T> &X, KnotVector<T> &U, ContPtrList<T, N> &P) {
+
+        int n = U.GetDOF() - 1;
+        int p = U.GetDegree();
+        int m = n + p + 1;
+        int a, b;
+        int r = static_cast<int>(X.GetSize() - 1);
+        auto cP = P;
+        auto cU = U;
+        P.resize(r + n + 2);
+        U.resize(r + n + p + 3);
+        a = cU.FindSpan(X[0]);
+        b = cU.FindSpan(X[r]);
+        ++b;
+        int j;
+        for (j = 0; j <= a - p; j++)
+            P[j] = cP[j];
+        for (j = b - 1; j <= n; j++)
+            P[j + r + 1] = cP[j];
+        for (j = 0; j <= a; j++)
+            U(j) = cU(j);
+        for (j = b + p; j <= m; j++)
+            U(j + r + 1) = cU(j);
+        int i = b + p - 1;
+        int k = b + p + r;
+        for (j = r; j >= 0; j--) {
+            while (X[j] <= cU[i] && i > a) {
+                P[k - p - 1] = cP[i - p - 1];
+                U(k) = cU(i);
+                --k;
+                --i;
+            }
+            P[k - p - 1] = P[k - p];
+            for (int l = 1; l <= p; l++) {
+                int ind = k - p + l;
+                T alpha = U[k + l] - X[j];
+                if (alpha == 0.0)
+                    P[ind - 1] = P[ind];
+                else
+                    alpha /= U(k + l) - cU(i - p + l);
+                P[ind - 1] = alpha * P[ind - 1] + (1.0 - alpha) * P[ind];
+            }
+            U(k) = X[j];
+            --k;
+        }
+    }
 }
-template<unsigned d, typename T=double>
+
+template<unsigned d, unsigned N, typename T=double>
 class PhyTensorBsplineBasis : public TensorBsplineBasis<d, T> {
 
 public:
-    using EigenVector=Eigen::Matrix<T, Eigen::Dynamic, 1>;
+    using Ptr=Eigen::Matrix<T, N, 1>;
 
-    using GeometryVector = std::vector<EigenVector>;
+    using GeometryVector = std::vector<Ptr>;
 
     PhyTensorBsplineBasis();
 
-    PhyTensorBsplineBasis(BsplineBasis<T> *baseX, GeometryVector geometry);
+    PhyTensorBsplineBasis(const BsplineBasis<T> &, const GeometryVector &);
 
-    PhyTensorBsplineBasis(BsplineBasis<T> *baseX, BsplineBasis<T> *baseY);
+    PhyTensorBsplineBasis(const BsplineBasis<T> &, const BsplineBasis<T> &, const GeometryVector &);
 
-    PhyTensorBsplineBasis(BsplineBasis<T> *baseX, BsplineBasis<T> *baseY, BsplineBasis<T> *baseZ);
+    PhyTensorBsplineBasis(const BsplineBasis<T> &, const BsplineBasis<T> &, const BsplineBasis<T> &,
+                          const GeometryVector &);
 
-    PhyTensorBsplineBasis(const std::vector<KnotVector<T>> &KV, GeometryVector geometry);
 
-    EigenVector AffineMap(const EigenVector &u) const;
+    Ptr AffineMap(const Ptr &) const;
+
+    void DegreeElevateX(unsigned r);
 
     virtual ~PhyTensorBsplineBasis() {
 
@@ -225,26 +319,73 @@ private:
     GeometryVector _geometricInfo;
 };
 
-template<unsigned d, typename T>
-PhyTensorBsplineBasis<d, T>::PhyTensorBsplineBasis():TensorBsplineBasis<d, T>() {
+template<unsigned d, unsigned N, typename T>
+PhyTensorBsplineBasis<d, N, T>::PhyTensorBsplineBasis():TensorBsplineBasis<d, T>() {
 
 }
 
-template<unsigned d, typename T>
-PhyTensorBsplineBasis<d, T>::PhyTensorBsplineBasis(const std::vector<KnotVector<T>> &KV, GeometryVector geometry) : TensorBsplineBasis<d, T>(KV) {
-    ASSERT((this->TensorBsplineBasis<d, T>::GetDof()) == geometry.size(), "Invalid geometrical information input, check size bro.");
-    _geometricInfo = geometry;
-}
-
-template<unsigned d, typename T>
-typename PhyTensorBsplineBasis<d, T>::EigenVector PhyTensorBsplineBasis<d, T>::AffineMap(const PhyTensorBsplineBasis<d, T>::EigenVector &u) const {
-    PhyTensorBsplineBasis<d, T>::EigenVector result(d);
+template<unsigned d, unsigned N, typename T>
+typename PhyTensorBsplineBasis<d, N, T>::Ptr
+PhyTensorBsplineBasis<d, N, T>::AffineMap(const PhyTensorBsplineBasis<d, N, T>::Ptr &u) const {
+    PhyTensorBsplineBasis<d, N, T>::Ptr result(d);
     result.setZero();
     auto p = this->TensorBsplineBasis<d, T>::EvalTensor(u);
     for (auto it = p->begin(); it != p->end(); ++it) {
-        result += _geometricInfo[it->first] * (it->second)[0][0];
+        result += _geometricInfo[it->first] * it->second;
     }
     return result;
+}
+
+template<unsigned d, unsigned N, typename T>
+PhyTensorBsplineBasis<d, N, T>::PhyTensorBsplineBasis(const BsplineBasis<T> &baseX,
+                                                      const PhyTensorBsplineBasis<d, N, T>::GeometryVector &geometry)
+        :TensorBsplineBasis<d, T>(baseX), _geometricInfo(geometry) {
+    ASSERT((this->TensorBsplineBasis<d, T>::GetDof()) == geometry.size(),
+           "Invalid geometrical information input, check size bro.");
+}
+
+template<unsigned d, unsigned N, typename T>
+PhyTensorBsplineBasis<d, N, T>::PhyTensorBsplineBasis(const BsplineBasis<T> &baseX, const BsplineBasis<T> &baseY,
+                                                      const PhyTensorBsplineBasis::GeometryVector &geometry)
+        :TensorBsplineBasis<d, T>(baseX, baseY), _geometricInfo(geometry) {
+    ASSERT((this->TensorBsplineBasis<d, T>::GetDof()) == geometry.size(),
+           "Invalid geometrical information input, check size bro.");
+}
+
+template<unsigned d, unsigned N, typename T>
+PhyTensorBsplineBasis<d, N, T>::PhyTensorBsplineBasis(const BsplineBasis<T> &baseX, const BsplineBasis<T> &baseY,
+                                                      const BsplineBasis<T> &baseZ,
+                                                      const PhyTensorBsplineBasis::GeometryVector &geometry)
+        :TensorBsplineBasis<d, T>(baseX, baseY, baseZ), _geometricInfo(geometry) {
+    ASSERT((this->TensorBsplineBasis<d, T>::GetDof()) == geometry.size(),
+           "Invalid geometrical information input, check size bro.");
+}
+
+template<unsigned d, unsigned N, typename T>
+void PhyTensorBsplineBasis<d, N, T>::DegreeElevateX(unsigned r) {
+    std::vector<unsigned> indexes(d, 0);
+    std::vector<unsigned> endPerIndex;
+    for (unsigned direction = 0; direction != d; ++direction) {
+        endPerIndex.push_back(this->GetDof(d));
+    }
+    GeometryVector temp;
+    std::vector<unsigned> MultiIndex(d);
+    std::function<void(std::vector<unsigned> &, const std::vector<unsigned> &, unsigned)> recursive;
+
+    recursive = [this, &MultiIndex, &recursive](std::vector<unsigned> &indexes, const std::vector<unsigned> &endPerIndex,
+                                   unsigned direction) {
+        if (direction == indexes.size()) {
+            T result = 1;
+            for (unsigned i = 0; i < d; i++)
+                result *= Value[i];
+            Result->push_back(BasisFunVal(Index(MultiIndex), result));
+        } else {
+            for (indexes[direction] = 0; indexes[direction] != endPerIndex[direction]; indexes[direction]++) {
+                MultiIndex[direction] = indexes[direction];
+                recursive(indexes, endPerIndex, direction + 1);
+            }
+        }
+    };
 }
 
 

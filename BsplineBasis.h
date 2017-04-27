@@ -199,25 +199,7 @@ unsigned BsplineBasis<T>::GetDof() const {
 
 template<typename T>
 unsigned BsplineBasis<T>::FindSpan(const T &u) const {
-    const unsigned dof = GetDof();
-    const unsigned deg = GetDegree();
-    if (u >= _basisKnot[dof])
-        return dof - 1;
-    if (u <= _basisKnot[deg])
-        return deg;
-
-    unsigned low = 0;
-    unsigned high = dof + 1;
-    unsigned mid = (low + high) / 2;
-
-    while (u < _basisKnot[mid] || u >= _basisKnot[mid + 1]) {
-        if (u < _basisKnot[mid])
-            high = mid;
-        else
-            low = mid;
-        mid = (low + high) / 2;
-    }
-    return mid;
+    return _basisKnot.FindSpan(u);
 }
 
 template<typename T>

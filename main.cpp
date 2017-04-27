@@ -11,14 +11,14 @@ using namespace std;
 using namespace Accessory;
 
 int main() {
-    KnotVector<double> a({0, 0, 0, 1, 1, 1});
+    KnotVector<double> a;
+    a.InitClosed(1,0,1);
     Vector2d point1(0, 0);
-    Vector2d point2(1, 1);
-    Vector2d point3(2, 2);
-    Matrix<Matrix<double, 2, 1>, Dynamic, 1> points(3);
-    points << point1, point2, point3;
-    degreeElevate<double, 2>(1, a, points);
-    for(int i=0;i<points.rows();i++)
-        cout<<points(i).transpose()<<endl;
+    Vector2d point2(0, 1);
+    Vector2d point3(1, 0);
+    Vector2d point4(1, 1);
+    vector<Vector2d> points({point1,point2,point3, point4});
+    PhyTensorBsplineBasis<2,2,double> domain(a,a,points);
+    cout<<domain.AffineMap(Vector2d(.2,.5)).transpose();
     return 0;
 }

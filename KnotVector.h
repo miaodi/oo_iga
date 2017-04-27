@@ -64,7 +64,13 @@ public:
 
     KnotVector UniKnotUnion(const KnotVector & vb) const;
 
+    unsigned FindSpan(const T &u) const;
+
     std::vector<std::pair<T,T>> KnotSpans() const;
+
+    void resize(unsigned t){_multiKnots.resize(t);};
+
+    KnotVector Difference(const KnotVector&) const;
 
 private:
     //Knots with repetitions {0,0,0,.5,1,1,1}
