@@ -73,8 +73,13 @@ public:
 
     unsigned NumActive(const unsigned &i) const;
 
-    BasisFunValPac_ptr EvalTensor(const vector &u, const DiffPattern i = DiffPattern(d, 0)) const;
+    void ChangeKnots(const KnotVector<T> &, unsigned);
 
+    void PrintKnots(unsigned i) const { _basis[i].PrintKnots(); }
+
+    void PrintUniKnots(unsigned i) const { _basis[i].PrintUniKnots(); }
+
+    BasisFunValPac_ptr EvalTensor(const vector &u, const DiffPattern i = DiffPattern(d, 0)) const;
 
     T EvalSingle(const vector &u, const unsigned n, const TensorBsplineBasis::DiffPattern i) {
         ASSERT((u.size() == d) && (i.size() == d), "Invalid input vector size.");
@@ -189,7 +194,7 @@ TensorBsplineBasis<d, T>::EvalTensor(const TensorBsplineBasis::vector &u,
             T result = 1;
             for (unsigned i = 0; i < d; i++)
                 result *= Value[i];
-            Result->push_back(BasisFunVal(Index(MultiIndex),result));
+            Result->push_back(BasisFunVal(Index(MultiIndex), result));
         } else {
             for (indexes[direction] = 0; indexes[direction] != endPerIndex[direction]; indexes[direction]++) {
                 Value[direction] = (*OneDResult[direction])[indexes[direction]].second;
@@ -201,6 +206,11 @@ TensorBsplineBasis<d, T>::EvalTensor(const TensorBsplineBasis::vector &u,
     recursive(indexes, endPerIndex, 0);
 
     return Result;
+}
+
+template<unsigned d, typename T>
+void TensorBsplineBasis<d, T>::ChangeKnots(const KnotVector<T> &knots, unsigned direction) {
+    _basis[direction] = knots;
 }
 
 

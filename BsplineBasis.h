@@ -164,6 +164,10 @@ public:
 
     bool InDomain(T const &u) const { return ((u >= DomainStart()) && (u <= DomainEnd())); }
 
+    void PrintKnots() const{_basisKnot.printKnotVector();}
+
+    void PrintUniKnots() const{_basisKnot.printUnique();}
+
     unsigned FirstActive(T u) const {
         return (InDomain(u) ? FindSpan(u) - GetDegree() : 0);
     }

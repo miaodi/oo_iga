@@ -4,11 +4,11 @@ set(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_CXX
-  "/Users/dimiao/CLionProjects/oo_iga/BsplineBasis.cpp" "/Users/dimiao/CLionProjects/oo_iga/cmake-build-debug/CMakeFiles/oo_iga.dir/BsplineBasis.cpp.o"
-  "/Users/dimiao/CLionProjects/oo_iga/KnotVector.cpp" "/Users/dimiao/CLionProjects/oo_iga/cmake-build-debug/CMakeFiles/oo_iga.dir/KnotVector.cpp.o"
-  "/Users/dimiao/CLionProjects/oo_iga/PhyTensorBsplineBasis.cpp" "/Users/dimiao/CLionProjects/oo_iga/cmake-build-debug/CMakeFiles/oo_iga.dir/PhyTensorBsplineBasis.cpp.o"
-  "/Users/dimiao/CLionProjects/oo_iga/TensorBsplineBasis.cpp" "/Users/dimiao/CLionProjects/oo_iga/cmake-build-debug/CMakeFiles/oo_iga.dir/TensorBsplineBasis.cpp.o"
-  "/Users/dimiao/CLionProjects/oo_iga/main.cpp" "/Users/dimiao/CLionProjects/oo_iga/cmake-build-debug/CMakeFiles/oo_iga.dir/main.cpp.o"
+  "/Users/miaodi/ClionProjects/oo_iga/BsplineBasis.cpp" "/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/CMakeFiles/oo_iga.dir/BsplineBasis.cpp.o"
+  "/Users/miaodi/ClionProjects/oo_iga/KnotVector.cpp" "/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/CMakeFiles/oo_iga.dir/KnotVector.cpp.o"
+  "/Users/miaodi/ClionProjects/oo_iga/PhyTensorBsplineBasis.cpp" "/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/CMakeFiles/oo_iga.dir/PhyTensorBsplineBasis.cpp.o"
+  "/Users/miaodi/ClionProjects/oo_iga/TensorBsplineBasis.cpp" "/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/CMakeFiles/oo_iga.dir/TensorBsplineBasis.cpp.o"
+  "/Users/miaodi/ClionProjects/oo_iga/main.cpp" "/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/CMakeFiles/oo_iga.dir/main.cpp.o"
   )
 set(CMAKE_CXX_COMPILER_ID "AppleClang")
 
