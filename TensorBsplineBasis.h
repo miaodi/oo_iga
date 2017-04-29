@@ -79,9 +79,9 @@ public:
 
     void PrintUniKnots(unsigned i) const { _basis[i].PrintUniKnots(); }
 
-    BasisFunValPac_ptr EvalTensor(const vector &u, const DiffPattern i = DiffPattern(d, 0)) const;
+    BasisFunValPac_ptr EvalTensor(const vector &u, const DiffPattern &i = DiffPattern(d, 0)) const;
 
-    T EvalSingle(const vector &u, const unsigned n, const TensorBsplineBasis::DiffPattern i) {
+    T EvalSingle(const vector &u, const unsigned n, const TensorBsplineBasis::DiffPattern &i) {
         ASSERT((u.size() == d) && (i.size() == d), "Invalid input vector size.");
         auto tensorindex = TensorIndex(n);
         T result = 1;
@@ -171,7 +171,7 @@ unsigned TensorBsplineBasis<d, T>::NumActive() const {
 template<unsigned d, typename T>
 typename TensorBsplineBasis<d, T>::BasisFunValPac_ptr
 TensorBsplineBasis<d, T>::EvalTensor(const TensorBsplineBasis::vector &u,
-                                     const TensorBsplineBasis::DiffPattern i) const {
+                                     const TensorBsplineBasis::DiffPattern &i) const {
 
     ASSERT((u.size() == d) && (i.size() == d), "Invalid input vector size.");
     std::vector<unsigned> indexes(d, 0);
