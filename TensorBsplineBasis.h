@@ -334,7 +334,7 @@ public:
     typedef typename BsplineBasis<T>::BasisFunVal BasisFunVal;
     typedef typename BsplineBasis<T>::BasisFunValPac BasisFunValPac;
     typedef typename BsplineBasis<T>::BasisFunValPac_ptr BasisFunValPac_ptr;
-
+    typedef typename BsplineBasis<T>::Matrix_ptr Matrix_ptr;
     TensorBsplineBasis();
 
     TensorBsplineBasis(const BsplineBasis<T> &baseX);
@@ -395,6 +395,8 @@ public:
     void PrintUniKnots(unsigned i) const { _basis[i].PrintUniKnots(); }
 
     BasisFunValPac_ptr EvalTensor(const vector &u, const DiffPattern &i = DiffPattern(d, 0)) const;
+
+    Matrix_ptr EvalDerAllTensor(const vector &u, const DiffPattern &i = DiffPattern(d, 0)) const;
 
     T EvalSingle(const vector &u, const unsigned n, const TensorBsplineBasis::DiffPattern &i) {
         ASSERT((u.size() == d) && (i.size() == d), "Invalid input vector size.");
@@ -526,6 +528,13 @@ TensorBsplineBasis<d, T>::EvalTensor(const TensorBsplineBasis::vector &u,
 template<unsigned d, typename T>
 void TensorBsplineBasis<d, T>::ChangeKnots(const KnotVector<T> &knots, unsigned direction) {
     _basis[direction] = knots;
+}
+
+template<unsigned d, typename T>
+typename TensorBsplineBasis<d,T>::Matrix_ptr TensorBsplineBasis<d,T>::EvalDerAllTensor(const TensorBsplineBasis::vector &u,
+                                                                    const TensorBsplineBasis::DiffPattern &i) const {
+
+    return Matrix_ptr();
 }
 
 
