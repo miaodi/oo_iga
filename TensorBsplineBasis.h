@@ -334,7 +334,10 @@ public:
     typedef typename BsplineBasis<T>::BasisFunVal BasisFunVal;
     typedef typename BsplineBasis<T>::BasisFunValPac BasisFunValPac;
     typedef typename BsplineBasis<T>::BasisFunValPac_ptr BasisFunValPac_ptr;
-    typedef typename BsplineBasis<T>::Matrix_ptr Matrix_ptr;
+    typedef typename BsplineBasis<T>::BasisFunValDerAll BasisFunValDerAll;
+    typedef typename BsplineBasis<T>::BasisFunValDerAllList BasisFunValDerAllList;
+    typedef typename BsplineBasis<T>::BasisFunValDerAllList_ptr BasisFunValDerAllList_ptr;
+
     TensorBsplineBasis();
 
     TensorBsplineBasis(const BsplineBasis<T> &baseX);
@@ -396,7 +399,7 @@ public:
 
     BasisFunValPac_ptr EvalTensor(const vector &u, const DiffPattern &i = DiffPattern(d, 0)) const;
 
-    Matrix_ptr EvalDerAllTensor(const vector &u, const DiffPattern &i = DiffPattern(d, 0)) const;
+    BasisFunValDerAllList_ptr EvalDerAllTensor(const vector &u, const unsigned i = 0) const;
 
     T EvalSingle(const vector &u, const unsigned n, const TensorBsplineBasis::DiffPattern &i) {
         ASSERT((u.size() == d) && (i.size() == d), "Invalid input vector size.");
@@ -489,7 +492,6 @@ template<unsigned d, typename T>
 typename TensorBsplineBasis<d, T>::BasisFunValPac_ptr
 TensorBsplineBasis<d, T>::EvalTensor(const TensorBsplineBasis::vector &u,
                                      const TensorBsplineBasis::DiffPattern &i) const {
-
     ASSERT((u.size() == d) && (i.size() == d), "Invalid input vector size.");
     std::vector<unsigned> indexes(d, 0);
     std::vector<unsigned> endPerIndex;
@@ -509,8 +511,8 @@ TensorBsplineBasis<d, T>::EvalTensor(const TensorBsplineBasis::vector &u,
                                                                               unsigned direction) {
         if (direction == indexes.size()) {
             T result = 1;
-            for (unsigned i = 0; i < d; i++)
-                result *= Value[i];
+            for (unsigned ii = 0; ii < d; ii++)
+                result *= Value[ii];
             Result->push_back(BasisFunVal(Index(MultiIndex), result));
         } else {
             for (indexes[direction] = 0; indexes[direction] != endPerIndex[direction]; indexes[direction]++) {
@@ -531,10 +533,16 @@ void TensorBsplineBasis<d, T>::ChangeKnots(const KnotVector<T> &knots, unsigned 
 }
 
 template<unsigned d, typename T>
-typename TensorBsplineBasis<d,T>::Matrix_ptr TensorBsplineBasis<d,T>::EvalDerAllTensor(const TensorBsplineBasis::vector &u,
-                                                                    const TensorBsplineBasis::DiffPattern &i) const {
+typename TensorBsplineBasis<d,T>::BasisFunValDerAllList_ptr TensorBsplineBasis<d,T>::EvalDerAllTensor(const TensorBsplineBasis::vector &u,
+                                                                    const unsigned i) const {
+    ASSERT((u.size() == d), "Invalid input vector size.");
+    std::vector<unsigned> indexes(d, 0);
+    std::vector<unsigned> endPerIndex;
+    std::array<decltype(Accessory::PartialDerPattern<d>(i)), d+1> DifferentialPatternList;
+    unsigned
+    for(unsigned order=0;order<=i;++order)
+        DifferentialPatternList[order]=Accessory::PartialDerPattern<d>(order);
 
-    return Matrix_ptr();
 }
 
 

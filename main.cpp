@@ -12,8 +12,8 @@ using namespace Accessory;
 
 int main() {
     KnotVector<double> a;
-    a.InitClosed(3, 0, 1);
-    a.UniformRefine(3,1);
+    a.InitClosed(4, 0, 1);
+    a.UniformRefine(6,1);
     KnotVector<double> b;
     b.InitClosed(1, 0, 1);
     Vector2d point1(0, 0);
@@ -21,8 +21,16 @@ int main() {
     Vector2d point3(1, 0);
     Vector2d point4(1, 1);
     BsplineBasis<double> X(a);
-    auto aa=X.EvalDerAll<3,4>(0);
-    cout<<(*aa)[0].second[4];
+    auto aa=X.EvalDerAll(1.0, 5);
+    for(auto it =aa->begin();it!=aa->end();++it) {
+        cout<<it->first<<" ";
+        for (auto itit = it->second.begin(); itit != it->second.end(); ++itit)
+            cout << *itit << " ";
+        cout<<endl;
+    }
+    cout<<X.GetDof();
+    TensorBsplineBasis<2,double> XX(a,a);
+    XX.EvalDerAllTensor(Vector2d(.2,.2),0);
 /*
     vector<Vector2d> points({point1, point2, point3, point4});
     PhyTensorBsplineBasis<2, 2, double> domain(a, b, points);

@@ -32,12 +32,9 @@ public:
     typedef std::pair<unsigned, T> BasisFunVal;
     typedef std::vector<BasisFunVal> BasisFunValPac;
     typedef std::unique_ptr<BasisFunValPac> BasisFunValPac_ptr;
-    template<unsigned N>
-    using BasisFunValDerAll=std::pair<unsigned, std::array<T, N>>;
-    template<unsigned N, unsigned Degree>
-    using BasisFunValDerAllList =std::array<BasisFunValDerAll<N>, Degree>;
-    template<unsigned N, unsigned Degree>
-    using BasisFunValDerAllList_ptr=std::unique_ptr<BasisFunValDerAllList<N, Degree>>;
+    using BasisFunValDerAll=std::pair<unsigned, std::vector<T>>;
+    using BasisFunValDerAllList =std::vector<BasisFunValDerAll>;
+    using BasisFunValDerAllList_ptr=std::unique_ptr<BasisFunValDerAllList>;
 
     BsplineBasis();
 
@@ -51,13 +48,10 @@ public:
 
     unsigned FindSpan(const T &u) const;
 
-    template<unsigned Derivative, unsigned Degree>
-    BasisFunValDerAllList_ptr<Derivative + 1, Degree + 1> EvalDerAll(const T &u) const {
-        auto i = Degree+1;
-        const unsigned dof = GetDof();
+    BasisFunValDerAllList_ptr EvalDerAll(const T &u, unsigned i) const {
         const unsigned deg = GetDegree();
-        BasisFunValDerAllList_ptr<Derivative + 1,Degree+1> ders(new BasisFunValDerAllList<Derivative + 1, Degree + 1>);
-
+        BasisFunValDerAll aaa {0,std::vector<T>(i+1,0)};
+        BasisFunValDerAllList_ptr ders(new BasisFunValDerAllList(deg + 1, aaa));
         T *left = new T[2 * (deg + 1)];
         T *right = &left[deg + 1];
         matrix ndu(deg + 1, deg + 1);
@@ -81,10 +75,8 @@ public:
 
             ndu(j, j) = saved;
         }
-
         for (j = deg; j >= 0; --j)
             (*ders)[j].second[0] = ndu(j, deg);
-
         // Compute the derivatives
         matrix a(deg + 1, deg + 1);
         for (r = 0; r <= deg; r++) {
@@ -141,6 +133,11 @@ public:
             r *= deg - k;
         }
         delete[] left;
+
+        unsigned firstIndex = FirstActive(u);
+        for (unsigned ii = 0; ii != ders->size(); ++ii) {
+            (*ders)[ii].first = firstIndex + ii;
+        }
         return ders;
     }
 
