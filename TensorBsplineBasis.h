@@ -7,6 +7,7 @@
 
 #include "BsplineBasis.h"
 #include <array>
+#include <algorithm>
 
 namespace Accessory {
     using namespace Eigen;
@@ -295,9 +296,10 @@ namespace Accessory {
     DifferentialPatternList_ptr PartialDerPattern(unsigned r) {
         std::vector<unsigned> kk(r);
         DifferentialPatternList_ptr a(new DifferentialPatternList);
-        std::function<void(unsigned, unsigned, std::vector<unsigned> &,unsigned,unsigned, DifferentialPatternList_ptr &)> recursive;
-        recursive =[&](unsigned D, unsigned i, std::vector<unsigned> &k, unsigned n, unsigned start,
-                      std::unique_ptr<std::vector<std::vector<unsigned>>> &a){
+        std::function<void(unsigned, unsigned, std::vector<unsigned> &, unsigned, unsigned,
+                           DifferentialPatternList_ptr &)> recursive;
+        recursive = [&](unsigned D, unsigned i, std::vector<unsigned> &k, unsigned n, unsigned start,
+                        std::unique_ptr<std::vector<std::vector<unsigned>>> &a) {
             if (n == i) {
                 std::vector<unsigned> m;
                 unsigned it = 0;
@@ -523,7 +525,6 @@ TensorBsplineBasis<d, T>::EvalTensor(const TensorBsplineBasis::vector &u,
         }
     };
     recursive(indexes, endPerIndex, 0);
-
     return Result;
 }
 
@@ -533,16 +534,56 @@ void TensorBsplineBasis<d, T>::ChangeKnots(const KnotVector<T> &knots, unsigned 
 }
 
 template<unsigned d, typename T>
-typename TensorBsplineBasis<d,T>::BasisFunValDerAllList_ptr TensorBsplineBasis<d,T>::EvalDerAllTensor(const TensorBsplineBasis::vector &u,
-                                                                    const unsigned i) const {
+typename TensorBsplineBasis<d, T>::BasisFunValDerAllList_ptr
+TensorBsplineBasis<d, T>::EvalDerAllTensor(const TensorBsplineBasis::vector &u,
+                                           const unsigned i) const {
     ASSERT((u.size() == d), "Invalid input vector size.");
     std::vector<unsigned> indexes(d, 0);
     std::vector<unsigned> endPerIndex;
-    std::array<decltype(Accessory::PartialDerPattern<d>(i)), d+1> DifferentialPatternList;
-    unsigned
-    for(unsigned order=0;order<=i;++order)
-        DifferentialPatternList[order]=Accessory::PartialDerPattern<d>(order);
+    Accessory::DifferentialPatternList differentialPatternList;
+    for (unsigned order = 0; order <= i; ++order) {
+        auto temp = Accessory::PartialDerPattern<d>(order);
+        differentialPatternList.insert(differentialPatternList.end(), temp->begin(), temp->end());
+    }
+    unsigned derivativeAmount = differentialPatternList.size();
+    auto numActived = NumActive();
+    BasisFunValDerAllList_ptr Result(new BasisFunValDerAllList);
+    std::array<BasisFunValDerAllList_ptr, d> oneDResult;
+    for (unsigned direction = 0; direction != d; ++direction) {
+        oneDResult[direction] = _basis[direction].EvalDerAll(u(direction), i);
+        endPerIndex.push_back(oneDResult[direction]->size());
+    }
 
+    std::function<void(std::vector<unsigned> &, const std::vector<unsigned> &, unsigned)> recursive;
+
+    std::vector<unsigned> multiIndex(d);
+    std::vector<std::vector<T>> Values(derivativeAmount, std::vector<T>(d, 0));
+    recursive = [this, &derivativeAmount, &oneDResult, &multiIndex, &Values, &Result, &differentialPatternList, &recursive](
+            std::vector<unsigned> &indexes,
+            const std::vector<unsigned> &endPerIndex,
+            unsigned direction) {
+        if (direction == indexes.size()) {
+            std::vector<T> result(derivativeAmount, 1);
+            for (unsigned iii = 0; iii != derivativeAmount;++iii) {
+                for (unsigned ii = 0; ii != d; ++ii) {
+                    result[iii] *= Values[iii][ii];
+                }
+            }
+            Result->push_back(BasisFunValDerAll(Index(multiIndex), result));
+        } else {
+            for (indexes[direction] = 0; indexes[direction] != endPerIndex[direction]; indexes[direction]++) {
+                for (auto it_diffPart = differentialPatternList.begin();
+                     it_diffPart != differentialPatternList.end(); ++it_diffPart) {
+                    int diffPart_label = it_diffPart - differentialPatternList.begin();
+                    Values[diffPart_label][direction] = (*oneDResult[direction])[indexes[direction]].second[(*it_diffPart)[direction]];
+                }
+                multiIndex[direction] = (*oneDResult[direction])[indexes[direction]].first;
+                recursive(indexes, endPerIndex, direction + 1);
+            }
+        }
+    };
+    recursive(indexes, endPerIndex, 0);
+    return Result;
 }
 
 

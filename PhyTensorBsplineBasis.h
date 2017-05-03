@@ -7,8 +7,6 @@
 
 #include "TensorBsplineBasis.h"
 #include "MultiArray.h"
-#include <algorithm>
-
 
 
 template<unsigned d, unsigned N, typename T=double>
@@ -18,6 +16,10 @@ public:
     using Ptr=Eigen::Matrix<T, N, 1>;
     using GeometryVector = std::vector<Ptr>;
     typedef std::vector<unsigned> DiffPattern;
+    using vector=Eigen::Matrix<T, Eigen::Dynamic, 1>;
+    typedef typename TensorBsplineBasis<d, T>::BasisFunValDerAll BasisFunValDerAll;
+    typedef typename TensorBsplineBasis<d, T>::BasisFunValDerAllList BasisFunValDerAllList;
+    typedef typename TensorBsplineBasis<d, T>::BasisFunValDerAllList_ptr BasisFunValDerAllList_ptr;
 
     PhyTensorBsplineBasis();
 
@@ -42,6 +44,10 @@ public:
 
     }
 
+    BasisFunValDerAllList_ptr Eval1DerAllTensor(const vector &u) const;
+
+    BasisFunValDerAllList_ptr Eval2DerAllTensor(const vector &u) const;
+
 private:
     GeometryVector _geometricInfo;
 };
@@ -56,7 +62,7 @@ typename PhyTensorBsplineBasis<d, N, T>::Ptr
 PhyTensorBsplineBasis<d, N, T>::AffineMap(const PhyTensorBsplineBasis<d, N, T>::Ptr &u, const DiffPattern &i) const {
     PhyTensorBsplineBasis<d, N, T>::Ptr result;
     result.setZero();
-    auto p = this->TensorBsplineBasis<d, T>::EvalTensor(u,i);
+    auto p = this->TensorBsplineBasis<d, T>::EvalTensor(u, i);
     for (auto it = p->begin(); it != p->end(); ++it) {
         result += _geometricInfo[it->first] * it->second;
     }
@@ -226,9 +232,68 @@ T PhyTensorBsplineBasis<d, N, T>::Jacobian(const PhyTensorBsplineBasis::Ptr &u) 
     for (int i = 0; i != d; i++) {
         std::vector<unsigned> differentiation(d, 0);
         differentiation[i] = 1;
-        auto aa = AffineMap(u,differentiation);
-        a.col(i)=aa;
+        auto aa = AffineMap(u, differentiation);
+        a.col(i) = aa;
     }
     return a.determinant();
+}
+
+template<>
+typename PhyTensorBsplineBasis<2, 2, double>::BasisFunValDerAllList_ptr
+PhyTensorBsplineBasis<2, 2, double>::Eval1DerAllTensor(const vector &u) const {
+    auto parametric = TensorBsplineBasis<2, double>::EvalDerAllTensor(u, 1);
+    Eigen::Vector2d Pxi, Peta;
+    Pxi.setZero();
+    Peta.setZero();
+    for (const auto &i:*parametric) {
+        Pxi += i.second[1] * _geometricInfo[i.first];
+        Peta += i.second[2] * _geometricInfo[i.first];
+    }
+    Eigen::Matrix2d Jacobian;
+    Jacobian.row(0) = Pxi.transpose();
+    Jacobian.row(1) = Peta.transpose();
+    for (auto &i:*parametric) {
+        auto solution = Jacobian.partialPivLu().solve(Eigen::Vector2d::Map(i.second.data() + 1, i.second.size() - 1));
+        i.second[1] = solution(0);
+        i.second[2] = solution(1);
+    }
+    return parametric;
+
+}
+
+template<>
+typename PhyTensorBsplineBasis<2, 2, double>::BasisFunValDerAllList_ptr
+PhyTensorBsplineBasis<2, 2, double>::Eval2DerAllTensor(const PhyTensorBsplineBasis::vector &u) const {
+    auto parametric = TensorBsplineBasis<2, double>::EvalDerAllTensor(u, 2);
+    Eigen::Vector2d Pxi, Peta, PxiPxi, PxiPeta, PetaPeta;
+    Pxi.setZero();
+    Peta.setZero();
+    PxiPxi.setZero();
+    PxiPeta.setZero();
+    PetaPeta.setZero();
+    for (const auto &i:*parametric) {
+        Pxi += i.second[1] * _geometricInfo[i.first];
+        Peta += i.second[2] * _geometricInfo[i.first];
+        PxiPxi += i.second[3] * _geometricInfo[i.first];
+        PxiPeta += i.second[4] * _geometricInfo[i.first];
+        PetaPeta += i.second[5] * _geometricInfo[i.first];
+    }
+    Eigen::Matrix<double, 5, 5> Hessian;
+    Hessian << Pxi(0), Pxi(1), 0, 0, 0, Peta(0), Peta(1), 0, 0, 0, PxiPxi(0), PxiPxi(1), Pxi(0) * Pxi(0), 2 * Pxi(0) *
+                                                                                                          Pxi(1),
+            Pxi(1) * Pxi(1), PxiPeta(0), PxiPeta(1), Pxi(0) * Peta(0), Pxi(0) * Peta(1) + Peta(0) * Pxi(1), Pxi(1) *
+                                                                                                             Peta(1), PetaPeta(
+            0), PetaPeta(1), Peta(0) * Peta(0), 2 * Peta(0) * Peta(1), Peta(1) * Peta(1);
+    for (auto &i:*parametric) {
+        auto solution = Hessian.partialPivLu().solve(Eigen::Matrix<double,5,1>::Map(i.second.data() + 1, i.second.size() - 1));
+        i.second[1] = solution(0);
+        i.second[2] = solution(1);
+        i.second[3] = solution(2);
+        i.second[4] = solution(3);
+        i.second[5] = solution(4);
+    }
+    return parametric;
 };
+
+
 #endif //OO_IGA_PHYTENSORBSPLINEBASIS_H

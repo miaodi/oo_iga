@@ -12,28 +12,33 @@ using namespace Accessory;
 
 int main() {
     KnotVector<double> a;
-    a.InitClosed(4, 0, 1);
-    a.UniformRefine(6,1);
+    a.InitClosed(1, 0, 1);
     KnotVector<double> b;
     b.InitClosed(1, 0, 1);
     Vector2d point1(0, 0);
-    Vector2d point2(0, 1);
+    Vector2d point2(0, 2);
     Vector2d point3(1, 0);
     Vector2d point4(1, 1);
-    BsplineBasis<double> X(a);
-    auto aa=X.EvalDerAll(1.0, 5);
-    for(auto it =aa->begin();it!=aa->end();++it) {
-        cout<<it->first<<" ";
-        for (auto itit = it->second.begin(); itit != it->second.end(); ++itit)
-            cout << *itit << " ";
-        cout<<endl;
-    }
-    cout<<X.GetDof();
-    TensorBsplineBasis<2,double> XX(a,a);
-    XX.EvalDerAllTensor(Vector2d(.2,.2),0);
-/*
+    TensorBsplineBasis<2, double> XX(a, a);
+
+    auto receive = XX.EvalDerAllTensor(Vector2d(.2, .4), 3);
+
+    for (auto it =receive->begin();it!=receive->end();++it)
+        cout<<it->second[0]<<" ";
+    cout<<endl;
     vector<Vector2d> points({point1, point2, point3, point4});
     PhyTensorBsplineBasis<2, 2, double> domain(a, b, points);
+    domain.DegreeElevate(0,2);
+    domain.DegreeElevate(1,2);
+    auto compare=domain.EvalDerAllTensor(Vector2d(.2, .4),2);
+    auto compare1=domain.Eval2DerAllTensor(Vector2d(.2, .4));
+    for(auto& i:(*compare))
+        cout<<i.second[4]<<" ";
+    cout<<endl;
+    for(auto& i:(*compare1))
+        cout<<i.second[4]<<" ";
+    cout<<endl;
+    /*
     cout<<domain.AffineMap(Vector2d(.5,.2))<<endl;
     domain.DegreeElevate(1,2);
     domain.DegreeElevate(0,3);
@@ -46,5 +51,5 @@ int main() {
     cout<<domain.Jacobian(Vector2d(.1,.2))<<endl;
 
     */
-    return 0;
+        return 0;
 }

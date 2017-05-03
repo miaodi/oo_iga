@@ -48,10 +48,10 @@ RM = /Applications/CLion.app/Contents/bin/cmake/bin/cmake -E remove -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /Users/miaodi/ClionProjects/oo_iga
+CMAKE_SOURCE_DIR = /Users/dimiao/CLionProjects/oo_iga
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /Users/miaodi/ClionProjects/oo_iga/cmake-build-debug
+CMAKE_BINARY_DIR = /Users/dimiao/CLionProjects/oo_iga/cmake-build-debug
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -80,9 +80,9 @@ edit_cache/fast: edit_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/CMakeFiles /Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /Users/dimiao/CLionProjects/oo_iga/cmake-build-debug/CMakeFiles /Users/dimiao/CLionProjects/oo_iga/cmake-build-debug/CMakeFiles/progress.marks
 	$(MAKE) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /Users/dimiao/CLionProjects/oo_iga/cmake-build-debug/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -177,33 +177,6 @@ KnotVector.cpp.s:
 	$(MAKE) -f CMakeFiles/oo_iga.dir/build.make CMakeFiles/oo_iga.dir/KnotVector.cpp.s
 .PHONY : KnotVector.cpp.s
 
-PhyTensorBsplineBasis.o: PhyTensorBsplineBasis.cpp.o
-
-.PHONY : PhyTensorBsplineBasis.o
-
-# target to build an object file
-PhyTensorBsplineBasis.cpp.o:
-	$(MAKE) -f CMakeFiles/oo_iga.dir/build.make CMakeFiles/oo_iga.dir/PhyTensorBsplineBasis.cpp.o
-.PHONY : PhyTensorBsplineBasis.cpp.o
-
-PhyTensorBsplineBasis.i: PhyTensorBsplineBasis.cpp.i
-
-.PHONY : PhyTensorBsplineBasis.i
-
-# target to preprocess a source file
-PhyTensorBsplineBasis.cpp.i:
-	$(MAKE) -f CMakeFiles/oo_iga.dir/build.make CMakeFiles/oo_iga.dir/PhyTensorBsplineBasis.cpp.i
-.PHONY : PhyTensorBsplineBasis.cpp.i
-
-PhyTensorBsplineBasis.s: PhyTensorBsplineBasis.cpp.s
-
-.PHONY : PhyTensorBsplineBasis.s
-
-# target to generate assembly for a file
-PhyTensorBsplineBasis.cpp.s:
-	$(MAKE) -f CMakeFiles/oo_iga.dir/build.make CMakeFiles/oo_iga.dir/PhyTensorBsplineBasis.cpp.s
-.PHONY : PhyTensorBsplineBasis.cpp.s
-
 TensorBsplineBasis.o: TensorBsplineBasis.cpp.o
 
 .PHONY : TensorBsplineBasis.o
@@ -273,9 +246,6 @@ help:
 	@echo "... KnotVector.o"
 	@echo "... KnotVector.i"
 	@echo "... KnotVector.s"
-	@echo "... PhyTensorBsplineBasis.o"
-	@echo "... PhyTensorBsplineBasis.i"
-	@echo "... PhyTensorBsplineBasis.s"
 	@echo "... TensorBsplineBasis.o"
 	@echo "... TensorBsplineBasis.i"
 	@echo "... TensorBsplineBasis.s"

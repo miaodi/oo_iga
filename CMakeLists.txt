@@ -3,5 +3,5 @@ project(oo_iga)
 
 set(CMAKE_CXX_STANDARD 11)
 
-set(SOURCE_FILES main.cpp KnotVector.cpp KnotVector.h BsplineBasis.cpp BsplineBasis.h TensorBsplineBasis.cpp TensorBsplineBasis.h MultiArray.h PhyTensorBsplineBasis.cpp PhyTensorBsplineBasis.h)
+set(SOURCE_FILES main.cpp KnotVector.cpp KnotVector.h BsplineBasis.cpp BsplineBasis.h TensorBsplineBasis.cpp TensorBsplineBasis.h MultiArray.h PhyTensorBsplineBasis.h)
 add_executable(oo_iga ${SOURCE_FILES})
