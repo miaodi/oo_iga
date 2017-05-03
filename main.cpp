@@ -20,7 +20,6 @@ int main() {
     Vector2d point3(1, 0);
     Vector2d point4(1, 1);
     TensorBsplineBasis<2, double> XX(a, a);
-
     auto receive = XX.EvalDerAllTensor(Vector2d(.2, .4), 3);
 
     for (auto it =receive->begin();it!=receive->end();++it)
@@ -30,6 +29,7 @@ int main() {
     PhyTensorBsplineBasis<2, 2, double> domain(a, b, points);
     domain.DegreeElevate(0,2);
     domain.DegreeElevate(1,2);
+    domain.PrintKnots(0);
     auto compare=domain.EvalDerAllTensor(Vector2d(.2, .4),2);
     auto compare1=domain.Eval2DerAllTensor(Vector2d(.2, .4));
     for(auto& i:(*compare))
