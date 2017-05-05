@@ -34,6 +34,18 @@ eigen3/Eigen/Dense
 iostream
 -
 
+/Users/dimiao/CLionProjects/oo_iga/MmpMatrix.cpp
+MmpMatrix.h
+/Users/dimiao/CLionProjects/oo_iga/MmpMatrix.h
+
+/Users/dimiao/CLionProjects/oo_iga/MmpMatrix.h
+vector
+-
+map
+-
+eigen3/Eigen/Dense
+-
+
 /Users/dimiao/CLionProjects/oo_iga/MultiArray.h
 array
 -
@@ -73,4 +85,6 @@ PhyTensorBsplineBasis.h
 /Users/dimiao/CLionProjects/oo_iga/PhyTensorBsplineBasis.h
 MultiArray.h
 /Users/dimiao/CLionProjects/oo_iga/MultiArray.h
+MmpMatrix.h
+/Users/dimiao/CLionProjects/oo_iga/MmpMatrix.h
 

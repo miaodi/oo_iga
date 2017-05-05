@@ -177,6 +177,33 @@ KnotVector.cpp.s:
 	$(MAKE) -f CMakeFiles/oo_iga.dir/build.make CMakeFiles/oo_iga.dir/KnotVector.cpp.s
 .PHONY : KnotVector.cpp.s
 
+MmpMatrix.o: MmpMatrix.cpp.o
+
+.PHONY : MmpMatrix.o
+
+# target to build an object file
+MmpMatrix.cpp.o:
+	$(MAKE) -f CMakeFiles/oo_iga.dir/build.make CMakeFiles/oo_iga.dir/MmpMatrix.cpp.o
+.PHONY : MmpMatrix.cpp.o
+
+MmpMatrix.i: MmpMatrix.cpp.i
+
+.PHONY : MmpMatrix.i
+
+# target to preprocess a source file
+MmpMatrix.cpp.i:
+	$(MAKE) -f CMakeFiles/oo_iga.dir/build.make CMakeFiles/oo_iga.dir/MmpMatrix.cpp.i
+.PHONY : MmpMatrix.cpp.i
+
+MmpMatrix.s: MmpMatrix.cpp.s
+
+.PHONY : MmpMatrix.s
+
+# target to generate assembly for a file
+MmpMatrix.cpp.s:
+	$(MAKE) -f CMakeFiles/oo_iga.dir/build.make CMakeFiles/oo_iga.dir/MmpMatrix.cpp.s
+.PHONY : MmpMatrix.cpp.s
+
 TensorBsplineBasis.o: TensorBsplineBasis.cpp.o
 
 .PHONY : TensorBsplineBasis.o
@@ -246,6 +273,9 @@ help:
 	@echo "... KnotVector.o"
 	@echo "... KnotVector.i"
 	@echo "... KnotVector.s"
+	@echo "... MmpMatrix.o"
+	@echo "... MmpMatrix.i"
+	@echo "... MmpMatrix.s"
 	@echo "... TensorBsplineBasis.o"
 	@echo "... TensorBsplineBasis.i"
 	@echo "... TensorBsplineBasis.s"

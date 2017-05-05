@@ -5,12 +5,15 @@
 #include "TensorBsplineBasis.h"
 #include "PhyTensorBsplineBasis.h"
 #include "MultiArray.h"
+#include "MmpMatrix.h"
 
 using namespace Eigen;
 using namespace std;
 using namespace Accessory;
 
 int main() {
+    mmpMatrix<double,Dynamic,Dynamic> a(2,3);
+    /*
     KnotVector<double> a;
     a.InitClosed(1, 0, 1);
     KnotVector<double> b;
@@ -38,6 +41,7 @@ int main() {
     for(auto& i:(*compare1))
         cout<<i.second[4]<<" ";
     cout<<endl;
+     */
     /*
     cout<<domain.AffineMap(Vector2d(.5,.2))<<endl;
     domain.DegreeElevate(1,2);

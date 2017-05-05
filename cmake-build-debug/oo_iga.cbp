@@ -94,6 +94,12 @@
 		<Unit filename="/Users/dimiao/CLionProjects/oo_iga/KnotVector.h">
 			<Option target="oo_iga"/>
 		</Unit>
+		<Unit filename="/Users/dimiao/CLionProjects/oo_iga/MmpMatrix.cpp">
+			<Option target="oo_iga"/>
+		</Unit>
+		<Unit filename="/Users/dimiao/CLionProjects/oo_iga/MmpMatrix.h">
+			<Option target="oo_iga"/>
+		</Unit>
 		<Unit filename="/Users/dimiao/CLionProjects/oo_iga/MultiArray.h">
 			<Option target="oo_iga"/>
 		</Unit>
