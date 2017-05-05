@@ -5,11 +5,13 @@
 #ifndef OO_IGA_MMPMATRIX_H
 #define OO_IGA_MMPMATRIX_H
 
+
 #include <vector>
 #include <map>
 #include <numeric>
 #include <eigen3/Eigen/Dense>
-
+#include "KnotVector.h"
+#include <cmath>
 typedef std::vector<int> label;
 using Eigen::Dynamic;
 template<int Dim, int Change>
@@ -25,7 +27,7 @@ struct ChangeDim<Dynamic, Change> {
     };
 };
 
-template<class T, int _Rows, int _Cols, int _Options=true>
+template<class T, int _Rows, int _Cols, int _Options = false>
 class mmpMatrix : public Eigen::Matrix<T, _Rows, _Cols, _Options> {
 
     // Base is the dense matrix class of Eigen
@@ -101,9 +103,11 @@ public:  // Solvers related to mmpMatrix
 
 public:
 
-    mmpMatrix() {}
+    mmpMatrix() = default;
 
     mmpMatrix(const Base &a);
+
+    mmpMatrix(const label &, const label &);
 
     // implicitly deleted in C++11
     //gsMatrix(const gsMatrix& a) : Base(a) { }
@@ -111,37 +115,76 @@ public:
     mmpMatrix(int rows, int cols);
 
 public:
-    std::pair<int,int> dim() const
-    { return std::make_pair(this->rows(), this->cols() ); }
+    std::pair<int, int> dim() const { return std::make_pair(this->rows(), this->cols()); }
 
     /// \brief Returns the \a i-th element of the vectorization of the matrix
-    T   at (int i) const { return *(this->data()+i);}
+    T at(int i) const { return *(this->data() + i); }
 
     /// \brief Returns the \a i-th element of the vectorization of the matrix
-    T & at (int i)       { return *(this->data()+i);}
+    T &at(int i) { return *(this->data() + i); }
 
+    ColXpr col(int i) {
+        auto it = std::find(_col.begin(), _col.end(), i);
+        ASSERT(it != _col.end(), "Invalid input.");
+        return ColXpr(Base::derived(), it-_col.begin());
+    }
+    RowXpr row(int i) {
+        auto it = std::find(_row.begin(), _row.end(), i);
+        ASSERT(it != _row.end(), "Invalid input.");
+        return RowXpr(Base::derived(), it-_row.begin());
+    }
+    ConstColXpr col(int i) const {
+        auto it = std::find(_col.begin(), _col.end(), i);
+        ASSERT(it != _col.end(), "Invalid input.");
+        return ConstColXpr(Base::derived(), it-_col.begin());
+    }
+    ConstRowXpr row(int i) const {
+        auto it = std::find(_row.begin(), _row.end(), i);
+        ASSERT(it != _row.end(), "Invalid input.");
+        return ConstRowXpr(Base::derived(), it-_row.begin());
+    }
+
+    void removeNoise(const T tol)
+    {
+        this->noalias() = this->unaryExpr(removeNoise_helper(tol));
+    }
 
 protected:
     label _row;
     label _col;
-
+    struct removeNoise_helper
+    {
+        removeNoise_helper(const T & tol)
+                : m_tol(tol) { }
+        inline const T operator() (const T & val) const
+        { return ( abs(val) < m_tol ? 0 : val ); }
+        const T & m_tol;
+    };
 };
 
-template<class T, int _Rows, int _Cols, int _Options> inline
-mmpMatrix<T,_Rows, _Cols, _Options>::mmpMatrix(const Base& a) : Base(a) {
-    int i=a.rows(),j=a.cols();
+template<class T, int _Rows, int _Cols, int _Options>
+inline
+mmpMatrix<T, _Rows, _Cols, _Options>::mmpMatrix(const Base &a) : Base(a) {
+    int i = a.rows(), j = a.cols();
     _row.resize(i);
     _col.resize(j);
-    std::iota (std::begin(_row), std::end(_row), 0);
-    std::iota (std::begin(_col), std::end(_col), 0);
+    std::iota(std::begin(_row), std::end(_row), 0);
+    std::iota(std::begin(_col), std::end(_col), 0);
 }
 
-template<class T, int _Rows, int _Cols, int _Options> inline
-mmpMatrix<T,_Rows, _Cols, _Options>::mmpMatrix(int rows, int cols) : Base(rows,cols) {
-
-    _row.resize(rows);
-    _col.resize(cols);
-    std::iota (std::begin(_row), std::end(_row), 0);
-    std::iota (std::begin(_col), std::end(_col), 0);
+template<class T, int _Rows, int _Cols, int _Options>
+inline
+mmpMatrix<T, _Rows, _Cols, _Options>::mmpMatrix(int rows, int cols) : Base(rows, cols), _row(rows), _col(cols) {
+    std::iota(std::begin(_row), std::end(_row), 0);
+    std::iota(std::begin(_col), std::end(_col), 0);
+    this->setZero();
 }
+
+template<class T, int _Rows, int _Cols, int _Options>
+inline
+mmpMatrix<T, _Rows, _Cols, _Options>::mmpMatrix(const label &row, const label &col):Base(row.size(), col.size()),
+                                                                                    _row(row), _col(col) {
+    this->setZero();
+}
+
 #endif //OO_IGA_MMPMATRIX_H

@@ -12,7 +12,10 @@ using namespace std;
 using namespace Accessory;
 
 int main() {
-    mmpMatrix<double,Dynamic,Dynamic> a(2,3);
+    mmpMatrix<double,Dynamic,Dynamic> a({3,5,7,8},{1,2});
+    cout<<a.dim().first<<" "<<a.dim().second;
+    cout<<a.row(8);
+    a.removeNoise(1e-10);
     /*
     KnotVector<double> a;
     a.InitClosed(1, 0, 1);
