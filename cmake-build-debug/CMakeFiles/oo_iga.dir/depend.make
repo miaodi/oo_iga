@@ -8,6 +8,7 @@ CMakeFiles/oo_iga.dir/BsplineBasis.cpp.o: ../KnotVector.h
 CMakeFiles/oo_iga.dir/KnotVector.cpp.o: ../KnotVector.cpp
 CMakeFiles/oo_iga.dir/KnotVector.cpp.o: ../KnotVector.h
 
+CMakeFiles/oo_iga.dir/MmpMatrix.cpp.o: ../KnotVector.h
 CMakeFiles/oo_iga.dir/MmpMatrix.cpp.o: ../MmpMatrix.cpp
 CMakeFiles/oo_iga.dir/MmpMatrix.cpp.o: ../MmpMatrix.h
 

@@ -12,6 +12,7 @@
 #include <eigen3/Eigen/Dense>
 #include "KnotVector.h"
 #include <cmath>
+
 typedef std::vector<int> label;
 using Eigen::Dynamic;
 template<int Dim, int Change>
@@ -109,6 +110,8 @@ public:
 
     mmpMatrix(const label &, const label &);
 
+    mmpMatrix(const Base &, const label &, const label &);
+
     // implicitly deleted in C++11
     //gsMatrix(const gsMatrix& a) : Base(a) { }
 
@@ -126,39 +129,84 @@ public:
     ColXpr col(int i) {
         auto it = std::find(_col.begin(), _col.end(), i);
         ASSERT(it != _col.end(), "Invalid input.");
-        return ColXpr(Base::derived(), it-_col.begin());
+        return ColXpr(Base::derived(), it - _col.begin());
     }
+
     RowXpr row(int i) {
         auto it = std::find(_row.begin(), _row.end(), i);
         ASSERT(it != _row.end(), "Invalid input.");
-        return RowXpr(Base::derived(), it-_row.begin());
+        return RowXpr(Base::derived(), it - _row.begin());
     }
+
     ConstColXpr col(int i) const {
         auto it = std::find(_col.begin(), _col.end(), i);
         ASSERT(it != _col.end(), "Invalid input.");
-        return ConstColXpr(Base::derived(), it-_col.begin());
+        return ConstColXpr(Base::derived(), it - _col.begin());
     }
+
     ConstRowXpr row(int i) const {
         auto it = std::find(_row.begin(), _row.end(), i);
         ASSERT(it != _row.end(), "Invalid input.");
-        return ConstRowXpr(Base::derived(), it-_row.begin());
+        return ConstRowXpr(Base::derived(), it - _row.begin());
     }
 
-    void removeNoise(const T tol)
-    {
+    void removeZeroRow() {
+        Eigen::Matrix<bool, Dynamic, 1> empty = (this->array() == 0).rowwise().all();
+        int num = 0;
+        for (int i = 0; i < empty.size(); ++i)
+            if (empty(i) == true) num++;
+        Eigen::Matrix<T, Dynamic, Dynamic> tmp(this->rows() - num, this->cols());
+        label row_tmp;
+        row_tmp.reserve(this->rows() - num);
+        int j = 0;
+        for (int i = 0; i < empty.size(); ++i)
+            if (empty(i) != true) {
+                tmp.row(j) = this->row(i);
+                j++;
+                row_tmp.push_back(_row[i]);
+            }
+        _row=row_tmp;
+        *this=tmp;
+    }
+
+    void removeZeroCol() {
+        Eigen::Matrix<bool, 1, Dynamic> empty = (this->array() == 0).colwise().all();
+        int num = 0;
+        for (int i = 0; i < empty.size(); ++i)
+            if (empty(i) == true) num++;
+        Eigen::Matrix<T, Dynamic, Dynamic> tmp(this->rows(), this->cols()-num);
+        label col_tmp;
+        col_tmp.reserve(this->cols() - num);
+        int j = 0;
+        for (int i = 0; i < empty.size(); ++i)
+            if (empty(i) != true) {
+                tmp.col(j) = this->col(i);
+                j++;
+                col_tmp.push_back(_col[i]);
+            }
+        _col=col_tmp;
+        *this=tmp;
+    }
+
+    void removeZero(){
+        removeZeroCol();
+        removeZeroRow();
+    }
+    void removeNoise(const T tol) {
         this->noalias() = this->unaryExpr(removeNoise_helper(tol));
     }
 
 protected:
     label _row;
     label _col;
-    struct removeNoise_helper
-    {
-        removeNoise_helper(const T & tol)
-                : m_tol(tol) { }
-        inline const T operator() (const T & val) const
-        { return ( abs(val) < m_tol ? 0 : val ); }
-        const T & m_tol;
+
+    struct removeNoise_helper {
+        removeNoise_helper(const T &tol)
+                : m_tol(tol) {}
+
+        inline const T operator()(const T &val) const { return (abs(val) < m_tol ? 0 : val); }
+
+        const T &m_tol;
     };
 };
 
@@ -185,6 +233,12 @@ inline
 mmpMatrix<T, _Rows, _Cols, _Options>::mmpMatrix(const label &row, const label &col):Base(row.size(), col.size()),
                                                                                     _row(row), _col(col) {
     this->setZero();
+}
+
+template<class T, int _Rows, int _Cols, int _Options>
+inline
+mmpMatrix<T, _Rows, _Cols, _Options>::mmpMatrix(const mmpMatrix::Base &a, const label &row, const label &col):Base(a), _row(row), _col(col) {
+
 }
 
 #endif //OO_IGA_MMPMATRIX_H
