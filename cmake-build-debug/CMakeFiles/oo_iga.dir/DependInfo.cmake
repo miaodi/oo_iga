@@ -7,6 +7,7 @@ set(CMAKE_DEPENDS_CHECK_CXX
   "/Users/miaodi/ClionProjects/oo_iga/BsplineBasis.cpp" "/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/CMakeFiles/oo_iga.dir/BsplineBasis.cpp.o"
   "/Users/miaodi/ClionProjects/oo_iga/KnotVector.cpp" "/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/CMakeFiles/oo_iga.dir/KnotVector.cpp.o"
   "/Users/miaodi/ClionProjects/oo_iga/MmpMatrix.cpp" "/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/CMakeFiles/oo_iga.dir/MmpMatrix.cpp.o"
+  "/Users/miaodi/ClionProjects/oo_iga/QuadratureRule.cpp" "/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/CMakeFiles/oo_iga.dir/QuadratureRule.cpp.o"
   "/Users/miaodi/ClionProjects/oo_iga/TensorBsplineBasis.cpp" "/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/CMakeFiles/oo_iga.dir/TensorBsplineBasis.cpp.o"
   "/Users/miaodi/ClionProjects/oo_iga/main.cpp" "/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/CMakeFiles/oo_iga.dir/main.cpp.o"
   )

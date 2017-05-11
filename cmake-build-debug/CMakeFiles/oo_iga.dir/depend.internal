@@ -12,6 +12,9 @@ CMakeFiles/oo_iga.dir/MmpMatrix.cpp.o
  /Users/miaodi/ClionProjects/oo_iga/KnotVector.h
  /Users/miaodi/ClionProjects/oo_iga/MmpMatrix.cpp
  /Users/miaodi/ClionProjects/oo_iga/MmpMatrix.h
+CMakeFiles/oo_iga.dir/QuadratureRule.cpp.o
+ /Users/miaodi/ClionProjects/oo_iga/QuadratureRule.cpp
+ /Users/miaodi/ClionProjects/oo_iga/QuadratureRule.h
 CMakeFiles/oo_iga.dir/TensorBsplineBasis.cpp.o
  /Users/miaodi/ClionProjects/oo_iga/BsplineBasis.h
  /Users/miaodi/ClionProjects/oo_iga/KnotVector.h
@@ -23,5 +26,7 @@ CMakeFiles/oo_iga.dir/main.cpp.o
  /Users/miaodi/ClionProjects/oo_iga/MmpMatrix.h
  /Users/miaodi/ClionProjects/oo_iga/MultiArray.h
  /Users/miaodi/ClionProjects/oo_iga/PhyTensorBsplineBasis.h
+ /Users/miaodi/ClionProjects/oo_iga/QuadratureRule.h
  /Users/miaodi/ClionProjects/oo_iga/TensorBsplineBasis.h
+ /Users/miaodi/ClionProjects/oo_iga/Topology.h
  /Users/miaodi/ClionProjects/oo_iga/main.cpp

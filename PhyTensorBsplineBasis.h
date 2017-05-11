@@ -6,7 +6,6 @@
 #define OO_IGA_PHYTENSORBSPLINEBASIS_H
 
 #include "TensorBsplineBasis.h"
-#include "MultiArray.h"
 
 
 template<unsigned d, unsigned N, typename T=double>

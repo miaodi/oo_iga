@@ -19,8 +19,6 @@
 
 #include "KnotVector.h"
 #include <memory>
-#include <map>
-#include <eigen3/Eigen/Dense>
 
 template<typename T=double>
 class BsplineBasis {

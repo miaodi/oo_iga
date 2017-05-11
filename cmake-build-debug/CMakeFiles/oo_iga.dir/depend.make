@@ -12,6 +12,9 @@ CMakeFiles/oo_iga.dir/MmpMatrix.cpp.o: ../KnotVector.h
 CMakeFiles/oo_iga.dir/MmpMatrix.cpp.o: ../MmpMatrix.cpp
 CMakeFiles/oo_iga.dir/MmpMatrix.cpp.o: ../MmpMatrix.h
 
+CMakeFiles/oo_iga.dir/QuadratureRule.cpp.o: ../QuadratureRule.cpp
+CMakeFiles/oo_iga.dir/QuadratureRule.cpp.o: ../QuadratureRule.h
+
 CMakeFiles/oo_iga.dir/TensorBsplineBasis.cpp.o: ../BsplineBasis.h
 CMakeFiles/oo_iga.dir/TensorBsplineBasis.cpp.o: ../KnotVector.h
 CMakeFiles/oo_iga.dir/TensorBsplineBasis.cpp.o: ../TensorBsplineBasis.cpp
@@ -22,6 +25,8 @@ CMakeFiles/oo_iga.dir/main.cpp.o: ../KnotVector.h
 CMakeFiles/oo_iga.dir/main.cpp.o: ../MmpMatrix.h
 CMakeFiles/oo_iga.dir/main.cpp.o: ../MultiArray.h
 CMakeFiles/oo_iga.dir/main.cpp.o: ../PhyTensorBsplineBasis.h
+CMakeFiles/oo_iga.dir/main.cpp.o: ../QuadratureRule.h
 CMakeFiles/oo_iga.dir/main.cpp.o: ../TensorBsplineBasis.h
+CMakeFiles/oo_iga.dir/main.cpp.o: ../Topology.h
 CMakeFiles/oo_iga.dir/main.cpp.o: ../main.cpp
 

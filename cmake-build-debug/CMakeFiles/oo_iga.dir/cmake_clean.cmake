@@ -4,6 +4,7 @@ file(REMOVE_RECURSE
   "CMakeFiles/oo_iga.dir/BsplineBasis.cpp.o"
   "CMakeFiles/oo_iga.dir/TensorBsplineBasis.cpp.o"
   "CMakeFiles/oo_iga.dir/MmpMatrix.cpp.o"
+  "CMakeFiles/oo_iga.dir/QuadratureRule.cpp.o"
   "oo_iga.pdb"
   "oo_iga"
 )

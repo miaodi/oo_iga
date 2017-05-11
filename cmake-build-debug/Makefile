@@ -204,6 +204,33 @@ MmpMatrix.cpp.s:
 	$(MAKE) -f CMakeFiles/oo_iga.dir/build.make CMakeFiles/oo_iga.dir/MmpMatrix.cpp.s
 .PHONY : MmpMatrix.cpp.s
 
+QuadratureRule.o: QuadratureRule.cpp.o
+
+.PHONY : QuadratureRule.o
+
+# target to build an object file
+QuadratureRule.cpp.o:
+	$(MAKE) -f CMakeFiles/oo_iga.dir/build.make CMakeFiles/oo_iga.dir/QuadratureRule.cpp.o
+.PHONY : QuadratureRule.cpp.o
+
+QuadratureRule.i: QuadratureRule.cpp.i
+
+.PHONY : QuadratureRule.i
+
+# target to preprocess a source file
+QuadratureRule.cpp.i:
+	$(MAKE) -f CMakeFiles/oo_iga.dir/build.make CMakeFiles/oo_iga.dir/QuadratureRule.cpp.i
+.PHONY : QuadratureRule.cpp.i
+
+QuadratureRule.s: QuadratureRule.cpp.s
+
+.PHONY : QuadratureRule.s
+
+# target to generate assembly for a file
+QuadratureRule.cpp.s:
+	$(MAKE) -f CMakeFiles/oo_iga.dir/build.make CMakeFiles/oo_iga.dir/QuadratureRule.cpp.s
+.PHONY : QuadratureRule.cpp.s
+
 TensorBsplineBasis.o: TensorBsplineBasis.cpp.o
 
 .PHONY : TensorBsplineBasis.o
@@ -276,6 +303,9 @@ help:
 	@echo "... MmpMatrix.o"
 	@echo "... MmpMatrix.i"
 	@echo "... MmpMatrix.s"
+	@echo "... QuadratureRule.o"
+	@echo "... QuadratureRule.i"
+	@echo "... QuadratureRule.s"
 	@echo "... TensorBsplineBasis.o"
 	@echo "... TensorBsplineBasis.i"
 	@echo "... TensorBsplineBasis.s"
