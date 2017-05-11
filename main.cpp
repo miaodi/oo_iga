@@ -5,9 +5,11 @@
 #include "MmpMatrix.h"
 #include "QuadratureRule.h"
 #include "Topology.h"
+
 using namespace Eigen;
 using namespace std;
 using namespace Accessory;
+using CoordinatePairList=Element<double>::CoordinatePairList;
 
 int main() {
     /*
@@ -30,12 +32,24 @@ int main() {
     b.InitClosed(1, 0, 1);
     Vector2d point1(0, 0);
     Vector2d point2(0, 2);
-    Vector2d point3(1, 0);
+    Vector2d point3(1, .2);
     Vector2d point4(1, 1);
     vector<Vector2d> points({point1, point2, point3, point4});
     auto domain = make_shared<PhyTensorBsplineBasis<2, 2, double>>(a, b, points);
-    Edge<double> left(domain);
-    left.GetOrient();
+    domain->DegreeElevate(0,3);
+    domain->DegreeElevate(1,6);
+    domain->UniformRefine(1,4);
+    domain->UniformRefine(0,1);
+    Edge<double> left(domain,south);
+    CoordinatePairList pairlist;
+    left.KnotSpansGetter(pairlist);
+    for(auto &i:pairlist)
+        cout<<i.first.transpose()<<" "<<i.second.transpose()<<endl;
+    Vector2d hahal;
+    hahal<<0,.5;
+    cout<<left.NormalDirection(hahal);
+    Cell<double> cell(domain);
+    cell._edges[0].NormalDirection(hahal);
     /*
     cout<<domain.AffineMap(Vector2d(.5,.2))<<endl;
     domain.DegreeElevate(1,2);
@@ -49,5 +63,5 @@ int main() {
     cout<<domain.Jacobian(Vector2d(.1,.2))<<endl;
 
     */
-        return 0;
+    return 0;
 }

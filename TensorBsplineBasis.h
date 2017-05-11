@@ -399,6 +399,21 @@ public:
 
     void PrintUniKnots(unsigned i) const { _basis[i].PrintUniKnots(); }
 
+    const KnotVector<T>& KnotVectorGetter(unsigned i) const{
+        ASSERT(i < d, "Invalid dimension index provided.");
+        return _basis[i].Knots();
+    }
+
+    const T DomainStart(unsigned i) const{
+        ASSERT(i < d, "Invalid dimension index provided.");
+        return _basis[i].DomainStart();
+    }
+
+    const T DomainEnd(unsigned i) const{
+        ASSERT(i < d, "Invalid dimension index provided.");
+        return _basis[i].DomainEnd();
+    }
+
     BasisFunValPac_ptr EvalTensor(const vector &u, const DiffPattern &i = DiffPattern(d, 0)) const;
 
     BasisFunValDerAllList_ptr EvalDerAllTensor(const vector &u, const unsigned i = 0) const;
