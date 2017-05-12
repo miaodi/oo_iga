@@ -19,7 +19,7 @@ public:
     using Coordinate = Eigen::Matrix<T, 2, 1>;
     typedef std::vector<std::pair<Coordinate, Coordinate>> CoordinatePairList;
 
-    Element() : _domain(nullptr), _called(false) {};
+    Element() : _domain(std::make_shared<PhyTensorBsplineBasis<2, 2, T>>()), _called(false) {};
 
     Element(DomainShared_ptr m) : _domain(m), _called(false) {};
 
@@ -53,7 +53,7 @@ public:
     typedef typename Element<T>::CoordinatePairList CoordinatePairList;
 
     Edge(const Orientation &orient = west)
-            : Element<T>(), _position(orient), _matched(false), _pair(nullptr) { VertexSetter(); };
+            : Element<T>(), _position(orient), _matched(false), _pair(nullptr) {};
 
     Edge(DomainShared_ptr m, const Orientation &orient = west) : Element<T>(m), _position(orient), _matched(false),
                                                                  _pair(nullptr) { VertexSetter(); };
@@ -182,7 +182,7 @@ private:
     bool _matched;
     Coordinate _begin;
     Coordinate _end;
-    Edge<T> *_pair;
+    std::shared_ptr<Edge<T>> _pair;
 
     void VertexSetter() {
         switch (_position) {
@@ -233,15 +233,25 @@ public:
 
     Cell(DomainShared_ptr m) : Element<T>(m) {
         for (int i = west; i <= south; ++i) {
-            _edges[i] = Edge<T>(this->_domain, static_cast<Orientation>(i));
-            std::cout<<i<<std::endl;
+            _edges[i] = std::make_shared<Edge<T>>(this->_domain, static_cast<Orientation>(i));
         }
-    }//???
-
+    }
     void accept(Visitor<T> &a) {};
-
-    void KnotSpansGetter(CoordinatePairList &) {};
-    std::array<Edge<T>, 4> _edges;
+    void KnotSpansGetter(CoordinatePairList & knotspanslist){
+        auto knotspan_x = this->_domain->KnotVectorGetter(0).KnotSpans();
+        auto knotspan_y = this->_domain->KnotVectorGetter(1).KnotSpans();
+        knotspanslist.reserve(knotspan_x.size()*knotspan_y.size());
+        for(const auto &i:knotspan_x){
+            for(const auto &j:knotspan_y){
+                Coordinate _begin;
+                _begin << i.first, j.first;
+                Coordinate _end;
+                _end << i.second, j.second;
+                knotspanslist.push_back({_begin, _end});
+            }
+        }
+    };
+    std::array<std::shared_ptr<Edge<T>>, 4> _edges;
 };
 
 #endif //OO_IGA_TOPOLOGY_H

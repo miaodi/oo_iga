@@ -49,7 +49,7 @@ int main() {
     hahal<<0,.5;
     cout<<left.NormalDirection(hahal);
     Cell<double> cell(domain);
-    cell._edges[0].NormalDirection(hahal);
+    cell._edges[1]->PrintOrient();
     /*
     cout<<domain.AffineMap(Vector2d(.5,.2))<<endl;
     domain.DegreeElevate(1,2);
