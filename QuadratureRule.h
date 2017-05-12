@@ -8,35 +8,85 @@
 #include<vector>
 #include<eigen3/Eigen/Dense>
 #include<iostream>
+
 template<typename T>
 class QuadratureRule {
 public:
-
-    using Quadrature=std::pair<Eigen::Matrix<T,Eigen::Dynamic,1>, T>;
+    using Coordinate = Eigen::Matrix<T, Eigen::Dynamic, 1>;
+    using Quadrature=std::pair<Coordinate, T>;
     using QuadList=std::vector<Quadrature>;
+    using CoordinatePair = std::pair<Coordinate, Coordinate>;
 
 public:
     QuadratureRule() = default;
 
     ~QuadratureRule() = default;
 
-    void SetQuadrature(int num){
-        LookupReference(num, _quadrature);
+    QuadratureRule(int num) : _size(num) {
+        LookupReference(_size, _quadrature);
     }
 
     static void LookupReference(int num, QuadList &quadrature);
 
+    void MapToQuadrature(const CoordinatePair &range, QuadList &quadrature) {
+
+        int d = range.first.size();
+
+        std::vector<int> indexes(d, 0);
+        std::vector<int> endPerIndex(d);
+
+        int space = 1;
+        Quadrature temp;
+        temp.first.resize(d);
+        temp.second = 1.0;
+
+        for (int i = 0; i != d; ++i) {
+            if (range.first(i) == range.second(i)) {
+                endPerIndex[i] = 0;
+                temp.first(i) = range.first(i);
+                space *= 1;
+            } else {
+                endPerIndex[i] = _size;
+                space *= endPerIndex[i];
+            }
+
+        }
+
+        quadrature.reserve(space);
+        std::function<void(std::vector<int> &, const std::vector<int> &, int)> recursive;
+        recursive = [this, &quadrature, &temp, &range, &recursive](std::vector<int> &indexes,
+                                                                   const std::vector<int> &endPerIndex, int direction) {
+            if (direction == indexes.size()) {
+                quadrature.push_back(temp);
+                temp.second = 1;
+            } else {
+                if (endPerIndex[direction] == 0) {
+                    recursive(indexes, endPerIndex, direction + 1);
+                } else {
+                    for (indexes[direction] = 0; indexes[direction] != endPerIndex[direction]; indexes[direction]++) {
+                        T length = std::abs(range.first(direction) - range.second(direction)) / 2;
+                        T middle = (range.first(direction) + range.second(direction)) / 2;
+                        temp.first(direction) = _quadrature[indexes[direction]].first(0) * length + middle;
+                        temp.second *= _quadrature[indexes[direction]].second * length;
+                        recursive(indexes, endPerIndex, direction + 1);
+                    }
+                }//buggy, need more tests.
+            }
+        };
+        recursive(indexes, endPerIndex, 0);
+    }
+
 private:
     QuadList _quadrature;
+    int _size;
 };
 
 
 template<typename T>
 void QuadratureRule<T>::LookupReference(int num, QuadratureRule::QuadList &quadrature) {
     quadrature.resize(num);
-    for(auto & i:quadrature) {
+    for (auto &i:quadrature) {
         i.first.resize(1);
-        std::cout<<i.first.rows();
     }
 
     switch (num) {
@@ -106,8 +156,7 @@ void QuadratureRule<T>::LookupReference(int num, QuadratureRule::QuadList &quadr
             quadrature[5].second = 0.171324492379170345040296142173;
             break;
         }
-        case 7 :
-        {
+        case 7 : {
             quadrature[0].first(0) = -0.949107912342758524526189684048;
             quadrature[1].first(0) = -0.741531185599394439863864773281;
             quadrature[2].first(0) = -0.405845151377397166906606412077;

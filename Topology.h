@@ -42,11 +42,11 @@ protected:
 
 
 enum Orientation {
-    west = 0, north, east, south
+    south = 0, east, north, west
 };
 
 template<typename T>
-class Edge : public Element<T> {
+class Edge : public Element<T>, public std::enable_shared_from_this<Edge<T>> {
 public:
     typedef typename Element<T>::DomainShared_ptr DomainShared_ptr;
     typedef typename Element<T>::Coordinate Coordinate;
@@ -78,8 +78,12 @@ public:
         return _begin;
     }
 
-    Coordinate EndCoordinate() const {
+    Coordinate GetEndCoordinate() const {
         return _end;
+    }
+
+    bool GetMatchInfo() const {
+        return _matched;
     }
 
     void KnotSpansGetter(CoordinatePairList &knotspanslist) {
@@ -176,6 +180,21 @@ public:
         }
     }
 
+    bool Match(std::shared_ptr<Edge<T>> counterpart) {
+        if (_matched == true || counterpart->_matched == true) {
+            return true;
+        }
+        if (((_begin == counterpart->_begin) && (_end == counterpart->_end)) ||
+            ((_begin == counterpart->_end) && (_end == counterpart->_begin))) {
+            _pair = counterpart;
+            _matched = true;
+            counterpart->_pair = this->shared_from_this();
+            counterpart->_matched = true;
+            return true;
+        }
+        return false;
+    }
+
     void accept(Visitor<T> &a) {};
 private:
     Orientation _position;
@@ -232,17 +251,19 @@ public:
     Cell() : Element<T>() {};
 
     Cell(DomainShared_ptr m) : Element<T>(m) {
-        for (int i = west; i <= south; ++i) {
+        for (int i = south; i <= west; ++i) {
             _edges[i] = std::make_shared<Edge<T>>(this->_domain, static_cast<Orientation>(i));
         }
     }
+
     void accept(Visitor<T> &a) {};
-    void KnotSpansGetter(CoordinatePairList & knotspanslist){
+
+    void KnotSpansGetter(CoordinatePairList &knotspanslist) {
         auto knotspan_x = this->_domain->KnotVectorGetter(0).KnotSpans();
         auto knotspan_y = this->_domain->KnotVectorGetter(1).KnotSpans();
-        knotspanslist.reserve(knotspan_x.size()*knotspan_y.size());
-        for(const auto &i:knotspan_x){
-            for(const auto &j:knotspan_y){
+        knotspanslist.reserve(knotspan_x.size() * knotspan_y.size());
+        for (const auto &i:knotspan_x) {
+            for (const auto &j:knotspan_y) {
                 Coordinate _begin;
                 _begin << i.first, j.first;
                 Coordinate _end;
@@ -251,6 +272,27 @@ public:
             }
         }
     };
+
+    void Match(std::shared_ptr<Cell<T>> counterpart) {
+        for (auto &i:_edges) {
+            for (auto &j:counterpart->_edges) {
+                if (i->Match(j) == true) break;
+            }
+
+        }
+    }
+
+    void PrintEdgeInfo() const {
+        for (const auto &i:_edges) {
+            std::cout << "Starting Point: " << "(" << i->GetStartCoordinate()(0) << "," << i->GetStartCoordinate()(1)
+                      << ")" << "   ";
+            std::cout << "Ending Point: " << "(" << i->GetEndCoordinate()(0) << "," << i->GetEndCoordinate()(1)
+                      << ")" << "   ";
+            std::cout << "Matched?: " << i->GetMatchInfo() << std::endl;
+        }
+        std::cout << std::endl;
+    }
+
     std::array<std::shared_ptr<Edge<T>>, 4> _edges;
 };
 
