@@ -110,7 +110,7 @@ public:
 
     mmpMatrix(const label &, const label &);
 
-    mmpMatrix(const Base &, const label &, const label &);
+    mmpMatrix(Base &, label &, label &);
 
     // implicitly deleted in C++11
     //gsMatrix(const gsMatrix& a) : Base(a) { }
@@ -195,7 +195,11 @@ public:
     void removeNoise(const T tol) {
         this->noalias() = this->unaryExpr(removeNoise_helper(tol));
     }
-
+    void resize(int i, int j){
+        this->resize(i,j);
+        _row.resize(i);
+        _col.resize(j);
+    }
 protected:
     label _row;
     label _col;
@@ -237,7 +241,7 @@ mmpMatrix<T, _Rows, _Cols, _Options>::mmpMatrix(const label &row, const label &c
 
 template<class T, int _Rows, int _Cols, int _Options>
 inline
-mmpMatrix<T, _Rows, _Cols, _Options>::mmpMatrix(const mmpMatrix::Base &a, const label &row, const label &col):Base(a), _row(row), _col(col) {
+mmpMatrix<T, _Rows, _Cols, _Options>::mmpMatrix(mmpMatrix::Base &a, label &row, label &col):Base(std::move(a)), _row(std::move(row)), _col(std::move(col)) {
 
 }
 

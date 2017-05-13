@@ -40,7 +40,7 @@ void KnotVector<T>::printKnotVector() const {
 }
 
 template<typename T>
-unsigned KnotVector<T>::GetDegree() const {
+int KnotVector<T>::GetDegree() const {
     uniContainer _uniKnots;
     UniQue(_uniKnots);
     return (*_uniKnots.begin()).second - 1;
@@ -60,18 +60,18 @@ template<typename T>
 void KnotVector<T>::MultiPle(const uniContainer &_uniKnots) {
     _multiKnots.clear();
     for (auto const &s : _uniKnots) {
-        for (unsigned i = 0; i < s.second; ++i) {
+        for (int i = 0; i < s.second; ++i) {
             _multiKnots.push_back(s.first);
         }
     }
 }
 
 template<typename T>
-void KnotVector<T>::UniformRefine(unsigned r, unsigned multi) {
+void KnotVector<T>::UniformRefine(int r, int multi) {
     uniContainer _uniKnots;
     UniQue(_uniKnots);
-    for (unsigned i = 0; i < r; i++) {
-        std::pair<T, unsigned> temp = (*_uniKnots.begin());
+    for (int i = 0; i < r; i++) {
+        std::pair<T, int> temp = (*_uniKnots.begin());
         uniContainer tmp;
         for (const auto &e : _uniKnots) {
             tmp.emplace((temp.first + e.first) / 2, multi);
@@ -83,7 +83,7 @@ void KnotVector<T>::UniformRefine(unsigned r, unsigned multi) {
 }
 
 template<typename T>
-void KnotVector<T>::RefineSpan(std::pair<T, T> span, unsigned int r, unsigned int multi) {
+void KnotVector<T>::RefineSpan(std::pair<T, T> span, int r, int multi) {
     uniContainer _uniKnots, temp_uniKnots;
     UniQue(_uniKnots);
     auto itlow = _uniKnots.lower_bound(span.first), itup = _uniKnots.upper_bound(span.second);
@@ -100,17 +100,17 @@ Eigen::Matrix<T, Eigen::Dynamic, 1> KnotVector<T>::MapToEigen() const {
 }
 
 template<typename T>
-unsigned KnotVector<T>::GetSize() const {
-    return static_cast<unsigned>(_multiKnots.size());
+int KnotVector<T>::GetSize() const {
+    return static_cast<int>(_multiKnots.size());
 }
 
 template<typename T>
-const T &KnotVector<T>::operator[](unsigned i) const {
+const T &KnotVector<T>::operator[](int i) const {
     return _multiKnots[i];
 }
 
 template<typename T>
-void KnotVector<T>::InitClosed(unsigned _deg, T first, T last) {
+void KnotVector<T>::InitClosed(int _deg, T first, T last) {
     uniContainer _uniKnots;
     uniContainer tmp;
     tmp.emplace(first, _deg + 1);
@@ -120,7 +120,7 @@ void KnotVector<T>::InitClosed(unsigned _deg, T first, T last) {
 }
 
 template<typename T>
-void KnotVector<T>::InitClosedUniform(unsigned _dof, unsigned _deg, T first, T last) {
+void KnotVector<T>::InitClosedUniform(int _dof, int _deg, T first, T last) {
     InitClosed(_deg, first, last);
     uniContainer _uniKnots;
     UniQue(_uniKnots);
@@ -162,14 +162,10 @@ std::vector<std::pair<T, T>> KnotVector<T>::KnotSpans() const {
 }
 
 template<typename T>
-unsigned KnotVector<T>::GetDOF() const {
+int KnotVector<T>::GetDOF() const {
     return GetSize() - GetDegree() - 1;
 }
 
-template<typename T>
-T &KnotVector<T>::operator()(unsigned i) {
-    return _multiKnots[i];
-}
 
 template<typename T>
 T &KnotVector<T>::operator()(int i) {
@@ -177,17 +173,17 @@ T &KnotVector<T>::operator()(int i) {
 }
 
 template<typename T>
-unsigned KnotVector<T>::FindSpan(const T &u) const {
-    const unsigned dof = GetDOF();
-    const unsigned deg = GetDegree();
+int KnotVector<T>::FindSpan(const T &u) const {
+    const int dof = GetDOF();
+    const int deg = GetDegree();
     if (u >= _multiKnots[dof])
         return dof - 1;
     if (u <= _multiKnots[deg])
         return deg;
 
-    unsigned low = 0;
-    unsigned high = dof + 1;
-    unsigned mid = (low + high) / 2;
+    int low = 0;
+    int high = dof + 1;
+    int mid = (low + high) / 2;
 
     while (u < _multiKnots[mid] || u >= _multiKnots[mid + 1]) {
         if (u < _multiKnots[mid])

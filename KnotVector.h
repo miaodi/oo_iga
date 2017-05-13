@@ -25,7 +25,7 @@ template<typename T>
 class KnotVector {
 public:
     using knotContainer = std::vector<T>;
-    using uniContainer = std::map<T, unsigned>;
+    using uniContainer = std::map<T, int>;
 
     //methods
     KnotVector() {};
@@ -34,11 +34,10 @@ public:
 
     KnotVector(const uniContainer &target);
 
-    const T& operator[](unsigned i) const;
-
-    T& operator()(unsigned i);
+    const T& operator[](int i) const;
 
     T& operator()(int i);
+
 
     void Insert(T knot);
 
@@ -46,29 +45,29 @@ public:
 
     void printKnotVector() const;
 
-    void UniformRefine(unsigned r = 1, unsigned multi = 1);
+    void UniformRefine(int r = 1, int multi = 1);
 
-    void RefineSpan(std::pair<T, T>, unsigned r = 1, unsigned multi = 1);
+    void RefineSpan(std::pair<T, T>, int r = 1, int multi = 1);
 
     Eigen::Matrix<T, Eigen::Dynamic, 1> MapToEigen() const;
 
-    unsigned GetDegree() const;
+    int GetDegree() const;
 
-    unsigned GetSize() const;
+    int GetSize() const;
 
-    unsigned GetDOF() const;
+    int GetDOF() const;
 
-    void InitClosed(unsigned _deg, T first=T(0.0), T last=T(1.0));
+    void InitClosed(int _deg, T first=T(0.0), T last=T(1.0));
 
-    void InitClosedUniform(unsigned _dof, unsigned _deg, T first=T(0.0), T last=T(1.0));
+    void InitClosedUniform(int _dof, int _deg, T first=T(0.0), T last=T(1.0));
 
     KnotVector UniKnotUnion(const KnotVector & vb) const;
 
-    unsigned FindSpan(const T &u) const;
+    int FindSpan(const T &u) const;
 
     std::vector<std::pair<T,T>> KnotSpans() const;
 
-    void resize(unsigned t){_multiKnots.resize(t);};
+    void resize(int t){_multiKnots.resize(t);};
 
     KnotVector Difference(const KnotVector&) const;
 

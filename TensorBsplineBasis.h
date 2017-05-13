@@ -11,10 +11,10 @@
 
 namespace Accessory {
     using namespace Eigen;
-    template<typename T, unsigned N>
+    template<typename T, int N>
     using ContPtrList = std::vector<Matrix<T, N, 1>>;
 
-    using DifferentialPattern = std::vector<unsigned>;
+    using DifferentialPattern = std::vector<int>;
     using DifferentialPatternList = std::vector<DifferentialPattern>;
     using DifferentialPatternList_ptr = std::unique_ptr<DifferentialPatternList>;
 
@@ -36,7 +36,7 @@ namespace Accessory {
         }
     }
 
-    template<typename T, unsigned N>
+    template<typename T, int N>
     void degreeElevate(int t, KnotVector<T> &U, ContPtrList<T, N> &P) {
         ASSERT(t > 0, "Invalid geometrical information input, check size bro.");
         int i, j, k;
@@ -200,7 +200,7 @@ namespace Accessory {
         U.resize(mh + 1);
     }
 
-    template<typename T, unsigned N>
+    template<typename T, int N>
     void knotInsertion(T u, int r, KnotVector<T> &U, ContPtrList<T, N> &P) {
 
         int n = U.GetDOF();
@@ -244,7 +244,7 @@ namespace Accessory {
 
     }
 
-    template<typename T, unsigned N>
+    template<typename T, int N>
     void refineKnotVectorCurve(const KnotVector<T> &X, KnotVector<T> &U, ContPtrList<T, N> &P) {
 
         int n = U.GetDOF() - 1;
@@ -292,19 +292,19 @@ namespace Accessory {
         }
     }
 
-    template<unsigned N>
-    DifferentialPatternList_ptr PartialDerPattern(unsigned r) {
-        std::vector<unsigned> kk(r);
+    template<int N>
+    DifferentialPatternList_ptr PartialDerPattern(int r) {
+        std::vector<int> kk(r);
         DifferentialPatternList_ptr a(new DifferentialPatternList);
-        std::function<void(unsigned, unsigned, std::vector<unsigned> &, unsigned, unsigned,
+        std::function<void(int, int, std::vector<int> &, int, int,
                            DifferentialPatternList_ptr &)> recursive;
-        recursive = [&](unsigned D, unsigned i, std::vector<unsigned> &k, unsigned n, unsigned start,
-                        std::unique_ptr<std::vector<std::vector<unsigned>>> &a) {
+        recursive = [&](int D, int i, std::vector<int> &k, int n, int start,
+                        std::unique_ptr<std::vector<std::vector<int>>> &a) {
             if (n == i) {
-                std::vector<unsigned> m;
-                unsigned it = 0;
-                for (unsigned it1 = 0; it1 < D; ++it1) {
-                    unsigned amount = 0;
+                std::vector<int> m;
+                int it = 0;
+                for (int it1 = 0; it1 < D; ++it1) {
+                    int amount = 0;
                     while (find(k.begin(), k.end(), it) != k.end()) {
                         amount++;
                         it++;
@@ -314,7 +314,7 @@ namespace Accessory {
                 }
                 a->push_back(m);
             } else {
-                for (unsigned jj = start; jj < D + i - (i - n); ++jj) {
+                for (int jj = start; jj < D + i - (i - n); ++jj) {
                     k[n] = jj;
                     recursive(D, i, k, n + 1, jj + 1, a);
                 }
@@ -325,13 +325,13 @@ namespace Accessory {
     }
 }
 
-template<unsigned d, typename T=double>
+template<int d, typename T=double>
 class TensorBsplineBasis {
 public:
 
     using vector=Eigen::Matrix<T, Eigen::Dynamic, 1>;
     using matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
-    typedef std::vector<unsigned> DiffPattern;
+    typedef std::vector<int> DiffPattern;
 
     typedef typename BsplineBasis<T>::BasisFunVal BasisFunVal;
     typedef typename BsplineBasis<T>::BasisFunValPac BasisFunValPac;
@@ -352,17 +352,17 @@ public:
 
     virtual ~TensorBsplineBasis() {};
 
-    unsigned GetDegree(const unsigned i) const;
+    int GetDegree(const int i) const;
 
-    unsigned GetDof() const;
+    int GetDof() const;
 
-    unsigned GetDof(const unsigned i) const;
+    int GetDof(const int i) const;
 
-    std::vector<unsigned> TensorIndex(const unsigned &m) const {
+    std::vector<int> TensorIndex(const int &m) const {
         ASSERT(m < GetDof(), "Input index is invalid.");
-        std::vector<unsigned> ind(d);
+        std::vector<int> ind(d);
         int mm = m;
-        ///unsigned always >=0.
+        ///int always >=0.
         for (int i = static_cast<int>(d - 1); i >= 0; --i) {
             ind[i] = mm % GetDof(i);
             mm -= ind[i];
@@ -371,58 +371,87 @@ public:
         return ind;
     }
 
-    unsigned Index(const std::vector<unsigned> &ts) const {
+    int Index(const std::vector<int> &ts) const {
         ASSERT(ts.size() == d, "Input index is invalid.");
-        unsigned index = 0;
-        for (unsigned direction = 0; direction < d; ++direction) {
+        int index = 0;
+        for (int direction = 0; direction < d; ++direction) {
             index += ts[direction];
             if (direction != d - 1) { index *= GetDof(direction + 1); }
         }
         return index;
     }
 
-    matrix Support(const unsigned &i) const {
+    matrix Support(const int &i) const {
         matrix res(static_cast<int>(d), 2);
         auto ti = TensorIndex(i);
-        for (unsigned j = 0; j != d; ++j)
+        for (int j = 0; j != d; ++j)
             res.row(j) = _basis[j].Support(ti[j]);
         return res;
     }
 
-    unsigned NumActive() const;
+    int NumActive() const;
 
-    unsigned NumActive(const unsigned &i) const;
+    int NumActive(const int &i) const;
 
-    void ChangeKnots(const KnotVector<T> &, unsigned);
+    void ChangeKnots(const KnotVector<T> &, int);
 
-    void PrintKnots(unsigned i) const { _basis[i].PrintKnots(); }
+    void PrintKnots(int i) const { _basis[i].PrintKnots(); }
 
-    void PrintUniKnots(unsigned i) const { _basis[i].PrintUniKnots(); }
+    void PrintUniKnots(int i) const { _basis[i].PrintUniKnots(); }
 
-    const KnotVector<T>& KnotVectorGetter(unsigned i) const{
+    const KnotVector<T>& KnotVectorGetter(int i) const{
         ASSERT(i < d, "Invalid dimension index provided.");
         return _basis[i].Knots();
     }
 
-    const T DomainStart(unsigned i) const{
+    const T DomainStart(int i) const{
         ASSERT(i < d, "Invalid dimension index provided.");
         return _basis[i].DomainStart();
     }
 
-    const T DomainEnd(unsigned i) const{
+    const T DomainEnd(int i) const{
         ASSERT(i < d, "Invalid dimension index provided.");
         return _basis[i].DomainEnd();
     }
 
     BasisFunValPac_ptr EvalTensor(const vector &u, const DiffPattern &i = DiffPattern(d, 0)) const;
 
-    BasisFunValDerAllList_ptr EvalDerAllTensor(const vector &u, const unsigned i = 0) const;
+    BasisFunValDerAllList_ptr EvalDerAllTensor(const vector &u, const int i = 0) const;
 
-    T EvalSingle(const vector &u, const unsigned n, const TensorBsplineBasis::DiffPattern &i) {
+    std::vector<int> ActiveIndex(const vector &u) const{
+        std::vector<int> temp(NumActive());
+        ASSERT((u.size() == d), "Invalid input vector size.");
+        std::vector<int> indexes(d, 0);
+        std::vector<int> endPerIndex(d);
+        std::vector<int> startIndex(d);
+        for(int i=0;i!=d;++i){
+            startIndex[i]=_basis[i].FirstActive(u(i));
+            endPerIndex[i]=_basis[i].NumActive();
+        }
+        std::function<void(std::vector<int> &, const std::vector<int> &, int)> recursive;
+        std::vector<int> multiIndex(d);
+        recursive = [this,&startIndex,&temp,&multiIndex,&recursive](
+                std::vector<int> &indexes,
+                const std::vector<int> &endPerIndex,
+                int direction) {
+            if (direction == indexes.size()) {
+                temp.push_back(Index(multiIndex));
+            } else {
+                for (indexes[direction] = 0; indexes[direction] != endPerIndex[direction]; indexes[direction]++) {
+                    multiIndex[direction] = startIndex[direction]+indexes[direction];
+                    recursive(indexes, endPerIndex, direction + 1);
+                }
+            }
+        };
+        recursive(indexes, endPerIndex, 0);
+        return temp;
+    }
+
+    T EvalSingle(const vector &u, const int n, const TensorBsplineBasis::DiffPattern &i) {
         ASSERT((u.size() == d) && (i.size() == d), "Invalid input vector size.");
         auto tensorindex = TensorIndex(n);
         T result = 1;
-        for (unsigned direction = 0; direction != d; ++direction) {
+        for (int direction = 0; direction != d; ++direction) {
             result *= _basis[direction].EvalSingle(u(direction), tensorindex[direction], i[direction]);
         }
         return result;
@@ -438,27 +467,27 @@ protected:
 
 };
 
-template<unsigned d, typename T>
+template<int d, typename T>
 TensorBsplineBasis<d, T>::TensorBsplineBasis() {
-    for (unsigned i = 0; i < d; ++i)
+    for (int i = 0; i < d; ++i)
         _basis[i] = BsplineBasis<T>();
 }
 
-template<unsigned d, typename T>
+template<int d, typename T>
 TensorBsplineBasis<d, T>::TensorBsplineBasis(const BsplineBasis<T> &baseX) {
     ASSERT(d == 1, "Invalid dimension.");
     _basis[0] = baseX;
 
 }
 
-template<unsigned d, typename T>
+template<int d, typename T>
 TensorBsplineBasis<d, T>::TensorBsplineBasis(const BsplineBasis<T> &baseX, const BsplineBasis<T> &baseY) {
     ASSERT(d == 2, "Invalid dimension.");
     _basis[0] = baseX;
     _basis[1] = baseY;
 }
 
-template<unsigned d, typename T>
+template<int d, typename T>
 TensorBsplineBasis<d, T>::TensorBsplineBasis(const BsplineBasis<T> &baseX, const BsplineBasis<T> &baseY,
                                              const BsplineBasis<T> &baseZ) {
     ASSERT(d == 3, "Invalid dimension.");
@@ -467,68 +496,68 @@ TensorBsplineBasis<d, T>::TensorBsplineBasis(const BsplineBasis<T> &baseX, const
     _basis[2] = baseZ;
 }
 
-template<unsigned d, typename T>
+template<int d, typename T>
 TensorBsplineBasis<d, T>::TensorBsplineBasis(const std::vector<KnotVector<T>> &knotVectors) {
     ASSERT(d == knotVectors.size(), "Invalid number of knot-vectors given.");
-    for (unsigned i = 0; i != d; ++i)
+    for (int i = 0; i != d; ++i)
         _basis[i] = BsplineBasis<T>(knotVectors[i]);
 }
 
-template<unsigned d, typename T>
-unsigned TensorBsplineBasis<d, T>::GetDegree(const unsigned i) const {
+template<int d, typename T>
+int TensorBsplineBasis<d, T>::GetDegree(const int i) const {
     return _basis[i].GetDegree();
 }
 
-template<unsigned d, typename T>
-unsigned TensorBsplineBasis<d, T>::GetDof() const {
-    unsigned dof = 1;
-    for (unsigned i = 0; i != d; ++i)
+template<int d, typename T>
+int TensorBsplineBasis<d, T>::GetDof() const {
+    int dof = 1;
+    for (int i = 0; i != d; ++i)
         dof *= _basis[i].GetDof();
     return dof;
 }
 
-template<unsigned d, typename T>
-unsigned TensorBsplineBasis<d, T>::GetDof(const unsigned i) const {
+template<int d, typename T>
+int TensorBsplineBasis<d, T>::GetDof(const int i) const {
     return _basis[i].GetDof();
 }
 
-template<unsigned d, typename T>
-unsigned TensorBsplineBasis<d, T>::NumActive(const unsigned &i) const {
+template<int d, typename T>
+int TensorBsplineBasis<d, T>::NumActive(const int &i) const {
     return _basis[i].NumActive();
 }
 
-template<unsigned d, typename T>
-unsigned TensorBsplineBasis<d, T>::NumActive() const {
-    unsigned active = 1;
-    for (unsigned i = 0; i != d; ++i)
+template<int d, typename T>
+int TensorBsplineBasis<d, T>::NumActive() const {
+    int active = 1;
+    for (int i = 0; i != d; ++i)
         active *= _basis[i].NumActive();
     return active;
 }
 
-template<unsigned d, typename T>
+template<int d, typename T>
 typename TensorBsplineBasis<d, T>::BasisFunValPac_ptr
 TensorBsplineBasis<d, T>::EvalTensor(const TensorBsplineBasis::vector &u,
                                      const TensorBsplineBasis::DiffPattern &i) const {
     ASSERT((u.size() == d) && (i.size() == d), "Invalid input vector size.");
-    std::vector<unsigned> indexes(d, 0);
-    std::vector<unsigned> endPerIndex;
+    std::vector<int> indexes(d, 0);
+    std::vector<int> endPerIndex;
     std::array<BasisFunValPac_ptr, d> OneDResult;
-    for (unsigned direction = 0; direction != d; ++direction) {
+    for (int direction = 0; direction != d; ++direction) {
         OneDResult[direction] = _basis[direction].Eval(u(direction), i[direction]);
         endPerIndex.push_back(OneDResult[direction]->size());
     }
-    std::vector<unsigned> MultiIndex(d);
+    std::vector<int> MultiIndex(d);
     std::vector<T> Value(d);
     BasisFunValPac_ptr Result(new BasisFunValPac);
 
-    std::function<void(std::vector<unsigned> &, const std::vector<unsigned> &, unsigned)> recursive;
+    std::function<void(std::vector<int> &, const std::vector<int> &, int)> recursive;
 
-    recursive = [this, &OneDResult, &MultiIndex, &Value, &Result, &recursive](std::vector<unsigned> &indexes,
-                                                                              const std::vector<unsigned> &endPerIndex,
-                                                                              unsigned direction) {
+    recursive = [this, &OneDResult, &MultiIndex, &Value, &Result, &recursive](std::vector<int> &indexes,
+                                                                              const std::vector<int> &endPerIndex,
+                                                                              int direction) {
         if (direction == indexes.size()) {
             T result = 1;
-            for (unsigned ii = 0; ii < d; ii++)
+            for (int ii = 0; ii < d; ii++)
                 result *= Value[ii];
             Result->push_back(BasisFunVal(Index(MultiIndex), result));
         } else {
@@ -543,44 +572,44 @@ TensorBsplineBasis<d, T>::EvalTensor(const TensorBsplineBasis::vector &u,
     return Result;
 }
 
-template<unsigned d, typename T>
-void TensorBsplineBasis<d, T>::ChangeKnots(const KnotVector<T> &knots, unsigned direction) {
+template<int d, typename T>
+void TensorBsplineBasis<d, T>::ChangeKnots(const KnotVector<T> &knots, int direction) {
     _basis[direction] = knots;
 }
 
-template<unsigned d, typename T>
+template<int d, typename T>
 typename TensorBsplineBasis<d, T>::BasisFunValDerAllList_ptr
 TensorBsplineBasis<d, T>::EvalDerAllTensor(const TensorBsplineBasis::vector &u,
-                                           const unsigned i) const {
+                                           const int i) const {
     ASSERT((u.size() == d), "Invalid input vector size.");
-    std::vector<unsigned> indexes(d, 0);
-    std::vector<unsigned> endPerIndex;
+    std::vector<int> indexes(d, 0);
+    std::vector<int> endPerIndex;
     Accessory::DifferentialPatternList differentialPatternList;
-    for (unsigned order = 0; order <= i; ++order) {
+    for (int order = 0; order <= i; ++order) {
         auto temp = Accessory::PartialDerPattern<d>(order);
         differentialPatternList.insert(differentialPatternList.end(), temp->begin(), temp->end());
     }
-    unsigned derivativeAmount = differentialPatternList.size();
+    int derivativeAmount = differentialPatternList.size();
     auto numActived = NumActive();
     BasisFunValDerAllList_ptr Result(new BasisFunValDerAllList);
     std::array<BasisFunValDerAllList_ptr, d> oneDResult;
-    for (unsigned direction = 0; direction != d; ++direction) {
+    for (int direction = 0; direction != d; ++direction) {
         oneDResult[direction] = _basis[direction].EvalDerAll(u(direction), i);
         endPerIndex.push_back(oneDResult[direction]->size());
     }
 
-    std::function<void(std::vector<unsigned> &, const std::vector<unsigned> &, unsigned)> recursive;
+    std::function<void(std::vector<int> &, const std::vector<int> &, int)> recursive;
 
-    std::vector<unsigned> multiIndex(d);
+    std::vector<int> multiIndex(d);
     std::vector<std::vector<T>> Values(derivativeAmount, std::vector<T>(d, 0));
     recursive = [this, &derivativeAmount, &oneDResult, &multiIndex, &Values, &Result, &differentialPatternList, &recursive](
-            std::vector<unsigned> &indexes,
-            const std::vector<unsigned> &endPerIndex,
-            unsigned direction) {
+            std::vector<int> &indexes,
+            const std::vector<int> &endPerIndex,
+            int direction) {
         if (direction == indexes.size()) {
             std::vector<T> result(derivativeAmount, 1);
-            for (unsigned iii = 0; iii != derivativeAmount;++iii) {
-                for (unsigned ii = 0; ii != d; ++ii) {
+            for (int iii = 0; iii != derivativeAmount;++iii) {
+                for (int ii = 0; ii != d; ++ii) {
                     result[iii] *= Values[iii][ii];
                 }
             }

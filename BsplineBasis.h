@@ -27,10 +27,10 @@ public:
     using matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
     using block = Eigen::Block<matrix>;
 
-    typedef std::pair<unsigned, T> BasisFunVal;
+    typedef std::pair<int, T> BasisFunVal;
     typedef std::vector<BasisFunVal> BasisFunValPac;
     typedef std::unique_ptr<BasisFunValPac> BasisFunValPac_ptr;
-    using BasisFunValDerAll=std::pair<unsigned, std::vector<T>>;
+    using BasisFunValDerAll=std::pair<int, std::vector<T>>;
     using BasisFunValDerAllList =std::vector<BasisFunValDerAll>;
     using BasisFunValDerAllList_ptr=std::unique_ptr<BasisFunValDerAllList>;
 
@@ -38,16 +38,16 @@ public:
 
     BsplineBasis(KnotVector<T> target);
 
-    unsigned GetDegree() const;
+    int GetDegree() const;
 
-    unsigned GetDof() const;
+    int GetDof() const;
 
     virtual ~BsplineBasis();
 
-    unsigned FindSpan(const T &u) const;
+    int FindSpan(const T &u) const;
 
-    BasisFunValDerAllList_ptr EvalDerAll(const T &u, unsigned i) const {
-        const unsigned deg = GetDegree();
+    BasisFunValDerAllList_ptr EvalDerAll(const T &u, int i) const {
+        const int deg = GetDegree();
         BasisFunValDerAll aaa {0,std::vector<T>(i+1,0)};
         BasisFunValDerAllList_ptr ders(new BasisFunValDerAllList(deg + 1, aaa));
         T *left = new T[2 * (deg + 1)];
@@ -55,7 +55,7 @@ public:
         matrix ndu(deg + 1, deg + 1);
         T saved, temp;
         int j, r;
-        unsigned span = FindSpan(u);
+        int span = FindSpan(u);
         ndu(0, 0) = 1.0;
         for (j = 1; j <= deg; j++) {
             left[j] = u - _basisKnot[span + 1 - j];
@@ -132,23 +132,23 @@ public:
         }
         delete[] left;
 
-        unsigned firstIndex = FirstActive(u);
-        for (unsigned ii = 0; ii != ders->size(); ++ii) {
+        int firstIndex = FirstActive(u);
+        for (int ii = 0; ii != ders->size(); ++ii) {
             (*ders)[ii].first = firstIndex + ii;
         }
         return ders;
     }
 
-    BasisFunValPac_ptr Eval(const T &u, const unsigned i = 0) const {
-        const unsigned dof = GetDof();
-        const unsigned deg = GetDegree();
+    BasisFunValPac_ptr Eval(const T &u, const int i = 0) const {
+        const int dof = GetDof();
+        const int deg = GetDegree();
         matrix ders;
         T *left = new T[2 * (deg + 1)];
         T *right = &left[deg + 1];
         matrix ndu(deg + 1, deg + 1);
         T saved, temp;
         int j, r;
-        unsigned span = FindSpan(u);
+        int span = FindSpan(u);
         ders.resize(i + 1, deg + 1);
 
         ndu(0, 0) = 1.0;
@@ -229,17 +229,17 @@ public:
         }
         delete[] left;
         BasisFunValPac_ptr result(new BasisFunValPac);
-        unsigned firstIndex = FirstActive(u);
-        for (unsigned ii = 0; ii != ders.cols(); ++ii) {
+        int firstIndex = FirstActive(u);
+        for (int ii = 0; ii != ders.cols(); ++ii) {
             result->push_back(BasisFunVal(firstIndex + ii, ders(i, ii)));
         }
         return result;
     }
 
-    T EvalSingle(const T &u, const unsigned n, const unsigned i = 0);
+    T EvalSingle(const T &u, const int n, const int i = 0);
 
-    vector Support(const unsigned i) const {
-        const unsigned deg = GetDegree();
+    vector Support(const int i) const {
+        const int deg = GetDegree();
         ASSERT(i < GetDof(), "Invalid index of basis function.");
         vector res(2);
         res << _basisKnot[i], _basisKnot[i + deg + 1];
@@ -250,7 +250,7 @@ public:
 
     T DomainEnd() const { return _basisKnot[GetDof()]; }
 
-    unsigned NumActive() const { return GetDegree() + 1; }
+    int NumActive() const { return GetDegree() + 1; }
 
     const KnotVector<T> &Knots() const {
         return _basisKnot;
@@ -262,16 +262,14 @@ public:
 
     void PrintUniKnots() const { _basisKnot.printUnique(); }
 
-    unsigned FirstActive(T u) const {
+    int FirstActive(T u) const {
         return (InDomain(u) ? FindSpan(u) - GetDegree() : 0);
     }
 
-    bool IsActive(const unsigned i, const T u) const;
+    bool IsActive(const int i, const T u) const;
 
 protected:
     KnotVector<T> _basisKnot;
-
-
 };
 
 template<typename T>
@@ -290,29 +288,29 @@ BsplineBasis<T>::BsplineBasis(KnotVector<T> target):_basisKnot(target) {
 }
 
 template<typename T>
-unsigned BsplineBasis<T>::GetDegree() const {
+int BsplineBasis<T>::GetDegree() const {
     return _basisKnot.GetDegree();
 }
 
 template<typename T>
-unsigned BsplineBasis<T>::GetDof() const {
+int BsplineBasis<T>::GetDof() const {
     return _basisKnot.GetSize() - _basisKnot.GetDegree() - 1;
 }
 
 template<typename T>
-unsigned BsplineBasis<T>::FindSpan(const T &u) const {
+int BsplineBasis<T>::FindSpan(const T &u) const {
     return _basisKnot.FindSpan(u);
 }
 
 template<typename T>
-bool BsplineBasis<T>::IsActive(const unsigned i, const T u) const {
+bool BsplineBasis<T>::IsActive(const int i, const T u) const {
     vector supp = Support(i);
     return (u >= supp(0)) && (u < supp(1)) ? true : false;
 }
 
 template<typename T>
-T BsplineBasis<T>::EvalSingle(const T &u, const unsigned n, const unsigned int i) {
-    unsigned p = GetDegree();
+T BsplineBasis<T>::EvalSingle(const T &u, const int n, const int i) {
+    int p = GetDegree();
     T *ders;
     T **N;
     T *ND;

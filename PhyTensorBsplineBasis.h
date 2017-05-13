@@ -8,13 +8,13 @@
 #include "TensorBsplineBasis.h"
 
 
-template<unsigned d, unsigned N, typename T=double>
+template<int d, int N, typename T=double>
 class PhyTensorBsplineBasis : public TensorBsplineBasis<d, T> {
 
 public:
     using Ptr=Eigen::Matrix<T, N, 1>;
     using GeometryVector = std::vector<Ptr>;
-    typedef std::vector<unsigned> DiffPattern;
+    typedef std::vector<int> DiffPattern;
     using vector=Eigen::Matrix<T, Eigen::Dynamic, 1>;
     typedef typename TensorBsplineBasis<d, T>::BasisFunValDerAll BasisFunValDerAll;
     typedef typename TensorBsplineBasis<d, T>::BasisFunValDerAllList BasisFunValDerAllList;
@@ -33,9 +33,9 @@ public:
 
     T Jacobian(const Ptr &) const;
 
-    void DegreeElevate(unsigned, unsigned);
+    void DegreeElevate(int, int);
 
-    void UniformRefine(unsigned, unsigned, unsigned m = 1);
+    void UniformRefine(int, int, int m = 1);
 
     void PrintCtrPtr() const;
 
@@ -51,12 +51,12 @@ private:
     GeometryVector _geometricInfo;
 };
 
-template<unsigned d, unsigned N, typename T>
+template<int d, int N, typename T>
 PhyTensorBsplineBasis<d, N, T>::PhyTensorBsplineBasis():TensorBsplineBasis<d, T>() {
 
 }
 
-template<unsigned d, unsigned N, typename T>
+template<int d, int N, typename T>
 typename PhyTensorBsplineBasis<d, N, T>::Ptr
 PhyTensorBsplineBasis<d, N, T>::AffineMap(const PhyTensorBsplineBasis<d, N, T>::Ptr &u, const DiffPattern &i) const {
     PhyTensorBsplineBasis<d, N, T>::Ptr result;
@@ -68,7 +68,7 @@ PhyTensorBsplineBasis<d, N, T>::AffineMap(const PhyTensorBsplineBasis<d, N, T>::
     return result;
 }
 
-template<unsigned d, unsigned N, typename T>
+template<int d, int N, typename T>
 PhyTensorBsplineBasis<d, N, T>::PhyTensorBsplineBasis(const BsplineBasis<T> &baseX,
                                                       const PhyTensorBsplineBasis<d, N, T>::GeometryVector &geometry)
         :TensorBsplineBasis<d, T>(baseX), _geometricInfo(geometry) {
@@ -76,7 +76,7 @@ PhyTensorBsplineBasis<d, N, T>::PhyTensorBsplineBasis(const BsplineBasis<T> &bas
            "Invalid geometrical information input, check size bro.");
 }
 
-template<unsigned d, unsigned N, typename T>
+template<int d, int N, typename T>
 PhyTensorBsplineBasis<d, N, T>::PhyTensorBsplineBasis(const BsplineBasis<T> &baseX, const BsplineBasis<T> &baseY,
                                                       const PhyTensorBsplineBasis::GeometryVector &geometry)
         :TensorBsplineBasis<d, T>(baseX, baseY), _geometricInfo(geometry) {
@@ -84,7 +84,7 @@ PhyTensorBsplineBasis<d, N, T>::PhyTensorBsplineBasis(const BsplineBasis<T> &bas
            "Invalid geometrical information input, check size bro.");
 }
 
-template<unsigned d, unsigned N, typename T>
+template<int d, int N, typename T>
 PhyTensorBsplineBasis<d, N, T>::PhyTensorBsplineBasis(const BsplineBasis<T> &baseX, const BsplineBasis<T> &baseY,
                                                       const BsplineBasis<T> &baseZ,
                                                       const PhyTensorBsplineBasis::GeometryVector &geometry)
@@ -93,28 +93,28 @@ PhyTensorBsplineBasis<d, N, T>::PhyTensorBsplineBasis(const BsplineBasis<T> &bas
            "Invalid geometrical information input, check size bro.");
 }
 
-template<unsigned d, unsigned N, typename T>
-void PhyTensorBsplineBasis<d, N, T>::DegreeElevate(unsigned orientation, unsigned r) {
-    std::vector<unsigned> indexes(d, 0);
-    std::vector<unsigned> endPerIndex;
-    for (unsigned direction = 0; direction != d; ++direction) {
+template<int d, int N, typename T>
+void PhyTensorBsplineBasis<d, N, T>::DegreeElevate(int orientation, int r) {
+    std::vector<int> indexes(d, 0);
+    std::vector<int> endPerIndex;
+    for (int direction = 0; direction != d; ++direction) {
         endPerIndex.push_back(this->GetDof(direction));
     }
     ASSERT(orientation < d, "Invalid degree elevate orientation");
     GeometryVector temp1;
-    std::vector<unsigned> MultiIndex(d);
-    std::function<void(std::vector<unsigned> &, const std::vector<unsigned> &, unsigned)> recursive;
+    std::vector<int> MultiIndex(d);
+    std::function<void(std::vector<int> &, const std::vector<int> &, int)> recursive;
     TensorBsplineBasis<d, T> tmp1;
     KnotVector<T> knot_temp_storage;
     bool called = false;
     recursive = [this, &orientation, &called, &knot_temp_storage, &tmp1, r, &temp1, &MultiIndex, &recursive](
-            std::vector<unsigned> &indexes,
-            const std::vector<unsigned> &endPerIndex,
-            unsigned direction) {
+            std::vector<int> &indexes,
+            const std::vector<int> &endPerIndex,
+            int direction) {
         if (direction == indexes.size()) {
 
             Accessory::ContPtrList<T, N> ElevateList;
-            for (unsigned i = 0; i != endPerIndex[orientation]; ++i) {
+            for (int i = 0; i != endPerIndex[orientation]; ++i) {
                 MultiIndex[orientation] = i;
                 auto index = this->Index(MultiIndex);
                 ElevateList.push_back(_geometricInfo[index]);
@@ -122,7 +122,7 @@ void PhyTensorBsplineBasis<d, N, T>::DegreeElevate(unsigned orientation, unsigne
             KnotVector<T> tmp(this->_basis[orientation].Knots());
             Accessory::degreeElevate<T, N>(r, tmp, ElevateList);
             if (knot_temp_storage.GetSize() == 0) {
-                for (unsigned i = 0; i != d; ++i) {
+                for (int i = 0; i != d; ++i) {
                     if (i == orientation) {
                         tmp1.ChangeKnots(tmp, i);
                     } else {
@@ -132,7 +132,7 @@ void PhyTensorBsplineBasis<d, N, T>::DegreeElevate(unsigned orientation, unsigne
                 temp1.resize(tmp1.GetDof());
                 knot_temp_storage = tmp;
             }
-            for (unsigned i = 0; i != ElevateList.size(); ++i) {
+            for (int i = 0; i != ElevateList.size(); ++i) {
                 MultiIndex[orientation] = i;
                 auto index = tmp1.Index(MultiIndex);
                 temp1[index] = ElevateList[i];
@@ -155,17 +155,17 @@ void PhyTensorBsplineBasis<d, N, T>::DegreeElevate(unsigned orientation, unsigne
     _geometricInfo = temp1;
 }
 
-template<unsigned d, unsigned N, typename T>
-void PhyTensorBsplineBasis<d, N, T>::UniformRefine(unsigned orientation, unsigned r, unsigned m) {
+template<int d, int N, typename T>
+void PhyTensorBsplineBasis<d, N, T>::UniformRefine(int orientation, int r, int m) {
     ASSERT(orientation < d, "Invalid degree elevate orientation");
-    std::vector<unsigned> indexes(d, 0);
-    std::vector<unsigned> endPerIndex;
-    for (unsigned direction = 0; direction != d; ++direction) {
+    std::vector<int> indexes(d, 0);
+    std::vector<int> endPerIndex;
+    for (int direction = 0; direction != d; ++direction) {
         endPerIndex.push_back(this->GetDof(direction));
     }
     GeometryVector temp1;
-    std::vector<unsigned> MultiIndex(d);
-    std::function<void(std::vector<unsigned> &, const std::vector<unsigned> &, unsigned)> recursive;
+    std::vector<int> MultiIndex(d);
+    std::function<void(std::vector<int> &, const std::vector<int> &, int)> recursive;
     TensorBsplineBasis<d, T> tmp1;
     KnotVector<T> knot_temp_storage(this->_basis[orientation].Knots());
     knot_temp_storage.UniformRefine(r, m);
@@ -173,10 +173,10 @@ void PhyTensorBsplineBasis<d, N, T>::UniformRefine(unsigned orientation, unsigne
     knot_temp_storage.resize(0);
     bool called = false;
     recursive = [this, &X, &orientation, &called, &knot_temp_storage, &tmp1, &temp1, &MultiIndex, &recursive](
-            std::vector<unsigned> &indexes, const std::vector<unsigned> &endPerIndex, unsigned direction) {
+            std::vector<int> &indexes, const std::vector<int> &endPerIndex, int direction) {
         if (direction == indexes.size()) {
             Accessory::ContPtrList<T, N> RefineList;
-            for (unsigned i = 0; i != endPerIndex[orientation]; ++i) {
+            for (int i = 0; i != endPerIndex[orientation]; ++i) {
                 MultiIndex[orientation] = i;
                 auto index = this->Index(MultiIndex);
                 RefineList.push_back(_geometricInfo[index]);
@@ -184,7 +184,7 @@ void PhyTensorBsplineBasis<d, N, T>::UniformRefine(unsigned orientation, unsigne
             KnotVector<T> tmp(this->_basis[orientation].Knots());
             Accessory::refineKnotVectorCurve<T, N>(X, tmp, RefineList);
             if (knot_temp_storage.GetSize() == 0) {
-                for (unsigned i = 0; i != d; ++i) {
+                for (int i = 0; i != d; ++i) {
                     if (i == orientation) {
                         tmp1.ChangeKnots(tmp, i);
                     } else {
@@ -194,7 +194,7 @@ void PhyTensorBsplineBasis<d, N, T>::UniformRefine(unsigned orientation, unsigne
                 temp1.resize(tmp1.GetDof());
                 knot_temp_storage = tmp;
             }
-            for (unsigned i = 0; i != RefineList.size(); ++i) {
+            for (int i = 0; i != RefineList.size(); ++i) {
                 MultiIndex[orientation] = i;
                 auto index = tmp1.Index(MultiIndex);
                 temp1[index] = RefineList[i];
@@ -217,19 +217,19 @@ void PhyTensorBsplineBasis<d, N, T>::UniformRefine(unsigned orientation, unsigne
     _geometricInfo = temp1;
 }
 
-template<unsigned d, unsigned N, typename T>
+template<int d, int N, typename T>
 void PhyTensorBsplineBasis<d, N, T>::PrintCtrPtr() const {
     for (int i = 0; i != _geometricInfo.size(); ++i)
         std::cout << _geometricInfo[i].transpose() << std::endl;
 }
 
-template<unsigned d, unsigned N, typename T>
+template<int d, int N, typename T>
 T PhyTensorBsplineBasis<d, N, T>::Jacobian(const PhyTensorBsplineBasis::Ptr &u) const {
     ASSERT(d == N, "Dimension should be the same between parametric space and Physical space.");
     using JacobianMatrix=Eigen::Matrix<T, d, d>;
     JacobianMatrix a;
     for (int i = 0; i != d; i++) {
-        std::vector<unsigned> differentiation(d, 0);
+        std::vector<int> differentiation(d, 0);
         differentiation[i] = 1;
         auto aa = AffineMap(u, differentiation);
         a.col(i) = aa;

@@ -8,6 +8,7 @@
 #include "PhyTensorBsplineBasis.h"
 #include "QuadratureRule.h"
 #include <eigen3/Eigen/Sparse>
+#include "MmpMatrix.h"
 
 template<typename T>
 class Visitor;
@@ -37,11 +38,11 @@ public:
 
     virtual void KnotSpansGetter(CoordinatePairList &) = 0;
 
-    virtual unsigned GetDof() const {
+    virtual int GetDof() const {
         return _domain->GetDof();
     }
 
-    unsigned GetDegree(const unsigned i) const {
+    int GetDegree(const int i) const {
         return _domain->GetDegree(i);
     }
 
@@ -266,7 +267,13 @@ public:
         }
     }
 
-    void accept(Visitor<T> &a) {};
+    void accept(Visitor<T> &a){
+        /*
+        a.Initialize(this);
+     
+        a.Assemble(this, this->_domain);
+         */
+    };
 
     void KnotSpansGetter(CoordinatePairList &knotspanslist) {
         auto knotspan_x = this->_domain->KnotVectorGetter(0).KnotSpans();
@@ -303,19 +310,25 @@ public:
         std::cout << std::endl;
     }
 
+    T Jacobian(const Coordinate &u) const {
+        return this->_domain->Jacobian(u);
+    }
+
     std::array<std::shared_ptr<Edge<T>>, 4> _edges;
 };
 
 template<typename T>
 class Visitor {
 public:
+    using CoordinatePairList = typename Element<T>::CoordinatePairList;
+    using Quadlist = typename QuadratureRule<T>::QuadList;
+    using DomainShared_ptr = typename Element<T>::DomainShared_ptr;
     Visitor() = default;
 
-    virtual void Initialize(Element<T> *) =0;
+    virtual void Initialize(Cell<T> *) =0;
 
-    virtual void LocalAssemble(Element<T> *) =0;
+    virtual void Assemble(Cell<T> *, DomainShared_ptr) =0;
 
-    virtual void LocalToGlobal(Element<T> *) =0;
 
 protected:
     QuadratureRule<T> _quadrature;
@@ -324,6 +337,12 @@ protected:
 
 template<typename T>
 class PoissonVisitor : public Visitor<T> {
+public:
+    using CoordinatePairList = typename Element<T>::CoordinatePairList;
+    using Quadlist = typename Visitor<T>::Quadlist;
+    using MmpMatrix = mmpMatrix<T, Eigen::Dynamic, Eigen::Dynamic>;
+    using DomainShared_ptr = typename Element<T>::DomainShared_ptr;
+
     void Initialize(Cell<T> *g) {
         auto dof = g->GetDof();
         this->_globalMatrix->resize(dof, dof);
@@ -332,7 +351,44 @@ class PoissonVisitor : public Visitor<T> {
         auto deg_y = g->GetDegree(1);
         this->_quadrature.SetUpQuadrature(deg_x >= deg_y ? (deg_x + 1) : (deg_y + 1));
     }
-    
+
+    void Assemble(Cell<T> *g, DomainShared_ptr basis) {
+        /*
+        CoordinatePairList elements;
+        g->KnotSpansGetter(elements);
+        Quadlist quadratures;
+        for (const auto &i:elements) {
+            this->_quadrature.MapToQuadrature(i, quadratures);
+            auto local = LocalMatrix(g,basis,quadratures);
+        }
+         */
+    }
+
+private:
+    std::unique_ptr<MmpMatrix> LocalMatrix(Cell<T> *g, DomainShared_ptr basis, const Quadlist &quadratures) {
+        /*
+        auto index_x = basis->ActiveIndex(quadratures[0].first);
+        auto index_y = index_x;
+        Eigen::Matrix<T, Eigen::Dynamic, 1> weights(quadratures.size() * 2);
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> basisFuns(quadratures.size() * 2, index_x.size());
+        int it = 0;
+        for (const auto &i:quadratures) {
+            auto evals = basis->Eval1DerAllTensor(i.first);
+            weights(it) = i.second*g->Jacobian(i.first);
+            weights(it + 1) = weights(it);
+            int itit = 0;
+            for (const auto &j:(*evals)) {
+                basisFuns(it, itit) = j.second[1];
+                basisFuns(it + 1, itit) = j.second[2];
+                itit++;
+            }
+            it++;
+        }
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> temp;
+        temp = basisFuns.transpose()*weights.asDiagonal()*basisFuns;
+        */
+        return std::unique_ptr<MmpMatrix>();
+    }
 };
 
 #endif //OO_IGA_TOPOLOGY_H

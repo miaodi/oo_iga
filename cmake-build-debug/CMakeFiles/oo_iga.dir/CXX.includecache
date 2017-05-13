@@ -6,21 +6,21 @@
 
 #IncludeRegexTransform: 
 
-/Users/miaodi/ClionProjects/oo_iga/BsplineBasis.cpp
+/Users/dimiao/CLionProjects/oo_iga/BsplineBasis.cpp
 BsplineBasis.h
-/Users/miaodi/ClionProjects/oo_iga/BsplineBasis.h
+/Users/dimiao/CLionProjects/oo_iga/BsplineBasis.h
 
-/Users/miaodi/ClionProjects/oo_iga/BsplineBasis.h
+/Users/dimiao/CLionProjects/oo_iga/BsplineBasis.h
 KnotVector.h
-/Users/miaodi/ClionProjects/oo_iga/KnotVector.h
+/Users/dimiao/CLionProjects/oo_iga/KnotVector.h
 memory
 -
 
-/Users/miaodi/ClionProjects/oo_iga/KnotVector.cpp
+/Users/dimiao/CLionProjects/oo_iga/KnotVector.cpp
 KnotVector.h
-/Users/miaodi/ClionProjects/oo_iga/KnotVector.h
+/Users/dimiao/CLionProjects/oo_iga/KnotVector.h
 
-/Users/miaodi/ClionProjects/oo_iga/KnotVector.h
+/Users/dimiao/CLionProjects/oo_iga/KnotVector.h
 vector
 -
 map
@@ -30,11 +30,11 @@ eigen3/Eigen/Dense
 iostream
 -
 
-/Users/miaodi/ClionProjects/oo_iga/MmpMatrix.cpp
+/Users/dimiao/CLionProjects/oo_iga/MmpMatrix.cpp
 MmpMatrix.h
-/Users/miaodi/ClionProjects/oo_iga/MmpMatrix.h
+/Users/dimiao/CLionProjects/oo_iga/MmpMatrix.h
 
-/Users/miaodi/ClionProjects/oo_iga/MmpMatrix.h
+/Users/dimiao/CLionProjects/oo_iga/MmpMatrix.h
 vector
 -
 map
@@ -44,25 +44,25 @@ numeric
 eigen3/Eigen/Dense
 -
 KnotVector.h
-/Users/miaodi/ClionProjects/oo_iga/KnotVector.h
+/Users/dimiao/CLionProjects/oo_iga/KnotVector.h
 cmath
 -
 
-/Users/miaodi/ClionProjects/oo_iga/MultiArray.h
+/Users/dimiao/CLionProjects/oo_iga/MultiArray.h
 array
 -
 vector
 -
 
-/Users/miaodi/ClionProjects/oo_iga/PhyTensorBsplineBasis.h
+/Users/dimiao/CLionProjects/oo_iga/PhyTensorBsplineBasis.h
 TensorBsplineBasis.h
-/Users/miaodi/ClionProjects/oo_iga/TensorBsplineBasis.h
+/Users/dimiao/CLionProjects/oo_iga/TensorBsplineBasis.h
 
-/Users/miaodi/ClionProjects/oo_iga/QuadratureRule.cpp
+/Users/dimiao/CLionProjects/oo_iga/QuadratureRule.cpp
 QuadratureRule.h
-/Users/miaodi/ClionProjects/oo_iga/QuadratureRule.h
+/Users/dimiao/CLionProjects/oo_iga/QuadratureRule.h
 
-/Users/miaodi/ClionProjects/oo_iga/QuadratureRule.h
+/Users/dimiao/CLionProjects/oo_iga/QuadratureRule.h
 vector
 -
 eigen3/Eigen/Dense
@@ -70,39 +70,41 @@ eigen3/Eigen/Dense
 iostream
 -
 
-/Users/miaodi/ClionProjects/oo_iga/TensorBsplineBasis.cpp
+/Users/dimiao/CLionProjects/oo_iga/TensorBsplineBasis.cpp
 TensorBsplineBasis.h
-/Users/miaodi/ClionProjects/oo_iga/TensorBsplineBasis.h
+/Users/dimiao/CLionProjects/oo_iga/TensorBsplineBasis.h
 
-/Users/miaodi/ClionProjects/oo_iga/TensorBsplineBasis.h
+/Users/dimiao/CLionProjects/oo_iga/TensorBsplineBasis.h
 BsplineBasis.h
-/Users/miaodi/ClionProjects/oo_iga/BsplineBasis.h
+/Users/dimiao/CLionProjects/oo_iga/BsplineBasis.h
 array
 -
 algorithm
 -
 
-/Users/miaodi/ClionProjects/oo_iga/Topology.h
+/Users/dimiao/CLionProjects/oo_iga/Topology.h
 PhyTensorBsplineBasis.h
-/Users/miaodi/ClionProjects/oo_iga/PhyTensorBsplineBasis.h
+/Users/dimiao/CLionProjects/oo_iga/PhyTensorBsplineBasis.h
 QuadratureRule.h
-/Users/miaodi/ClionProjects/oo_iga/QuadratureRule.h
+/Users/dimiao/CLionProjects/oo_iga/QuadratureRule.h
 eigen3/Eigen/Sparse
 -
+MmpMatrix.h
+/Users/dimiao/CLionProjects/oo_iga/MmpMatrix.h
 
-/Users/miaodi/ClionProjects/oo_iga/main.cpp
+/Users/dimiao/CLionProjects/oo_iga/main.cpp
 iostream
 -
 eigen3/Eigen/Dense
 -
 PhyTensorBsplineBasis.h
-/Users/miaodi/ClionProjects/oo_iga/PhyTensorBsplineBasis.h
+/Users/dimiao/CLionProjects/oo_iga/PhyTensorBsplineBasis.h
 MultiArray.h
-/Users/miaodi/ClionProjects/oo_iga/MultiArray.h
+/Users/dimiao/CLionProjects/oo_iga/MultiArray.h
 MmpMatrix.h
-/Users/miaodi/ClionProjects/oo_iga/MmpMatrix.h
+/Users/dimiao/CLionProjects/oo_iga/MmpMatrix.h
 QuadratureRule.h
-/Users/miaodi/ClionProjects/oo_iga/QuadratureRule.h
+/Users/dimiao/CLionProjects/oo_iga/QuadratureRule.h
 Topology.h
-/Users/miaodi/ClionProjects/oo_iga/Topology.h
+/Users/dimiao/CLionProjects/oo_iga/Topology.h
 
