@@ -16,7 +16,7 @@ int main() {
 
     QuadratureRule<double> hahaming(3);
     Vector2d begin(0, 0);
-    Vector2d end(0, 2);
+    Vector2d end(4, 0);
     pair<VectorXd,VectorXd> pai(begin,end);
     QuadList test;
     hahaming.MapToQuadrature(pai,test);

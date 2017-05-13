@@ -6,6 +6,8 @@
 #define OO_IGA_TOPOLOGY_H
 
 #include "PhyTensorBsplineBasis.h"
+#include "QuadratureRule.h"
+#include <eigen3/Eigen/Sparse>
 
 template<typename T>
 class Visitor;
@@ -34,6 +36,14 @@ public:
     virtual void accept(Visitor<T> &) = 0;
 
     virtual void KnotSpansGetter(CoordinatePairList &) = 0;
+
+    virtual unsigned GetDof() const {
+        return _domain->GetDof();
+    }
+
+    unsigned GetDegree(const unsigned i) const {
+        return _domain->GetDegree(i);
+    }
 
 protected:
     DomainShared_ptr _domain;
@@ -294,6 +304,35 @@ public:
     }
 
     std::array<std::shared_ptr<Edge<T>>, 4> _edges;
+};
+
+template<typename T>
+class Visitor {
+public:
+    Visitor() = default;
+
+    virtual void Initialize(Element<T> *) =0;
+
+    virtual void LocalAssemble(Element<T> *) =0;
+
+    virtual void LocalToGlobal(Element<T> *) =0;
+
+protected:
+    QuadratureRule<T> _quadrature;
+    std::shared_ptr<Eigen::SparseMatrix<T>> _globalMatrix;
+};
+
+template<typename T>
+class PoissonVisitor : public Visitor<T> {
+    void Initialize(Cell<T> *g) {
+        auto dof = g->GetDof();
+        this->_globalMatrix->resize(dof, dof);
+        this->_globalMatrix->reserve(Eigen::VectorXi::Constant(dof, dof / 2));
+        auto deg_x = g->GetDegree(0);
+        auto deg_y = g->GetDegree(1);
+        this->_quadrature.SetUpQuadrature(deg_x >= deg_y ? (deg_x + 1) : (deg_y + 1));
+    }
+    
 };
 
 #endif //OO_IGA_TOPOLOGY_H

@@ -26,6 +26,11 @@ public:
         LookupReference(_size, _quadrature);
     }
 
+    void SetUpQuadrature(int num) {
+        _size = num;
+        LookupReference(_size, _quadrature);
+    }
+
     static void LookupReference(int num, QuadList &quadrature);
 
     void MapToQuadrature(const CoordinatePair &range, QuadList &quadrature) {
