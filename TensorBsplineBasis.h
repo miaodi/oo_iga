@@ -381,6 +381,8 @@ public:
         return index;
     }
 
+    std::unique_ptr<std::vector<int>> AllActivatedDofsOnBoundary(const int &, const int &) const;
+
     matrix Support(const int &i) const {
         matrix res(static_cast<int>(d), 2);
         auto ti = TensorIndex(i);
@@ -399,17 +401,17 @@ public:
 
     void PrintUniKnots(int i) const { _basis[i].PrintUniKnots(); }
 
-    const KnotVector<T>& KnotVectorGetter(int i) const{
+    const KnotVector<T> &KnotVectorGetter(int i) const {
         ASSERT(i < d, "Invalid dimension index provided.");
         return _basis[i].Knots();
     }
 
-    const T DomainStart(int i) const{
+    const T DomainStart(int i) const {
         ASSERT(i < d, "Invalid dimension index provided.");
         return _basis[i].DomainStart();
     }
 
-    const T DomainEnd(int i) const{
+    const T DomainEnd(int i) const {
         ASSERT(i < d, "Invalid dimension index provided.");
         return _basis[i].DomainEnd();
     }
@@ -418,20 +420,20 @@ public:
 
     BasisFunValDerAllList_ptr EvalDerAllTensor(const vector &u, const int i = 0) const;
 
-    std::vector<int> ActiveIndex(const vector &u) const{
+    std::vector<int> ActiveIndex(const vector &u) const {
         std::vector<int> temp;
         temp.reserve(NumActive());
         ASSERT((u.size() == d), "Invalid input vector size.");
         std::vector<int> indexes(d, 0);
         std::vector<int> endPerIndex(d);
         std::vector<int> startIndex(d);
-        for(int i=0;i!=d;++i){
-            startIndex[i]=_basis[i].FirstActive(u(i));
-            endPerIndex[i]=_basis[i].NumActive();
+        for (int i = 0; i != d; ++i) {
+            startIndex[i] = _basis[i].FirstActive(u(i));
+            endPerIndex[i] = _basis[i].NumActive();
         }
         std::function<void(std::vector<int> &, const std::vector<int> &, int)> recursive;
         std::vector<int> multiIndex(d);
-        recursive = [this,&startIndex,&temp,&multiIndex,&recursive](
+        recursive = [this, &startIndex, &temp, &multiIndex, &recursive](
                 std::vector<int> &indexes,
                 const std::vector<int> &endPerIndex,
                 int direction) {
@@ -440,7 +442,7 @@ public:
 
             } else {
                 for (indexes[direction] = 0; indexes[direction] != endPerIndex[direction]; indexes[direction]++) {
-                    multiIndex[direction] = startIndex[direction]+indexes[direction];
+                    multiIndex[direction] = startIndex[direction] + indexes[direction];
                     recursive(indexes, endPerIndex, direction + 1);
                 }
             }
@@ -610,7 +612,7 @@ TensorBsplineBasis<d, T>::EvalDerAllTensor(const TensorBsplineBasis::vector &u,
             int direction) {
         if (direction == indexes.size()) {
             std::vector<T> result(derivativeAmount, 1);
-            for (int iii = 0; iii != derivativeAmount;++iii) {
+            for (int iii = 0; iii != derivativeAmount; ++iii) {
                 for (int ii = 0; ii != d; ++ii) {
                     result[iii] *= Values[iii][ii];
                 }
@@ -630,6 +632,44 @@ TensorBsplineBasis<d, T>::EvalDerAllTensor(const TensorBsplineBasis::vector &u,
     };
     recursive(indexes, endPerIndex, 0);
     return Result;
+}
+
+template<int d, typename T>
+std::unique_ptr<std::vector<int>>
+TensorBsplineBasis<d, T>::AllActivatedDofsOnBoundary(const int &orientation, const int &layer) const {
+    ASSERT(orientation < d, "Invalid input vector size.");
+    std::vector<int> indexes(d, 0);
+    std::vector<int> endPerIndex(d, 0);
+    for (int i = 0; i != d; ++i) {
+        if (i == orientation) {
+            endPerIndex[i] = 1;
+        } else {
+            endPerIndex[i] = GetDof(i);
+        }
+    }
+    std::unique_ptr<std::vector<int>> result(new std::vector<int>);
+    std::function<void(std::vector<int> &, const std::vector<int> &, int)> recursive;
+    std::vector<int> temp(d, 0);
+    recursive = [this, &orientation, &layer, &result, &temp, &recursive](
+            std::vector<int> &indexes,
+            const std::vector<int> &endPerIndex,
+            int direction) {
+        if (direction == d) {
+            result->push_back(Index(temp));
+        } else {
+            if (direction == orientation) {
+                temp[direction] = layer;
+                recursive(indexes, endPerIndex, direction + 1);
+            } else {
+                for (indexes[direction] = 0; indexes[direction] != endPerIndex[direction]; indexes[direction]++) {
+                    temp[direction] = indexes[direction];
+                    recursive(indexes, endPerIndex, direction + 1);
+                }
+            }
+        }
+    };
+    recursive(indexes, endPerIndex, 0);
+    return result;
 }
 
 

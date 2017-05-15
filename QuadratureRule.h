@@ -77,6 +77,10 @@ public:
         recursive(indexes, endPerIndex, 0);
     }
 
+    int NumOfQuadrature() const{
+        return _size;
+    }
+
 private:
     QuadList _quadrature;
     int _size;
