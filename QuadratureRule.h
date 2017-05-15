@@ -34,17 +34,14 @@ public:
     static void LookupReference(int num, QuadList &quadrature);
 
     void MapToQuadrature(const CoordinatePair &range, QuadList &quadrature) {
-
+        quadrature.resize(0);
         int d = range.first.size();
-
         std::vector<int> indexes(d, 0);
         std::vector<int> endPerIndex(d);
-
         int space = 1;
-        Quadrature temp;
+        std::pair<Coordinate, Coordinate > temp;
         temp.first.resize(d);
-        temp.second = 1.0;
-
+        temp.second.resize(d);
         for (int i = 0; i != d; ++i) {
             if (range.first(i) == range.second(i)) {
                 endPerIndex[i] = 0;
@@ -56,14 +53,13 @@ public:
             }
 
         }
-
         quadrature.reserve(space);
         std::function<void(std::vector<int> &, const std::vector<int> &, int)> recursive;
         recursive = [this, &quadrature, &temp, &range, &recursive](std::vector<int> &indexes,
                                                                    const std::vector<int> &endPerIndex, int direction) {
             if (direction == indexes.size()) {
-                quadrature.push_back(temp);
-                temp.second = 1;
+                Quadrature tmp{temp.first, temp.second.prod()};
+                quadrature.push_back(std::move(tmp));
             } else {
                 if (endPerIndex[direction] == 0) {
                     recursive(indexes, endPerIndex, direction + 1);
@@ -72,7 +68,7 @@ public:
                         T length = std::abs(range.first(direction) - range.second(direction)) / 2;
                         T middle = (range.first(direction) + range.second(direction)) / 2;
                         temp.first(direction) = _quadrature[indexes[direction]].first(0) * length + middle;
-                        temp.second *= _quadrature[indexes[direction]].second * length;
+                        temp.second(direction) = _quadrature[indexes[direction]].second * length;
                         recursive(indexes, endPerIndex, direction + 1);
                     }
                 }//buggy, need more tests.

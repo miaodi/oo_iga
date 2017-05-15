@@ -419,7 +419,8 @@ public:
     BasisFunValDerAllList_ptr EvalDerAllTensor(const vector &u, const int i = 0) const;
 
     std::vector<int> ActiveIndex(const vector &u) const{
-        std::vector<int> temp(NumActive());
+        std::vector<int> temp;
+        temp.reserve(NumActive());
         ASSERT((u.size() == d), "Invalid input vector size.");
         std::vector<int> indexes(d, 0);
         std::vector<int> endPerIndex(d);
@@ -436,6 +437,7 @@ public:
                 int direction) {
             if (direction == indexes.size()) {
                 temp.push_back(Index(multiIndex));
+
             } else {
                 for (indexes[direction] = 0; indexes[direction] != endPerIndex[direction]; indexes[direction]++) {
                     multiIndex[direction] = startIndex[direction]+indexes[direction];

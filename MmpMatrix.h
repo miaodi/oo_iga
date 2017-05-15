@@ -200,6 +200,9 @@ public:
         _row.resize(i);
         _col.resize(j);
     }
+    std::pair<std::array<int,2>,T> GetIndexAndValue(int i,int j) const{
+        return std::pair<std::array<int,2>,T>({_row[i],_col[j]},Base(i,j));
+    };
 protected:
     label _row;
     label _col;

@@ -252,7 +252,8 @@ PhyTensorBsplineBasis<2, 2, double>::Eval1DerAllTensor(const vector &u) const {
     Jacobian.row(0) = Pxi.transpose();
     Jacobian.row(1) = Peta.transpose();
     for (auto &i:*parametric) {
-        auto solution = Jacobian.partialPivLu().solve(Eigen::Vector2d::Map(i.second.data() + 1, i.second.size() - 1));
+        Eigen::Map<Eigen::VectorXd> temp(i.second.data() + 1, i.second.size() - 1);
+        auto solution = Jacobian.partialPivLu().solve(temp);
         i.second[1] = solution(0);
         i.second[2] = solution(1);
     }
@@ -284,7 +285,8 @@ PhyTensorBsplineBasis<2, 2, double>::Eval2DerAllTensor(const PhyTensorBsplineBas
                                                                                                              Peta(1), PetaPeta(
             0), PetaPeta(1), Peta(0) * Peta(0), 2 * Peta(0) * Peta(1), Peta(1) * Peta(1);
     for (auto &i:*parametric) {
-        auto solution = Hessian.partialPivLu().solve(Eigen::Matrix<double,5,1>::Map(i.second.data() + 1, i.second.size() - 1));
+        Eigen::Map<Eigen::VectorXd> temp(i.second.data() + 1, i.second.size() - 1);
+        auto solution = Hessian.partialPivLu().solve(temp);
         i.second[1] = solution(0);
         i.second[2] = solution(1);
         i.second[3] = solution(2);
