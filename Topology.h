@@ -340,7 +340,8 @@ public:
         auto deg_x = g->GetDegree(0);
         auto deg_y = g->GetDegree(1);
         this->_quadrature.SetUpQuadrature(deg_x >= deg_y ? (deg_x + 1) : (deg_y + 1));
-        this->_globalStiffMatrix.reserve(_dof * _quadrature.NumOfQuadrature());
+        this->_globalStiffMatrix.reserve(_dof * _dof * _quadrature.NumOfQuadrature()/3);
+        this->_globalLoadVector.reserve(_dof * _quadrature.NumOfQuadrature());
     }
 
     void Assemble(Element<T> *g, DomainShared_ptr basis, const LoadFunctor &loadFun) {
@@ -352,6 +353,8 @@ public:
             this->_quadrature.MapToQuadrature(i, quadratures);
             LocalAssemble(g, basis, quadratures, loadFun);
         }
+        this->_globalStiffMatrix.shrink_to_fit();
+        this->_globalLoadVector.shrink_to_fit();
     }
 
     std::unique_ptr<Eigen::SparseMatrix<T>> MakeSparseMatrix() const {
@@ -360,23 +363,27 @@ public:
         result->setFromTriplets(_globalStiffMatrix.begin(), _globalStiffMatrix.end());
         return result;
     }
-    std::unique_ptr<Eigen::Matrix<T,Eigen::Dynamic,Eigen::Dynamic>> MakeDenseMatrix() const {
+
+    std::unique_ptr<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>> MakeDenseMatrix() const {
         auto sparse = MakeSparseMatrix();
-        std::unique_ptr<Eigen::Matrix<T,Eigen::Dynamic,Eigen::Dynamic>> result(new Eigen::Matrix<T,Eigen::Dynamic,Eigen::Dynamic>(*sparse));
+        std::unique_ptr<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>> result(
+                new Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(*sparse));
         return result;
     }
 
     std::unique_ptr<Eigen::SparseMatrix<T>> MakeSparseVector() const {
         std::unique_ptr<Eigen::SparseMatrix<T>> result(new Eigen::SparseMatrix<T>);
-        result->resize(_dof,1);
+        result->resize(_dof, 1);
         result->setFromTriplets(_globalLoadVector.begin(), _globalLoadVector.end());
         return result;
     }
-    std::unique_ptr<Eigen::Matrix<T,Eigen::Dynamic,1>> MakeDenseVector() const {
+
+    std::unique_ptr<Eigen::Matrix<T, Eigen::Dynamic, 1>> MakeDenseVector() const {
         auto sparse = MakeSparseVector();
-        std::unique_ptr<Eigen::Matrix<T,Eigen::Dynamic,1>> result(new Eigen::Matrix<T,Eigen::Dynamic,1>(*sparse));
+        std::unique_ptr<Eigen::Matrix<T, Eigen::Dynamic, 1>> result(new Eigen::Matrix<T, Eigen::Dynamic, 1>(*sparse));
         return result;
     }
+
 protected:
     virtual void LocalAssemble(Element<T> *, DomainShared_ptr, const Quadlist &, const LoadFunctor &) = 0;
 
@@ -400,16 +407,14 @@ protected:
         auto index = basis->ActiveIndex(quadratures[0].first);
         Eigen::Matrix<T, Eigen::Dynamic, 1> weights(quadratures.size() * 2);
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> basisFuns(quadratures.size() * 2, index.size());
-
         Eigen::Matrix<T, Eigen::Dynamic, 1> weightsLoad(quadratures.size());
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> basisFunsLoad(quadratures.size(), index.size());
         int it = 0;
         for (const auto &i:quadratures) {
             auto evals = basis->Eval1DerAllTensor(i.first);
             weights(2 * it) = i.second * g->Jacobian(i.first);
-            std::cout<<weights(2 * it)<<std::endl;
             weights(2 * it + 1) = weights(2 * it);
-            weightsLoad(it) = weights(it) * load(i.first)[0];///
+            weightsLoad(it) = weights(2 * it) * load(basis->AffineMap(i.first))[0];///
             int itit = 0;
             for (const auto &j:*evals) {
                 basisFuns(2 * it, itit) = j.second[1];
@@ -419,11 +424,11 @@ protected:
             }
             it++;
         }
-        std::cout<<basisFuns<<std::endl;
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tempStiffMatrix;
-        tempStiffMatrix = basisFuns.transpose() * Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(weights.asDiagonal()) *
-                          basisFuns;
-        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tempLoadVector(basisFunsLoad.transpose() * weightsLoad);
+        tempStiffMatrix =
+                basisFuns.transpose() * Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(weights.asDiagonal()) *
+                basisFuns;
+        Eigen::Matrix<T, Eigen::Dynamic, 1> tempLoadVector(basisFunsLoad.transpose() * weightsLoad);
         for (int i = 0; i != tempStiffMatrix.rows(); ++i) {
             for (int j = 0; j != tempStiffMatrix.cols(); ++j) {
                 if (i >= j) {
