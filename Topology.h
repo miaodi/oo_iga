@@ -20,7 +20,8 @@ class Element {
 public:
     typedef typename std::shared_ptr<PhyTensorBsplineBasis<2, 2, T>> DomainShared_ptr;
     using Coordinate = Eigen::Matrix<T, 2, 1>;
-    typedef std::vector<std::pair<Coordinate, Coordinate>> CoordinatePairList;
+    using LoadFunctor = std::function<std::vector<T>(const Coordinate &)>;
+    using CoordinatePairList = typename std::vector<std::pair<Coordinate, Coordinate>>;
 
     Element() : _domain(std::make_shared<PhyTensorBsplineBasis<2, 2, T>>()), _called(false) {};
 
@@ -34,7 +35,7 @@ public:
 
     void Called() { _called = true; }
 
-    virtual void accept(Visitor<T> &) = 0;
+    virtual void accept(Visitor<T> &, const LoadFunctor &) = 0;
 
     virtual void KnotSpansGetter(CoordinatePairList &) = 0;
 
@@ -64,6 +65,7 @@ public:
     typedef typename Element<T>::DomainShared_ptr DomainShared_ptr;
     typedef typename Element<T>::Coordinate Coordinate;
     typedef typename Element<T>::CoordinatePairList CoordinatePairList;
+    using LoadFunctor = typename Element<T>::LoadFunctor;
 
     Edge(const Orientation &orient = west)
             : Element<T>(), _position(orient), _matched(false), _pair(nullptr) {};
@@ -210,7 +212,7 @@ public:
         return false;
     }
 
-    void accept(Visitor<T> &a) {};
+    void accept(Visitor<T> &a, const LoadFunctor &functor) {};
 private:
     Orientation _position;
     bool _matched;
@@ -272,9 +274,9 @@ public:
         }
     }
 
-    void accept(Visitor<T> &a) {
+    void accept(Visitor<T> &a, const LoadFunctor &functor) {
         a.Initialize(this);
-        a.Assemble(this, this->_domain, LoadFunctor());
+        a.Assemble(this, this->_domain, functor);
     };
 
     void KnotSpansGetter(CoordinatePairList &knotspanslist) {
@@ -334,11 +336,11 @@ public:
     Visitor() {};
 
     void Initialize(Element<T> *g) {
-        auto dof = g->GetDof();
+        _dof = g->GetDof();
         auto deg_x = g->GetDegree(0);
         auto deg_y = g->GetDegree(1);
         this->_quadrature.SetUpQuadrature(deg_x >= deg_y ? (deg_x + 1) : (deg_y + 1));
-        this->_globalStiffMatrix.reserve(dof * _quadrature.NumOfQuadrature());
+        this->_globalStiffMatrix.reserve(_dof * _quadrature.NumOfQuadrature());
     }
 
     void Assemble(Element<T> *g, DomainShared_ptr basis, const LoadFunctor &loadFun) {
@@ -348,16 +350,40 @@ public:
         IndexedValueList tempList;
         for (const auto &i:elements) {
             this->_quadrature.MapToQuadrature(i, quadratures);
-            LocalAssemble(g, basis, quadratures, LoadFunctor());
+            LocalAssemble(g, basis, quadratures, loadFun);
         }
     }
 
+    std::unique_ptr<Eigen::SparseMatrix<T>> MakeSparseMatrix() const {
+        std::unique_ptr<Eigen::SparseMatrix<T>> result(new Eigen::SparseMatrix<T>);
+        result->resize(_dof, _dof);
+        result->setFromTriplets(_globalStiffMatrix.begin(), _globalStiffMatrix.end());
+        return result;
+    }
+    std::unique_ptr<Eigen::Matrix<T,Eigen::Dynamic,Eigen::Dynamic>> MakeDenseMatrix() const {
+        auto sparse = MakeSparseMatrix();
+        std::unique_ptr<Eigen::Matrix<T,Eigen::Dynamic,Eigen::Dynamic>> result(new Eigen::Matrix<T,Eigen::Dynamic,Eigen::Dynamic>(*sparse));
+        return result;
+    }
+
+    std::unique_ptr<Eigen::SparseMatrix<T>> MakeSparseVector() const {
+        std::unique_ptr<Eigen::SparseMatrix<T>> result(new Eigen::SparseMatrix<T>);
+        result->resize(_dof,1);
+        result->setFromTriplets(_globalLoadVector.begin(), _globalLoadVector.end());
+        return result;
+    }
+    std::unique_ptr<Eigen::Matrix<T,Eigen::Dynamic,1>> MakeDenseVector() const {
+        auto sparse = MakeSparseVector();
+        std::unique_ptr<Eigen::Matrix<T,Eigen::Dynamic,1>> result(new Eigen::Matrix<T,Eigen::Dynamic,1>(*sparse));
+        return result;
+    }
 protected:
     virtual void LocalAssemble(Element<T> *, DomainShared_ptr, const Quadlist &, const LoadFunctor &) = 0;
 
     QuadratureRule<T> _quadrature;
     IndexedValueList _globalStiffMatrix;
     IndexedValueList _globalLoadVector;
+    int _dof;
 };
 
 template<typename T>
@@ -381,8 +407,9 @@ protected:
         for (const auto &i:quadratures) {
             auto evals = basis->Eval1DerAllTensor(i.first);
             weights(2 * it) = i.second * g->Jacobian(i.first);
-            weights(2 * it + 1) = weights(it);
-            weightsLoad(it) = weights(it)*load(i.first)[0];
+            std::cout<<weights(2 * it)<<std::endl;
+            weights(2 * it + 1) = weights(2 * it);
+            weightsLoad(it) = weights(it) * load(i.first)[0];///
             int itit = 0;
             for (const auto &j:*evals) {
                 basisFuns(2 * it, itit) = j.second[1];
@@ -392,10 +419,11 @@ protected:
             }
             it++;
         }
+        std::cout<<basisFuns<<std::endl;
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tempStiffMatrix;
         tempStiffMatrix = basisFuns.transpose() * Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(weights.asDiagonal()) *
-               basisFuns;
-        Eigen::Matrix<T, Eigen::Dynamic,Eigen::Dynamic> tempLoadVector(basisFunsLoad.transpose() * weightsLoad);
+                          basisFuns;
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tempLoadVector(basisFunsLoad.transpose() * weightsLoad);
         for (int i = 0; i != tempStiffMatrix.rows(); ++i) {
             for (int j = 0; j != tempStiffMatrix.cols(); ++j) {
                 if (i >= j) {
