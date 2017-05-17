@@ -62,6 +62,7 @@ public:
                 quadrature.push_back(std::move(tmp));
             } else {
                 if (endPerIndex[direction] == 0) {
+                    temp.second(direction) = 1;   ///need verify
                     recursive(indexes, endPerIndex, direction + 1);
                 } else {
                     for (indexes[direction] = 0; indexes[direction] != endPerIndex[direction]; indexes[direction]++) {

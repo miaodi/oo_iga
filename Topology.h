@@ -212,7 +212,10 @@ public:
         return false;
     }
 
-    void accept(Visitor<T> &a, const LoadFunctor &functor) {};
+    void accept(Visitor<T> &a, const LoadFunctor &functor) {
+        a.Initialize(this);
+        a.Assemble(this, this->_domain, functor);
+    };
 private:
     Orientation _position;
     bool _matched;
@@ -340,7 +343,7 @@ public:
         auto deg_x = g->GetDegree(0);
         auto deg_y = g->GetDegree(1);
         this->_quadrature.SetUpQuadrature(deg_x >= deg_y ? (deg_x + 1) : (deg_y + 1));
-        this->_globalStiffMatrix.reserve(_dof * _dof * _quadrature.NumOfQuadrature()/3);
+        this->_globalStiffMatrix.reserve(_dof * _dof * _quadrature.NumOfQuadrature() / 3);
         this->_globalLoadVector.reserve(_dof * _quadrature.NumOfQuadrature());
     }
 
@@ -437,6 +440,52 @@ protected:
             }
             this->_globalLoadVector.push_back(IndexedValue(index[i], 0, tempLoadVector(i)));
         }
+    }
+};
+
+template<typename T>
+class PoissonBoundaryVisitor : public Visitor<T> {
+public:
+    using Quadlist = typename Visitor<T>::Quadlist;
+    using DomainShared_ptr = typename Element<T>::DomainShared_ptr;
+    using IndexedValue = Eigen::Triplet<T>;
+    using LoadFunctor = typename Visitor<T>::LoadFunctor;
+
+    PoissonBoundaryVisitor() : Visitor<T>() {};
+protected:
+    void LocalAssemble(Element<T> *g, DomainShared_ptr basis, const Quadlist &quadratures, const LoadFunctor &dirichlet) {
+        auto index = basis->ActiveIndex(quadratures[0].first);
+        Eigen::Matrix<T, Eigen::Dynamic, 1> weights(quadratures.size());
+        Eigen::Matrix<T, Eigen::Dynamic, 1> boundaryInfo(quadratures.size());
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> basisFuns(quadratures.size(), index.size());
+        int it = 0;
+
+        for (const auto &i:quadratures) {
+            auto evals = basis->EvalDerAllTensor(i.first);
+            weights(it) = i.second;
+            boundaryInfo(it) = dirichlet(basis->AffineMap(i.first))[0];
+            int itit = 0;
+            for (const auto &j:*evals) {
+                basisFuns(it, itit) = j.second[0];
+                itit++;
+            }
+            it++;
+        }
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tempStiffMatrix;
+        tempStiffMatrix =
+                basisFuns.transpose() * Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(weights.asDiagonal()) *
+                basisFuns;
+        Eigen::Matrix<T, Eigen::Dynamic, 1> tempLoadVector(
+                basisFuns.transpose() * Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(weights.asDiagonal()) * boundaryInfo);
+        for (int i = 0; i != tempStiffMatrix.rows(); ++i) {
+            for (int j = 0; j != tempStiffMatrix.cols(); ++j) {
+                if (i >= j) {
+                    this->_globalStiffMatrix.push_back(IndexedValue(index[i], index[j], tempStiffMatrix(i, j)));
+                }
+            }
+            this->_globalLoadVector.push_back(IndexedValue(index[i], 0, tempLoadVector(i)));
+        }
+
     }
 };
 

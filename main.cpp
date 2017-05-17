@@ -34,17 +34,19 @@ int main() {
     auto domain2 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(a, b, points2);
     domain1->DegreeElevate(0,1);
     domain1->DegreeElevate(1,1);
-    domain1->UniformRefine(0,5);
-    domain1->UniformRefine(1,5);
     shared_ptr<Cell<double>> cell1 = make_shared<Cell<double>>(domain1);
     shared_ptr<Cell<double>> cell2 = make_shared<Cell<double>>(domain2);
     auto indices = domain1->AllActivatedDofsOnBoundary(1,0);
     LoadFunctor haha;
     haha = [] (const VectorXd & u){ return vector<double> {u(0)*u(1)};};
+    /*
     PoissonVisitor<double> poisson;
     cell1->accept(poisson, haha);
     auto matrix = poisson.MakeDenseVector();
-    cout<<*matrix;
-
+*/
+    PoissonBoundaryVisitor<double> poissonBoundary;
+    cell1->_edges[3]->accept(poissonBoundary, haha);
+    auto matrix1 = poissonBoundary.MakeDenseVector();
+    cout<<*matrix1;
     return 0;
 }
