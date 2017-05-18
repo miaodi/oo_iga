@@ -463,7 +463,7 @@ public:
 
 
 protected:
-    BsplineBasis<T> _basis[d];
+    std::array<BsplineBasis<T>,d> _basis;
 
     TensorBsplineBasis(const TensorBsplineBasis<d, T> &) {};
 
@@ -671,6 +671,8 @@ TensorBsplineBasis<d, T>::AllActivatedDofsOnBoundary(const int &orientation, con
     recursive(indexes, endPerIndex, 0);
     return result;
 }
+
+
 
 
 #endif //OO_IGA_TENSORBSPLINEBASIS_H

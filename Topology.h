@@ -19,7 +19,6 @@ template<typename T>
 class Element {
 public:
     using DomainShared_ptr = typename std::shared_ptr<PhyTensorBsplineBasis<2, 2, T>>;
-    using MultiplierShared_ptr = typename std::shared_ptr<PhyTensorBsplineBasis<1, 2, T>>;
     using Coordinate = Eigen::Matrix<T, 2, 1>;
     using LoadFunctor = std::function<std::vector<T>(const Coordinate &)>;
     using CoordinatePairList = typename std::vector<std::pair<Coordinate, Coordinate>>;
@@ -37,6 +36,8 @@ public:
     void Called() { _called = true; }
 
     virtual void accept(Visitor<T> &, const LoadFunctor &) = 0;
+
+    virtual void accept(Visitor<T> &) = 0;
 
     virtual void KnotSpansGetter(CoordinatePairList &) = 0;
 
@@ -66,6 +67,7 @@ public:
     typedef typename Element<T>::DomainShared_ptr DomainShared_ptr;
     typedef typename Element<T>::Coordinate Coordinate;
     typedef typename Element<T>::CoordinatePairList CoordinatePairList;
+    using PhyPtr = typename PhyTensorBsplineBasis<2, 2, T>::PhyPtr;
     using LoadFunctor = typename Element<T>::LoadFunctor;
 
     Edge(const Orientation &orient = west)
@@ -213,16 +215,64 @@ public:
         return false;
     }
 
+    bool IsOn(Coordinate &u) const {
+        T tol = 1e-10;
+        auto knot_x_begin = this->_domain->DomainStart(0);
+        auto knot_x_end = this->_domain->DomainEnd(0);
+        auto knot_y_begin = this->_domain->DomainStart(1);
+        auto knot_y_end = this->_domain->DomainEnd(1);
+
+        switch (_position) {
+            case west: {
+                if ((std::abs(u(0) - knot_x_begin)) < tol &&
+                    (u(1) >= knot_y_begin - tol && u(1) <= knot_y_end + tol)) {
+                    u(0) = knot_x_begin;
+                    return true;
+                }
+                return false;
+            }
+            case east: {
+                if ((std::abs(u(0) - knot_x_end)) < tol &&
+                    (u(1) >= knot_y_begin - tol && u(1) <= knot_y_end + tol)) {
+                    u(0) = knot_x_end;
+                    return true;
+                }
+                return false;
+            }
+            case north: {
+                if ((std::abs(u(1) - knot_y_end)) < tol &&
+                    (u(0) >= knot_x_begin - tol && u(0) <= knot_x_end + tol)) {
+                    u(1) = knot_y_end;
+                    return true;
+                }
+                return false;
+            }
+            case south: {
+                if ((std::abs(u(1) - knot_y_begin)) < tol &&
+                    (u(0) >= knot_x_begin - tol && u(0) <= knot_x_end + tol)) {
+                    u(1) = knot_y_begin;
+                    return true;
+                }
+                return false;
+            }
+        }
+    }
+
     void accept(Visitor<T> &a, const LoadFunctor &functor) {
         a.Initialize(this);
-        if(this->_matched==false){
+        if (this->_matched == false) {
             a.Assemble(this, this->_domain, functor);
-        }else{
-            DomainShared_ptr lagrangeMultipler;
-            this->GetDof();
         }
     };
 
+
+
+    void accept(Visitor<T> &a) {
+        a.Initialize(this);
+        if (this->_matched == true) {
+
+        }
+    };
 private:
     Orientation _position;
     bool _matched;
@@ -289,6 +339,8 @@ public:
         a.Assemble(this, this->_domain, functor);
     };
 
+    void accept(Visitor<T> &a) {};
+
     void KnotSpansGetter(CoordinatePairList &knotspanslist) {
         auto knotspan_x = this->_domain->KnotVectorGetter(0).KnotSpans();
         auto knotspan_y = this->_domain->KnotVectorGetter(1).KnotSpans();
@@ -328,6 +380,7 @@ public:
         return this->_domain->Jacobian(u);
     }
 
+public:
     std::array<std::shared_ptr<Edge<T>>, 4> _edges;
 };
 
@@ -354,7 +407,8 @@ public:
     }
 
     virtual void Assemble(Element<T> *, DomainShared_ptr const, const LoadFunctor &)=0;
-    virtual void Assemble(Element<T> *, DomainShared_ptr const, DomainShared_ptr const)=0;
+
+    virtual void Assemble(Element<T> *, DomainShared_ptr const, Element<T> *, DomainShared_ptr const)=0;
 
     std::unique_ptr<Eigen::SparseMatrix<T>> MakeSparseMatrix() const {
         std::unique_ptr<Eigen::SparseMatrix<T>> result(new Eigen::SparseMatrix<T>);
@@ -408,7 +462,8 @@ public:
         this->_globalStiffMatrix.shrink_to_fit();
         this->_globalLoadVector.shrink_to_fit();
     }
-    void Assemble(Element<T> *, DomainShared_ptr const, DomainShared_ptr const){};
+
+    void Assemble(Element<T> *, DomainShared_ptr const, Element<T> *, DomainShared_ptr const) {};
 
     std::unique_ptr<Eigen::SparseMatrix<T>> MakeSparseVector() const {
         std::unique_ptr<Eigen::SparseMatrix<T>> result(new Eigen::SparseMatrix<T>);
@@ -429,6 +484,21 @@ protected:
     IndexedValueList _globalLoadVector;
 };
 
+template<typename T>
+class PoissonInterfaceVisitor : public Visitor<T> {
+    using MultiplierShared_ptr = typename std::shared_ptr<PhyTensorBsplineBasis<1, 2, T>>;
+    using IndexedValueList = typename Visitor<T>::IndexedValueList;
+    void Initialize(Element<T> *g, Element<T> *l) {
+        if (g->GetDof() >= l->GetDof()) { _slaveEdge = g, _masterEdge = l; } else { _masterEdge = g, _slaveEdge = l; };
+
+    }
+
+protected:
+    IndexedValueList _slaveMatrix;
+    Element<T> *_slaveEdge;
+    Element<T> *_masterEdge;
+};
+
 
 template<typename T>
 class PoissonDomainVisitor : public PoissonVisitor<T> {
@@ -440,7 +510,8 @@ public:
 
     PoissonDomainVisitor() : PoissonVisitor<T>() {};
 protected:
-    void LocalAssemble(Element<T> *g, DomainShared_ptr const basis, const Quadlist &quadratures, const LoadFunctor &load) {
+    void
+    LocalAssemble(Element<T> *g, DomainShared_ptr const basis, const Quadlist &quadratures, const LoadFunctor &load) {
         auto index = basis->ActiveIndex(quadratures[0].first);
         Eigen::Matrix<T, Eigen::Dynamic, 1> weights(quadratures.size() * 2);
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> basisFuns(quadratures.size() * 2, index.size());
@@ -487,7 +558,8 @@ public:
 
     PoissonBoundaryVisitor() : PoissonVisitor<T>() {};
 protected:
-    void LocalAssemble(Element<T> *g, DomainShared_ptr basis, const Quadlist &quadratures, const LoadFunctor &dirichlet) {
+    void
+    LocalAssemble(Element<T> *g, DomainShared_ptr basis, const Quadlist &quadratures, const LoadFunctor &dirichlet) {
         auto index = basis->ActiveIndex(quadratures[0].first);
         Eigen::Matrix<T, Eigen::Dynamic, 1> weights(quadratures.size());
         Eigen::Matrix<T, Eigen::Dynamic, 1> boundaryInfo(quadratures.size());
@@ -510,7 +582,8 @@ protected:
                 basisFuns.transpose() * Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(weights.asDiagonal()) *
                 basisFuns;
         Eigen::Matrix<T, Eigen::Dynamic, 1> tempLoadVector(
-                basisFuns.transpose() * Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(weights.asDiagonal()) * boundaryInfo);
+                basisFuns.transpose() * Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(weights.asDiagonal()) *
+                boundaryInfo);
         for (int i = 0; i != tempStiffMatrix.rows(); ++i) {
             for (int j = 0; j != tempStiffMatrix.cols(); ++j) {
                 if (i >= j) {
