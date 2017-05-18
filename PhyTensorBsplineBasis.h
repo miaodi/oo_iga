@@ -47,6 +47,8 @@ public:
 
     BasisFunValDerAllList_ptr Eval2DerAllTensor(const vector &u) const;
 
+
+
 private:
     GeometryVector _geometricInfo;
 };

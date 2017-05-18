@@ -18,7 +18,8 @@ class Runner;
 template<typename T>
 class Element {
 public:
-    typedef typename std::shared_ptr<PhyTensorBsplineBasis<2, 2, T>> DomainShared_ptr;
+    using DomainShared_ptr = typename std::shared_ptr<PhyTensorBsplineBasis<2, 2, T>>;
+    using MultiplierShared_ptr = typename std::shared_ptr<PhyTensorBsplineBasis<1, 2, T>>;
     using Coordinate = Eigen::Matrix<T, 2, 1>;
     using LoadFunctor = std::function<std::vector<T>(const Coordinate &)>;
     using CoordinatePairList = typename std::vector<std::pair<Coordinate, Coordinate>>;
@@ -214,8 +215,14 @@ public:
 
     void accept(Visitor<T> &a, const LoadFunctor &functor) {
         a.Initialize(this);
-        a.Assemble(this, this->_domain, functor);
+        if(this->_matched==false){
+            a.Assemble(this, this->_domain, functor);
+        }else{
+            DomainShared_ptr lagrangeMultipler;
+            this->GetDof();
+        }
     };
+
 private:
     Orientation _position;
     bool _matched;
@@ -338,27 +345,16 @@ public:
 
     Visitor() {};
 
-    void Initialize(Element<T> *g) {
+    virtual void Initialize(Element<T> *g) {
         _dof = g->GetDof();
         auto deg_x = g->GetDegree(0);
         auto deg_y = g->GetDegree(1);
         this->_quadrature.SetUpQuadrature(deg_x >= deg_y ? (deg_x + 1) : (deg_y + 1));
         this->_globalStiffMatrix.reserve(_dof * _dof * _quadrature.NumOfQuadrature() / 3);
-        this->_globalLoadVector.reserve(_dof * _quadrature.NumOfQuadrature());
     }
 
-    void Assemble(Element<T> *g, DomainShared_ptr basis, const LoadFunctor &loadFun) {
-        CoordinatePairList elements;
-        g->KnotSpansGetter(elements);
-        Quadlist quadratures;
-        IndexedValueList tempList;
-        for (const auto &i:elements) {
-            this->_quadrature.MapToQuadrature(i, quadratures);
-            LocalAssemble(g, basis, quadratures, loadFun);
-        }
-        this->_globalStiffMatrix.shrink_to_fit();
-        this->_globalLoadVector.shrink_to_fit();
-    }
+    virtual void Assemble(Element<T> *, DomainShared_ptr const, const LoadFunctor &)=0;
+    virtual void Assemble(Element<T> *, DomainShared_ptr const, DomainShared_ptr const)=0;
 
     std::unique_ptr<Eigen::SparseMatrix<T>> MakeSparseMatrix() const {
         std::unique_ptr<Eigen::SparseMatrix<T>> result(new Eigen::SparseMatrix<T>);
@@ -374,9 +370,49 @@ public:
         return result;
     }
 
+
+protected:
+
+    QuadratureRule<T> _quadrature;
+    IndexedValueList _globalStiffMatrix;
+
+    int _dof;
+};
+
+template<typename T>
+class PoissonVisitor : public Visitor<T> {
+public:
+    using Quadlist = typename Visitor<T>::Quadlist;
+    using DomainShared_ptr = typename Element<T>::DomainShared_ptr;
+    using LoadFunctor = typename Visitor<T>::LoadFunctor;
+    using IndexedValue = typename Visitor<T>::IndexedValue;
+    using IndexedValueList = typename Visitor<T>::IndexedValueList;
+    using CoordinatePairList = typename Visitor<T>::CoordinatePairList;
+
+    PoissonVisitor() : Visitor<T>() {};
+
+    void Initialize(Element<T> *g) {
+        Visitor<T>::Initialize(g);
+        this->_globalLoadVector.reserve(this->_dof * this->_quadrature.NumOfQuadrature());
+    }
+
+    void Assemble(Element<T> *g, DomainShared_ptr const basis, const LoadFunctor &loadFun) {
+        CoordinatePairList elements;
+        g->KnotSpansGetter(elements);
+        Quadlist quadratures;
+        IndexedValueList tempList;
+        for (const auto &i : elements) {
+            this->_quadrature.MapToQuadrature(i, quadratures);
+            LocalAssemble(g, basis, quadratures, loadFun);
+        }
+        this->_globalStiffMatrix.shrink_to_fit();
+        this->_globalLoadVector.shrink_to_fit();
+    }
+    void Assemble(Element<T> *, DomainShared_ptr const, DomainShared_ptr const){};
+
     std::unique_ptr<Eigen::SparseMatrix<T>> MakeSparseVector() const {
         std::unique_ptr<Eigen::SparseMatrix<T>> result(new Eigen::SparseMatrix<T>);
-        result->resize(_dof, 1);
+        result->resize(this->_dof, 1);
         result->setFromTriplets(_globalLoadVector.begin(), _globalLoadVector.end());
         return result;
     }
@@ -390,36 +426,34 @@ public:
 protected:
     virtual void LocalAssemble(Element<T> *, DomainShared_ptr, const Quadlist &, const LoadFunctor &) = 0;
 
-    QuadratureRule<T> _quadrature;
-    IndexedValueList _globalStiffMatrix;
     IndexedValueList _globalLoadVector;
-    int _dof;
 };
 
+
 template<typename T>
-class PoissonVisitor : public Visitor<T> {
+class PoissonDomainVisitor : public PoissonVisitor<T> {
 public:
-    using Quadlist = typename Visitor<T>::Quadlist;
+    using Quadlist = typename PoissonVisitor<T>::Quadlist;
     using DomainShared_ptr = typename Element<T>::DomainShared_ptr;
     using IndexedValue = Eigen::Triplet<T>;
-    using LoadFunctor = typename Visitor<T>::LoadFunctor;
+    using LoadFunctor = typename PoissonVisitor<T>::LoadFunctor;
 
-    PoissonVisitor() : Visitor<T>() {};
+    PoissonDomainVisitor() : PoissonVisitor<T>() {};
 protected:
-    void LocalAssemble(Element<T> *g, DomainShared_ptr basis, const Quadlist &quadratures, const LoadFunctor &load) {
+    void LocalAssemble(Element<T> *g, DomainShared_ptr const basis, const Quadlist &quadratures, const LoadFunctor &load) {
         auto index = basis->ActiveIndex(quadratures[0].first);
         Eigen::Matrix<T, Eigen::Dynamic, 1> weights(quadratures.size() * 2);
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> basisFuns(quadratures.size() * 2, index.size());
         Eigen::Matrix<T, Eigen::Dynamic, 1> weightsLoad(quadratures.size());
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> basisFunsLoad(quadratures.size(), index.size());
         int it = 0;
-        for (const auto &i:quadratures) {
+        for (const auto &i : quadratures) {
             auto evals = basis->Eval1DerAllTensor(i.first);
             weights(2 * it) = i.second * g->Jacobian(i.first);
             weights(2 * it + 1) = weights(2 * it);
             weightsLoad(it) = weights(2 * it) * load(basis->AffineMap(i.first))[0];///
             int itit = 0;
-            for (const auto &j:*evals) {
+            for (const auto &j : *evals) {
                 basisFuns(2 * it, itit) = j.second[1];
                 basisFuns(2 * it + 1, itit) = j.second[2];
                 basisFunsLoad(it, itit) = j.second[0];
@@ -444,14 +478,14 @@ protected:
 };
 
 template<typename T>
-class PoissonBoundaryVisitor : public Visitor<T> {
+class PoissonBoundaryVisitor : public PoissonVisitor<T> {
 public:
-    using Quadlist = typename Visitor<T>::Quadlist;
+    using Quadlist = typename PoissonVisitor<T>::Quadlist;
     using DomainShared_ptr = typename Element<T>::DomainShared_ptr;
     using IndexedValue = Eigen::Triplet<T>;
-    using LoadFunctor = typename Visitor<T>::LoadFunctor;
+    using LoadFunctor = typename PoissonVisitor<T>::LoadFunctor;
 
-    PoissonBoundaryVisitor() : Visitor<T>() {};
+    PoissonBoundaryVisitor() : PoissonVisitor<T>() {};
 protected:
     void LocalAssemble(Element<T> *g, DomainShared_ptr basis, const Quadlist &quadratures, const LoadFunctor &dirichlet) {
         auto index = basis->ActiveIndex(quadratures[0].first);
@@ -460,12 +494,12 @@ protected:
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> basisFuns(quadratures.size(), index.size());
         int it = 0;
 
-        for (const auto &i:quadratures) {
+        for (const auto &i : quadratures) {
             auto evals = basis->EvalDerAllTensor(i.first);
             weights(it) = i.second;
             boundaryInfo(it) = dirichlet(basis->AffineMap(i.first))[0];
             int itit = 0;
-            for (const auto &j:*evals) {
+            for (const auto &j : *evals) {
                 basisFuns(it, itit) = j.second[0];
                 itit++;
             }

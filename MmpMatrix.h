@@ -28,7 +28,7 @@ struct ChangeDim<Dynamic, Change> {
     };
 };
 
-template<class T, int _Rows, int _Cols, int _Options = false>
+template<class T, int _Rows = Eigen::Dynamic, int _Cols = Eigen::Dynamic, int _Options = false>
 class mmpMatrix : public Eigen::Matrix<T, _Rows, _Cols, _Options> {
 
     // Base is the dense matrix class of Eigen
@@ -165,8 +165,8 @@ public:
                 j++;
                 row_tmp.push_back(_row[i]);
             }
-        _row=row_tmp;
-        *this=tmp;
+        _row = row_tmp;
+        *this = tmp;
     }
 
     void removeZeroCol() {
@@ -174,7 +174,7 @@ public:
         int num = 0;
         for (int i = 0; i < empty.size(); ++i)
             if (empty(i) == true) num++;
-        Eigen::Matrix<T, Dynamic, Dynamic> tmp(this->rows(), this->cols()-num);
+        Eigen::Matrix<T, Dynamic, Dynamic> tmp(this->rows(), this->cols() - num);
         label col_tmp;
         col_tmp.reserve(this->cols() - num);
         int j = 0;
@@ -184,24 +184,27 @@ public:
                 j++;
                 col_tmp.push_back(_col[i]);
             }
-        _col=col_tmp;
-        *this=tmp;
+        _col = col_tmp;
+        *this = tmp;
     }
 
-    void removeZero(){
+    void removeZero() {
         removeZeroCol();
         removeZeroRow();
     }
+
     void removeNoise(const T tol) {
         this->noalias() = this->unaryExpr(removeNoise_helper(tol));
     }
-    void resize(int i, int j){
-        this->resize(i,j);
+
+    void resize(int i, int j) {
+        this->resize(i, j);
         _row.resize(i);
         _col.resize(j);
     }
-    std::pair<std::array<int,2>,T> GetIndexAndValue(int i,int j) const{
-        return std::pair<std::array<int,2>,T>({_row[i],_col[j]},Base(i,j));
+
+    std::pair<std::array<int, 2>, T> GetIndexAndValue(int i, int j) const {
+        return std::pair<std::array<int, 2>, T>({_row[i], _col[j]}, Base(i, j));
     };
 protected:
     label _row;
@@ -244,7 +247,8 @@ mmpMatrix<T, _Rows, _Cols, _Options>::mmpMatrix(const label &row, const label &c
 
 template<class T, int _Rows, int _Cols, int _Options>
 inline
-mmpMatrix<T, _Rows, _Cols, _Options>::mmpMatrix(mmpMatrix::Base &a, label &row, label &col):Base(std::move(a)), _row(std::move(row)), _col(std::move(col)) {
+mmpMatrix<T, _Rows, _Cols, _Options>::mmpMatrix(mmpMatrix::Base &a, label &row, label &col):Base(std::move(a)), _row(std::move(row)),
+                                                                                            _col(std::move(col)) {
 
 }
 
