@@ -23,6 +23,18 @@ void KnotVector<T>::UniQue(uniContainer &_uniKnots) const {
 }
 
 template<typename T>
+typename KnotVector<T>::knotContainer KnotVector<T>::GetUnique() const {
+    knotContainer result;
+    uniContainer _uniKnots;
+    UniQue(_uniKnots);
+    for (auto const &e : _uniKnots) {
+        result.push_back(e.first);
+    }
+    return result;
+}
+
+
+template<typename T>
 void KnotVector<T>::printUnique() const {
     uniContainer _uniKnots;
     UniQue(_uniKnots);
@@ -203,6 +215,7 @@ KnotVector<T> KnotVector<T>::Difference(const KnotVector &reference) const {
                              reference._multiKnots.end(), std::back_inserter(diff));
     return KnotVector(diff);
 }
+
 
 
 template

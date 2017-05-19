@@ -12,16 +12,17 @@ template<int d, int N, typename T=double>
 class PhyTensorBsplineBasis : public TensorBsplineBasis<d, T> {
 
 public:
-    using Ptr=Eigen::Matrix<T, d, 1>;
-    using PhyPtr=Eigen::Matrix<T, N, 1>;
-    using GeometryVector = std::vector<PhyPtr>;
+    using Pts=Eigen::Matrix<T, d, 1>;
+    using PhyPts=Eigen::Matrix<T, N, 1>;
+    using GeometryVector = std::vector<PhyPts>;
     typedef std::vector<int> DiffPattern;
     using vector=Eigen::Matrix<T, Eigen::Dynamic, 1>;
     typedef typename TensorBsplineBasis<d, T>::BasisFunValDerAll BasisFunValDerAll;
     typedef typename TensorBsplineBasis<d, T>::BasisFunValDerAllList BasisFunValDerAllList;
     typedef typename TensorBsplineBasis<d, T>::BasisFunValDerAllList_ptr BasisFunValDerAllList_ptr;
     using HyperPlane = PhyTensorBsplineBasis<d - 1, N, T>;
-    using HyperPlaneSharedPtr = std::shared_ptr<PhyTensorBsplineBasis<d - 1, N, T>>;
+    using HyperPlaneSharedPts = std::shared_ptr<PhyTensorBsplineBasis<d - 1, N, T>>;
+
     PhyTensorBsplineBasis();
 
     PhyTensorBsplineBasis(const BsplineBasis<T> &, const GeometryVector &);
@@ -33,32 +34,43 @@ public:
 
     PhyTensorBsplineBasis(const std::vector<KnotVector<T>> &, const GeometryVector &);
 
-    PhyPtr AffineMap(const Ptr &, const DiffPattern &i = DiffPattern(d, 0)) const;
+    PhyPts AffineMap(const Pts &, const DiffPattern &i = DiffPattern(d, 0)) const;
 
-    T Jacobian(const Ptr &) const;
+    T Jacobian(const Pts &) const;
 
-    Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> JacobianMatrix(const Ptr &) const;
+    Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> JacobianMatrix(const Pts &) const;
 
-    Ptr Middle() const {
-        Ptr u;
+    Pts Middle() const {
+        Pts u;
         for (int i = 0; i != d; i++)
             u(i) = (this->_basis[i].DomainStart() + this->_basis[i].DomainEnd()) * .5;
         return u;
     }
 
-    PhyPtr PhyMiddle() const {
+    PhyPts PhyMiddle() const {
         return AffineMap(Middle());
     }
 
-    Ptr InversePtr(const PhyPtr &, int = 1000, T = 1e-10) const;
+    bool InversePts(const PhyPts &, Pts &, int = 1000, T = 1e-10) const;
 
     void DegreeElevate(int, int);
 
     void UniformRefine(int, int, int m = 1);
 
-    void PrintCtrPtr() const;
+    void DegreeElevate(int p) {
+        for (int i = 0; i != d; ++i)
+            DegreeElevate(i, p);
+    }
 
-    HyperPlaneSharedPtr MakeHyperPlane(const int &orientation, const int &layer) const;
+    void UniformRefine(int r) {
+        for (int i = 0; i != d; ++i)
+            UniformRefine(i, r);
+    }
+
+
+    void PrintCtrPts() const;
+
+    HyperPlaneSharedPts MakeHyperPlane(const int &orientation, const int &layer) const;
 
     virtual ~PhyTensorBsplineBasis() {
 
@@ -79,9 +91,9 @@ PhyTensorBsplineBasis<d, N, T>::PhyTensorBsplineBasis():TensorBsplineBasis<d, T>
 }
 
 template<int d, int N, typename T>
-typename PhyTensorBsplineBasis<d, N, T>::PhyPtr
-PhyTensorBsplineBasis<d, N, T>::AffineMap(const PhyTensorBsplineBasis<d, N, T>::Ptr &u, const DiffPattern &i) const {
-    PhyTensorBsplineBasis<d, N, T>::PhyPtr result;
+typename PhyTensorBsplineBasis<d, N, T>::PhyPts
+PhyTensorBsplineBasis<d, N, T>::AffineMap(const PhyTensorBsplineBasis<d, N, T>::Pts &u, const DiffPattern &i) const {
+    PhyTensorBsplineBasis<d, N, T>::PhyPts result;
     result.setZero();
     auto p = this->TensorBsplineBasis<d, T>::EvalTensor(u, i);
     for (auto it = p->begin(); it != p->end(); ++it) {
@@ -142,7 +154,7 @@ void PhyTensorBsplineBasis<d, N, T>::DegreeElevate(int orientation, int r) {
             int direction) {
         if (direction == indexes.size()) {
 
-            Accessory::ContPtrList<T, N> ElevateList;
+            Accessory::ContPtsList<T, N> ElevateList;
             for (int i = 0; i != endPerIndex[orientation]; ++i) {
                 MultiIndex[orientation] = i;
                 auto index = this->Index(MultiIndex);
@@ -204,7 +216,7 @@ void PhyTensorBsplineBasis<d, N, T>::UniformRefine(int orientation, int r, int m
     recursive = [this, &X, &orientation, &called, &knot_temp_storage, &tmp1, &temp1, &MultiIndex, &recursive](
             std::vector<int> &indexes, const std::vector<int> &endPerIndex, int direction) {
         if (direction == indexes.size()) {
-            Accessory::ContPtrList<T, N> RefineList;
+            Accessory::ContPtsList<T, N> RefineList;
             for (int i = 0; i != endPerIndex[orientation]; ++i) {
                 MultiIndex[orientation] = i;
                 auto index = this->Index(MultiIndex);
@@ -247,21 +259,20 @@ void PhyTensorBsplineBasis<d, N, T>::UniformRefine(int orientation, int r, int m
 }
 
 template<int d, int N, typename T>
-void PhyTensorBsplineBasis<d, N, T>::PrintCtrPtr() const {
+void PhyTensorBsplineBasis<d, N, T>::PrintCtrPts() const {
     for (int i = 0; i != _geometricInfo.size(); ++i)
         std::cout << _geometricInfo[i].transpose() << std::endl;
 }
 
 template<int d, int N, typename T>
-T PhyTensorBsplineBasis<d, N, T>::Jacobian(const PhyTensorBsplineBasis::Ptr &u) const {
+T PhyTensorBsplineBasis<d, N, T>::Jacobian(const PhyTensorBsplineBasis::Pts &u) const {
     return JacobianMatrix(u).determinant();
 }
 
 template<int d, int N, typename T>
 Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>
-PhyTensorBsplineBasis<d, N, T>::JacobianMatrix(const PhyTensorBsplineBasis::Ptr &u) const {
-    ASSERT(d == N, "Dimension should be the same between parametric space and Physical space.");
-    Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> result(d, d);
+PhyTensorBsplineBasis<d, N, T>::JacobianMatrix(const PhyTensorBsplineBasis::Pts &u) const {
+    Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> result(N, d);
     for (int i = 0; i != d; i++) {
         std::vector<int> differentiation(d, 0);
         differentiation[i] = 1;
@@ -272,10 +283,9 @@ PhyTensorBsplineBasis<d, N, T>::JacobianMatrix(const PhyTensorBsplineBasis::Ptr 
 };
 
 template<int d, int N, typename T>
-typename PhyTensorBsplineBasis<d, N, T>::Ptr
-PhyTensorBsplineBasis<d, N, T>::InversePtr(const PhyTensorBsplineBasis::PhyPtr &phyu, int maxLoop, T error) const {
-    Ptr result(Middle());
-    Ptr suppBegin, suppEnd;
+bool PhyTensorBsplineBasis<d, N, T>::InversePts(const PhyTensorBsplineBasis::PhyPts &phyu, PhyTensorBsplineBasis::Pts &result, int maxLoop, T error) const {
+    result=Middle();
+    Pts suppBegin, suppEnd;
     for (int i = 0; i != d; ++i) {
         suppBegin(i) = this->DomainStart(i);
         suppEnd(i) = this->DomainEnd(i);
@@ -283,16 +293,21 @@ PhyTensorBsplineBasis<d, N, T>::InversePtr(const PhyTensorBsplineBasis::PhyPtr &
     int iter = 0;
     do {
         result = result.cwiseMax(suppBegin).cwiseMin(suppEnd);
-        PhyPtr residual = phyu;
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> residual = phyu;
         residual -= AffineMap(result);
         if (residual.norm() <= error)
-            return result;
+            return true;
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> jacobianMatrix(JacobianMatrix(result));
-        residual = jacobianMatrix.partialPivLu().solve(residual);
+
+        if (jacobianMatrix.cols() == jacobianMatrix.rows()) {
+            residual = jacobianMatrix.partialPivLu().solve(residual);
+        } else {
+            residual = jacobianMatrix.colPivHouseholderQr().solve(
+                    Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>::Identity(N, N)) * residual;
+        }
         result += residual;
     } while (++iter <= maxLoop);
-
-    return PhyTensorBsplineBasis::Ptr();
+    return false;
 }
 
 template<>
@@ -355,19 +370,19 @@ PhyTensorBsplineBasis<2, 2, double>::Eval2DerAllTensor(const PhyTensorBsplineBas
 }
 
 template<int d, int N, typename T>
-typename PhyTensorBsplineBasis<d, N, T>::HyperPlaneSharedPtr
+typename PhyTensorBsplineBasis<d, N, T>::HyperPlaneSharedPts
 PhyTensorBsplineBasis<d, N, T>::MakeHyperPlane(const int &orientation, const int &layer) const {
     ASSERT(orientation < d, "Invalid input vector size.");
     std::vector<KnotVector<T>> hpknotvector;
     for (int i = 0; i != d; ++i) {
-        if(i != orientation) hpknotvector.push_back(this->KnotVectorGetter(i)) ;
+        if (i != orientation) hpknotvector.push_back(this->KnotVectorGetter(i));
     }
-    auto indexList = this->AllActivatedDofsOnBoundary(orientation,layer);
+    auto indexList = this->AllActivatedDofsOnBoundary(orientation, layer);
     GeometryVector tempGeometry;
-    for(const auto &i:*indexList){
+    for (const auto &i:*indexList) {
         tempGeometry.push_back(_geometricInfo[i]);
     }
-    return std::make_shared<HyperPlane>(hpknotvector,tempGeometry);
+    return std::make_shared<HyperPlane>(hpknotvector, tempGeometry);
 }
 
 

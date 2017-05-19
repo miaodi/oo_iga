@@ -43,6 +43,8 @@ public:
 
     void printUnique() const;
 
+    knotContainer GetUnique() const;
+
     void printKnotVector() const;
 
     void UniformRefine(int r = 1, int multi = 1);

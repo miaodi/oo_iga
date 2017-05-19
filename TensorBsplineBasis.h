@@ -12,7 +12,7 @@
 namespace Accessory {
     using namespace Eigen;
     template<typename T, int N>
-    using ContPtrList = std::vector<Matrix<T, N, 1>>;
+    using ContPtsList = std::vector<Matrix<T, N, 1>>;
 
     using DifferentialPattern = std::vector<int>;
     using DifferentialPatternList = std::vector<DifferentialPattern>;
@@ -37,7 +37,7 @@ namespace Accessory {
     }
 
     template<typename T, int N>
-    void degreeElevate(int t, KnotVector<T> &U, ContPtrList<T, N> &P) {
+    void degreeElevate(int t, KnotVector<T> &U, ContPtsList<T, N> &P) {
         ASSERT(t > 0, "Invalid geometrical information input, check size bro.");
         int i, j, k;
         auto dof = U.GetDOF();
@@ -201,7 +201,7 @@ namespace Accessory {
     }
 
     template<typename T, int N>
-    void knotInsertion(T u, int r, KnotVector<T> &U, ContPtrList<T, N> &P) {
+    void knotInsertion(T u, int r, KnotVector<T> &U, ContPtsList<T, N> &P) {
 
         int n = U.GetDOF();
         int p = U.GetDegree();
@@ -221,7 +221,7 @@ namespace Accessory {
         for (i = k + 1; i <= m; i++)
             U(i + r) = cU(i);
 
-        ContPtrList<T, N> R(p + 1);
+        ContPtsList<T, N> R(p + 1);
         for (i = 0; i <= k - p; i++)
             P[i] = cP[i];
         for (i = k - s; i < n; i++)
@@ -245,7 +245,7 @@ namespace Accessory {
     }
 
     template<typename T, int N>
-    void refineKnotVectorCurve(const KnotVector<T> &X, KnotVector<T> &U, ContPtrList<T, N> &P) {
+    void refineKnotVectorCurve(const KnotVector<T> &X, KnotVector<T> &U, ContPtsList<T, N> &P) {
 
         int n = U.GetDOF() - 1;
         int p = U.GetDegree();

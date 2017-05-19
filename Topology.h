@@ -19,7 +19,7 @@ template<typename T>
 class Element {
 public:
     using DomainShared_ptr = typename std::shared_ptr<PhyTensorBsplineBasis<2, 2, T>>;
-    using EdgeSharedPtr = typename std::shared_ptr<PhyTensorBsplineBasis<1, 2, T>>;
+    using EdgeSharedPts = typename std::shared_ptr<PhyTensorBsplineBasis<1, 2, T>>;
     using Coordinate = Eigen::Matrix<T, 2, 1>;
     using LoadFunctor = std::function<std::vector<T>(const Coordinate &)>;
     using CoordinatePairList = typename std::vector<std::pair<Coordinate, Coordinate>>;
@@ -32,6 +32,10 @@ public:
 
     bool BeCalled() const {
         return _called;
+    }
+
+    DomainShared_ptr GetDomain() const {
+        return _domain;
     }
 
     void Called() { _called = true; }
@@ -68,9 +72,10 @@ public:
     typedef typename Element<T>::DomainShared_ptr DomainShared_ptr;
     typedef typename Element<T>::Coordinate Coordinate;
     typedef typename Element<T>::CoordinatePairList CoordinatePairList;
-    using PhyPtr = typename PhyTensorBsplineBasis<2, 2, T>::PhyPtr;
+    using PhyPts = typename PhyTensorBsplineBasis<2, 2, T>::PhyPts;
     using LoadFunctor = typename Element<T>::LoadFunctor;
-    using EdgeSharedPtr = typename Element<T>::EdgeSharedPtr;
+    using EdgeSharedPts = typename Element<T>::EdgeSharedPts;
+
     Edge(const Orientation &orient = west)
             : Element<T>(), _position(orient), _matched(false), _pair(nullptr) {};
 
@@ -260,35 +265,65 @@ public:
     }
 
     void accept(Visitor<T> &a, const LoadFunctor &functor) {
-        a.Initialize(this);
         if (this->_matched == false) {
+            a.Initialize(this);
             a.Assemble(this, this->_domain, functor);
         }
     };
 
     void accept(Visitor<T> &a) {
-        a.Initialize(this);
         if (this->_matched == true) {
-
+            a.Initialize(this, &*_pair);
+            a.Assemble();
         }
     };
 
-    EdgeSharedPtr MakeEdge() const{
-        switch(_position){
-            case west:{
-                return this->_domain->MakeHyperPlane(0,0);
+    int GetDof() const {
+        return MakeEdge()->GetDof();
+    }
+
+    EdgeSharedPts MakeEdge() const {
+        switch (_position) {
+            case west: {
+                return this->_domain->MakeHyperPlane(0, 0);
             }
-            case east:{
-                return this->_domain->MakeHyperPlane(0,this->_domain->GetDof(0)-1);
+            case east: {
+                return this->_domain->MakeHyperPlane(0, this->_domain->GetDof(0) - 1);
             }
-            case south:{
-                return this->_domain->MakeHyperPlane(1,0);
+            case south: {
+                return this->_domain->MakeHyperPlane(1, 0);
             }
-            case north:{
-                return this->_domain->MakeHyperPlane(1,this->_domain->GetDof(1)-1);
+            case north: {
+                return this->_domain->MakeHyperPlane(1, this->_domain->GetDof(1) - 1);
             }
         }
     }
+
+    bool InversePts(const PhyPts &point, T &knotCoordinate) const {
+        Coordinate pt = this->_domain->InversePts(point);
+        if (IsOn(pt)) {
+            switch (_position) {
+                case west: {
+                    knotCoordinate = pt(1);
+                    return true;
+                }
+                case east: {
+                    knotCoordinate = pt(1);
+                    return true;
+                }
+                case north: {
+                    knotCoordinate = pt(0);
+                    return true;
+                }
+                case south: {
+                    knotCoordinate = pt(0);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
 private:
     Orientation _position;
     bool _matched;
@@ -422,9 +457,11 @@ public:
         this->_globalStiffMatrix.reserve(_dof * _dof * _quadrature.NumOfQuadrature() / 3);
     }
 
+    virtual void Initialize(Edge<T> *, Edge<T> *) =0;
+
     virtual void Assemble(Element<T> *, DomainShared_ptr const, const LoadFunctor &)=0;
 
-    virtual void Assemble(Element<T> *, DomainShared_ptr const, Element<T> *, DomainShared_ptr const)=0;
+    virtual void Assemble()=0;
 
     std::unique_ptr<Eigen::SparseMatrix<T>> MakeSparseMatrix() const {
         std::unique_ptr<Eigen::SparseMatrix<T>> result(new Eigen::SparseMatrix<T>);
@@ -466,6 +503,8 @@ public:
         this->_globalLoadVector.reserve(this->_dof * this->_quadrature.NumOfQuadrature());
     }
 
+    void Initialize(Edge<T> *, Edge<T> *) {};
+
     void Assemble(Element<T> *g, DomainShared_ptr const basis, const LoadFunctor &loadFun) {
         CoordinatePairList elements;
         g->KnotSpansGetter(elements);
@@ -479,7 +518,7 @@ public:
         this->_globalLoadVector.shrink_to_fit();
     }
 
-    void Assemble(Element<T> *, DomainShared_ptr const, Element<T> *, DomainShared_ptr const) {};
+    void Assemble() {};
 
     std::unique_ptr<Eigen::SparseMatrix<T>> MakeSparseVector() const {
         std::unique_ptr<Eigen::SparseMatrix<T>> result(new Eigen::SparseMatrix<T>);
@@ -503,16 +542,54 @@ protected:
 template<typename T>
 class PoissonInterfaceVisitor : public Visitor<T> {
     using MultiplierShared_ptr = typename std::shared_ptr<PhyTensorBsplineBasis<1, 2, T>>;
+    using Quadlist = typename Visitor<T>::Quadlist;
+    using DomainShared_ptr = typename Element<T>::DomainShared_ptr;
+    using LoadFunctor = typename Visitor<T>::LoadFunctor;
+    using IndexedValue = typename Visitor<T>::IndexedValue;
     using IndexedValueList = typename Visitor<T>::IndexedValueList;
-    void Initialize(Element<T> *g, Element<T> *l) {
-        if (g->GetDof() >= l->GetDof()) { _slaveEdge = g, _masterEdge = l; } else { _masterEdge = g, _slaveEdge = l; };
+    using CoordinatePairList = typename Visitor<T>::CoordinatePairList;
+    using Pts = typename PhyTensorBsplineBasis<1, 2, T>::Pts;
 
+
+    void Initialize(Edge<T> *g, Edge<T> *l) {
+        if (g->GetDof() >= l->GetDof()) { _slaveEdge = g, _masterEdge = l; } else { _masterEdge = g, _slaveEdge = l; };
+        _multiplier = _slaveEdge->MakeEdge();
+        _mdof = _masterEdge->GetDof();
+        _sdof = _slaveEdge->GetDof();
+        auto mdeg_x = _masterEdge->GetDegree(0);
+        auto mdeg_y = _masterEdge->GetDegree(1);
+        auto sdeg_x = _slaveEdge->GetDegree(0);
+        auto sdeg_y = _slaveEdge->GetDegree(1);
+        std::vector<int> degrees{mdeg_x, mdeg_y, sdeg_x, sdeg_y};
+        this->_quadrature.SetUpQuadrature(*std::max_element(degrees.begin(), degrees.end()) + 1);
+        this->_masterMatrix.reserve(_mdof * _sdof * this->_quadrature.NumOfQuadrature() / 3);
+        this->_slaveMatrix.reserve(_sdof * _sdof * this->_quadrature.NumOfQuadrature() / 3);
     }
 
+    void Assemble() {
+        auto slaveDomain = _slaveEdge->GetDomain();
+        auto masterDomain = _masterEdge->GetDomain();
+        auto multiplierKnots(_multiplier->KnotVectorGetter(0));
+        auto masterKnots(_masterEdge->MakeEdge()->KnotVectorGetter(0));
+        auto masterUniKnots = masterKnots.GetUnique();
+        Pts u, v;
+        for (const auto &i:masterUniKnots) {
+            u(0, 0) = i;
+            _multiplier->InversePts(_masterEdge->MakeEdge()->AffineMap(u), v);
+            multiplierKnots.Insert(v(0,0));
+        }
+        multiplierKnots.printKnotVector();
+    };
+
+    void Assemble(Element<T> *, DomainShared_ptr const, const LoadFunctor &) {};
 protected:
+    MultiplierShared_ptr _multiplier;
     IndexedValueList _slaveMatrix;
-    Element<T> *_slaveEdge;
-    Element<T> *_masterEdge;
+    IndexedValueList _masterMatrix;
+    Edge<T> *_slaveEdge;
+    Edge<T> *_masterEdge;
+    int _sdof;
+    int _mdof;
 };
 
 
