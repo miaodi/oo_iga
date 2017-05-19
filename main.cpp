@@ -38,8 +38,13 @@ int main() {
     domain1->UniformRefine(1,2);
     shared_ptr<Cell<double>> cell1 = make_shared<Cell<double>>(domain1);
 
-
-
+    auto west = domain1->MakeHyperPlane(0,domain1->GetDof(0)-1);
+    double hh;
+    MatrixXd xi(1,1);
+    cin>>hh;
+    xi(0,0)=hh;
+    auto edge = cell1->_edges[0]->MakeEdge();
+    cout<<edge->AffineMap(xi)<<endl;
 /*
     shared_ptr<Cell<double>> cell2 = make_shared<Cell<double>>(domain2);
     auto indices = domain1->AllActivatedDofsOnBoundary(1,0);

@@ -19,6 +19,7 @@ template<typename T>
 class Element {
 public:
     using DomainShared_ptr = typename std::shared_ptr<PhyTensorBsplineBasis<2, 2, T>>;
+    using EdgeSharedPtr = typename std::shared_ptr<PhyTensorBsplineBasis<1, 2, T>>;
     using Coordinate = Eigen::Matrix<T, 2, 1>;
     using LoadFunctor = std::function<std::vector<T>(const Coordinate &)>;
     using CoordinatePairList = typename std::vector<std::pair<Coordinate, Coordinate>>;
@@ -69,7 +70,7 @@ public:
     typedef typename Element<T>::CoordinatePairList CoordinatePairList;
     using PhyPtr = typename PhyTensorBsplineBasis<2, 2, T>::PhyPtr;
     using LoadFunctor = typename Element<T>::LoadFunctor;
-
+    using EdgeSharedPtr = typename Element<T>::EdgeSharedPtr;
     Edge(const Orientation &orient = west)
             : Element<T>(), _position(orient), _matched(false), _pair(nullptr) {};
 
@@ -265,14 +266,29 @@ public:
         }
     };
 
-
-
     void accept(Visitor<T> &a) {
         a.Initialize(this);
         if (this->_matched == true) {
 
         }
     };
+
+    EdgeSharedPtr MakeEdge() const{
+        switch(_position){
+            case west:{
+                return this->_domain->MakeHyperPlane(0,0);
+            }
+            case east:{
+                return this->_domain->MakeHyperPlane(0,this->_domain->GetDof(0)-1);
+            }
+            case south:{
+                return this->_domain->MakeHyperPlane(1,0);
+            }
+            case north:{
+                return this->_domain->MakeHyperPlane(1,this->_domain->GetDof(1)-1);
+            }
+        }
+    }
 private:
     Orientation _position;
     bool _matched;

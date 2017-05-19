@@ -21,7 +21,7 @@ public:
     typedef typename TensorBsplineBasis<d, T>::BasisFunValDerAllList BasisFunValDerAllList;
     typedef typename TensorBsplineBasis<d, T>::BasisFunValDerAllList_ptr BasisFunValDerAllList_ptr;
     using HyperPlane = PhyTensorBsplineBasis<d - 1, N, T>;
-
+    using HyperPlaneSharedPtr = std::shared_ptr<PhyTensorBsplineBasis<d - 1, N, T>>;
     PhyTensorBsplineBasis();
 
     PhyTensorBsplineBasis(const BsplineBasis<T> &, const GeometryVector &);
@@ -58,7 +58,7 @@ public:
 
     void PrintCtrPtr() const;
 
-    HyperPlane MakeHyperPlane(const int &orientation, const int &layer) const;
+    HyperPlaneSharedPtr MakeHyperPlane(const int &orientation, const int &layer) const;
 
     virtual ~PhyTensorBsplineBasis() {
 
@@ -355,14 +355,19 @@ PhyTensorBsplineBasis<2, 2, double>::Eval2DerAllTensor(const PhyTensorBsplineBas
 }
 
 template<int d, int N, typename T>
-typename PhyTensorBsplineBasis<d, N, T>::HyperPlane
+typename PhyTensorBsplineBasis<d, N, T>::HyperPlaneSharedPtr
 PhyTensorBsplineBasis<d, N, T>::MakeHyperPlane(const int &orientation, const int &layer) const {
     ASSERT(orientation < d, "Invalid input vector size.");
     std::vector<KnotVector<T>> hpknotvector;
     for (int i = 0; i != d; ++i) {
-        i = orientation ?:hpknotvector.push_back(this->KnotVectorGetter(i)) ;
+        if(i != orientation) hpknotvector.push_back(this->KnotVectorGetter(i)) ;
     }
-    return PhyTensorBsplineBasis<d, N, T>::HyperPlane();
+    auto indexList = this->AllActivatedDofsOnBoundary(orientation,layer);
+    GeometryVector tempGeometry;
+    for(const auto &i:*indexList){
+        tempGeometry.push_back(_geometricInfo[i]);
+    }
+    return std::make_shared<HyperPlane>(hpknotvector,tempGeometry);
 }
 
 
