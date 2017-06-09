@@ -234,7 +234,7 @@ namespace Accessory {
             L = k - p + j;
             for (i = 0; i <= p - j - s; i++) {
                 alpha = (u - cU(L + i)) / (cU(i + k + 1) - cU(L + i));
-                R[i] = alpha * R[i + 1] + (1.0 - alpha) * R(i);
+                R[i] = alpha * R[i + 1] + (1.0 - alpha) * R[i];
             }
             P[L] = R[0];
             P[k + r - j - s] = R[p - j - s];
@@ -291,6 +291,8 @@ namespace Accessory {
             --k;
         }
     }
+
+
 
     template<int N>
     DifferentialPatternList_ptr PartialDerPattern(int r) {

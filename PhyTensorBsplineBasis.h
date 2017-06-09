@@ -57,6 +57,8 @@ public:
 
     void UniformRefine(int, int, int m = 1);
 
+    void KnotInsertion(int , T, int =1);
+
     void DegreeElevate(int p) {
         for (int i = 0; i != d; ++i)
             DegreeElevate(i, p);
@@ -259,6 +261,68 @@ void PhyTensorBsplineBasis<d, N, T>::UniformRefine(int orientation, int r, int m
 }
 
 template<int d, int N, typename T>
+void PhyTensorBsplineBasis<d, N, T>::KnotInsertion(int orientation, T knot, int m) {
+    std::vector<int> indexes(d, 0);
+    std::vector<int> endPerIndex;
+    for (int direction = 0; direction != d; ++direction) {
+        endPerIndex.push_back(this->GetDof(direction));
+    }
+    ASSERT(orientation < d, "Invalid insertion orientation");
+    GeometryVector temp1;
+    std::vector<int> MultiIndex(d);
+    std::function<void(std::vector<int> &, const std::vector<int> &, int)> recursive;
+    TensorBsplineBasis<d, T> tmp1;
+    KnotVector<T> knot_temp_storage;
+    bool called = false;
+    recursive = [this, &orientation, &called, &knot_temp_storage, &tmp1, knot, m, &temp1, &MultiIndex, &recursive](
+            std::vector<int> &indexes,
+            const std::vector<int> &endPerIndex,
+            int direction) {
+        if (direction == indexes.size()) {
+
+            Accessory::ContPtsList<T, N> ElevateList;
+            for (int i = 0; i != endPerIndex[orientation]; ++i) {
+                MultiIndex[orientation] = i;
+                auto index = this->Index(MultiIndex);
+                ElevateList.push_back(_geometricInfo[index]);
+            }
+            KnotVector<T> tmp(this->_basis[orientation].Knots());
+            Accessory::knotInsertion<T, N>(knot, m, tmp, ElevateList);
+            if (knot_temp_storage.GetSize() == 0) {
+                for (int i = 0; i != d; ++i) {
+                    if (i == orientation) {
+                        tmp1.ChangeKnots(tmp, i);
+                    } else {
+                        tmp1.ChangeKnots(this->_basis[i].Knots(), i);
+                    }
+                }
+                temp1.resize(tmp1.GetDof());
+                knot_temp_storage = tmp;
+            }
+            for (int i = 0; i != ElevateList.size(); ++i) {
+                MultiIndex[orientation] = i;
+                auto index = tmp1.Index(MultiIndex);
+                temp1[index] = ElevateList[i];
+            }
+        } else {
+            for (indexes[direction] = 0; indexes[direction] != endPerIndex[direction]; indexes[direction]++) {
+                MultiIndex[direction] = indexes[direction];
+                if (direction == orientation && called == false) {
+                    called = true;
+                } else if (direction == orientation && called == true) {
+                    break;
+                }
+                called = false;
+                recursive(indexes, endPerIndex, direction + 1);
+            }
+        }
+    };
+    recursive(indexes, endPerIndex, 0);
+    TensorBsplineBasis<d, T>::_basis[orientation] = knot_temp_storage;
+    _geometricInfo = temp1;
+}
+
+template<int d, int N, typename T>
 void PhyTensorBsplineBasis<d, N, T>::PrintCtrPts() const {
     for (int i = 0; i != _geometricInfo.size(); ++i)
         std::cout << _geometricInfo[i].transpose() << std::endl;
@@ -384,6 +448,8 @@ PhyTensorBsplineBasis<d, N, T>::MakeHyperPlane(const int &orientation, const int
     }
     return std::make_shared<HyperPlane>(hpknotvector, tempGeometry);
 }
+
+
 
 
 #endif //OO_IGA_PHYTENSORBSPLINEBASIS_H

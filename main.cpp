@@ -36,13 +36,16 @@ int main() {
     domain2->DegreeElevate(2);
     domain1->UniformRefine(1);
     domain2->UniformRefine(2);
+    domain1->KnotInsertion(1,.6,1);
+    Vector2d u(.2, .6);
+    domain1->PrintKnots(1);
+    cout<<domain1->AffineMap(u);
     shared_ptr<Cell<double>> cell1 = make_shared<Cell<double>>(domain1);
     shared_ptr<Cell<double>> cell2 = make_shared<Cell<double>>(domain2);
     cell1->Match(cell2);
     cell1->PrintEdgeInfo();
     cell2->PrintEdgeInfo();
-    PoissonInterfaceVisitor<double> interfaceVisitor;
-    cell1->_edges[1]->accept(interfaceVisitor);
+
 /*
     shared_ptr<Cell<double>> cell2 = make_shared<Cell<double>>(domain2);
     auto indices = domain1->AllActivatedDofsOnBoundary(1,0);
