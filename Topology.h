@@ -264,6 +264,7 @@ public:
 
 
     void accept(Visitor<T> &a) {
+        a.visit(this);
     };
 
     int GetDof() const {
@@ -374,7 +375,9 @@ public:
     }
 
 
-    void accept(Visitor<T> &a) {};
+    void accept(Visitor<T> &a) {
+        a.visit(this);
+    };
 
     void KnotSpansGetter(CoordinatePairList &knotspanslist) {
         auto knotspan_x = this->_domain->KnotVectorGetter(0).KnotSpans();

@@ -21,9 +21,9 @@ CMakeFiles/oo_iga.dir/TensorBsplineBasis.cpp.o: ../TensorBsplineBasis.cpp
 CMakeFiles/oo_iga.dir/TensorBsplineBasis.cpp.o: ../TensorBsplineBasis.h
 
 CMakeFiles/oo_iga.dir/main.cpp.o: ../BsplineBasis.h
+CMakeFiles/oo_iga.dir/main.cpp.o: ../DofMapper.h
 CMakeFiles/oo_iga.dir/main.cpp.o: ../KnotVector.h
 CMakeFiles/oo_iga.dir/main.cpp.o: ../MmpMatrix.h
-CMakeFiles/oo_iga.dir/main.cpp.o: ../MultiArray.h
 CMakeFiles/oo_iga.dir/main.cpp.o: ../PhyTensorBsplineBasis.h
 CMakeFiles/oo_iga.dir/main.cpp.o: ../QuadratureRule.h
 CMakeFiles/oo_iga.dir/main.cpp.o: ../TensorBsplineBasis.h

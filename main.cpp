@@ -1,10 +1,9 @@
 #include <iostream>
 #include<eigen3/Eigen/Dense>
 #include "PhyTensorBsplineBasis.h"
-#include "MultiArray.h"
-#include "MmpMatrix.h"
 #include "QuadratureRule.h"
 #include "Topology.h"
+#include "DofMapper.h"
 
 using namespace Eigen;
 using namespace std;
@@ -45,7 +44,12 @@ int main() {
     cell1->Match(cell2);
     cell1->PrintEdgeInfo();
     cell2->PrintEdgeInfo();
-
+    cout<<cell1->GetDof()+cell2->GetDof()<<endl;
+    DofMapper<double> dofMap;
+    MapperInitiator<double> s(dofMap);
+    cell1->accept(s);
+    cell2->accept(s);
+    cout<<dofMap.Dof();
 /*
     shared_ptr<Cell<double>> cell2 = make_shared<Cell<double>>(domain2);
     auto indices = domain1->AllActivatedDofsOnBoundary(1,0);
