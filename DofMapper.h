@@ -7,6 +7,7 @@
 
 #include "Visitor.h"
 #include <set>
+
 template<typename T>
 class Element;
 
@@ -64,14 +65,15 @@ public:
         return res;
     }
 
-    int Dof() const{
+    int Dof() const {
         int res = 0;
         for (const auto &i:_domains) {
             res += _patchDof.at(i);
         }
         return res;
     }
-    int FreeDof() const{
+
+    int FreeDof() const {
         int res = 0;
         for (const auto &i:_domains) {
             res += _patchDof.at(i);
@@ -79,6 +81,25 @@ public:
         }
         return res;
     }
+
+    int Index(DomainShared_ptr domain, int i) const {
+        return StartingIndex(domain) + i;
+    }
+
+    int FreeIndexIndomain(DomainShared_ptr domain, int i) const {
+        auto domainIndex = DomainIndex(domain);
+        ASSERT(_freezeDof.at(_domains[domainIndex]).find(i) == _freezeDof.at(_domains[domainIndex]).end(),
+               "This index is freezed.");
+        int freeIndexIndomain = std::count_if(_freezeDof.at(_domains[domainIndex]).begin(),
+                                              _freezeDof.at(_domains[domainIndex]).end(),
+                                              [&i](int num) { return num < i; });
+        return freeIndexIndomain;
+    }
+
+    int FreeIndex(DomainShared_ptr domain, int i) const{
+        return FreeStartingIndex(domain)+FreeIndexIndomain(domain,i);
+    }
+
 private:
     std::vector<DomainShared_ptr> _domains;
     std::map<DomainShared_ptr, int> _patchDof;
