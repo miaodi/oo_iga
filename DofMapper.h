@@ -23,6 +23,7 @@ public:
 public:
     DofMapper() {};
 
+    //insert a domain pointer into the container.
     void DomainLabel(DomainShared_ptr domain) {
         if (std::find(_domains.begin(), _domains.end(), domain) == _domains.end()) {
             _domains.push_back(domain);

@@ -44,12 +44,11 @@ int main() {
     cell1->Match(cell2);
     cell1->PrintEdgeInfo();
     cell2->PrintEdgeInfo();
-    cout<<cell1->GetDof()+cell2->GetDof()<<endl;
-    DofMapper<double> dofMap;
-    MapperInitiator<double> s(dofMap);
-    cell1->accept(s);
-    cell2->accept(s);
-    cout<<dofMap.Dof();
+    DofMapper<double> s;
+    PoissonMapperInitiator<double> visit(s);
+    cell1->accept(visit);
+    cell2->accept(visit);
+    cout<<s.FreeDof();
 /*
     shared_ptr<Cell<double>> cell2 = make_shared<Cell<double>>(domain2);
     auto indices = domain1->AllActivatedDofsOnBoundary(1,0);

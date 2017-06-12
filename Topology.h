@@ -262,7 +262,6 @@ public:
         }
     }
 
-
     void accept(Visitor<T> &a) {
         a.visit(this);
     };
@@ -311,6 +310,44 @@ public:
             }
         }
         return false;
+    }
+
+    //Given the layer number, it returns a pointer to a vector that contains all control points index of that layer.
+    std::unique_ptr<std::vector<int>> AllActivatedDofsOfLayers(const int &layerNum) {
+        auto dof = GetDof();
+        ASSERT(layerNum < dof, "Invalid layerNum.");
+        std::unique_ptr<std::vector<int>> res(new std::vector<int>);
+        switch (_position) {
+            case west: {
+                for (int i = 0; i <= layerNum; ++i) {
+                    auto tmp = this->_domain->AllActivatedDofsOnBoundary(0, i);
+                    res->insert(res->end(), tmp->begin(), tmp->end());
+                }
+                break;
+            }
+            case east: {
+                for (int i = 0; i <= layerNum; ++i) {
+                    auto tmp = this->_domain->AllActivatedDofsOnBoundary(0, dof - 1 - i);
+                    res->insert(res->end(), tmp->begin(), tmp->end());
+                }
+                break;
+            }
+            case north: {
+                for (int i = 0; i <= layerNum; ++i) {
+                    auto tmp = this->_domain->AllActivatedDofsOnBoundary(1, dof - 1 - i);
+                    res->insert(res->end(), tmp->begin(), tmp->end());
+                }
+                break;
+            }
+            case south: {
+                for (int i = 0; i <= layerNum; ++i) {
+                    auto tmp = this->_domain->AllActivatedDofsOnBoundary(1, i);
+                    res->insert(res->end(), tmp->begin(), tmp->end());
+                }
+                break;
+            }
+        }
+        return res;
     }
 
 private:
@@ -377,6 +414,9 @@ public:
 
     void accept(Visitor<T> &a) {
         a.visit(this);
+        for (int i = 0; i < 4; i++) {
+            _edges[i]->accept(a);
+        }
     };
 
     void KnotSpansGetter(CoordinatePairList &knotspanslist) {

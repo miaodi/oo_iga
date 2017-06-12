@@ -383,6 +383,7 @@ public:
         return index;
     }
 
+
     std::unique_ptr<std::vector<int>> AllActivatedDofsOnBoundary(const int &, const int &) const;
 
     matrix Support(const int &i) const {
@@ -636,6 +637,8 @@ TensorBsplineBasis<d, T>::EvalDerAllTensor(const TensorBsplineBasis::vector &u,
     return Result;
 }
 
+
+//orientation is the normal direction,
 template<int d, typename T>
 std::unique_ptr<std::vector<int>>
 TensorBsplineBasis<d, T>::AllActivatedDofsOnBoundary(const int &orientation, const int &layer) const {

@@ -40,13 +40,18 @@ public:
 
 };
 template<typename T>
-class MapperInitiator:public Visitor<T>{
+class PoissonMapperInitiator:public Visitor<T>{
 public:
-    MapperInitiator(DofMapper<T> & dofMap):_dofMap(dofMap){
+    PoissonMapperInitiator(DofMapper<T> & dofMap):_dofMap(dofMap){
 
     }
     void visit(Edge<T> *g){
-
+        if(!g->GetMatchInfo()){
+            auto tmp = g->AllActivatedDofsOfLayers(0);
+            for(const auto &i:*tmp){
+                _dofMap.FreezedDofInserter(g->GetDomain(),i);
+            }
+        }
     }
     void visit(Cell<T> *g){
         _dofMap.DomainLabel(g->GetDomain());
