@@ -34,8 +34,8 @@ int main() {
     auto domain2 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(b, b, points2);
     domain1->DegreeElevate(2);
     domain2->DegreeElevate(2);
-    domain1->UniformRefine(4);
-    domain2->UniformRefine(4);
+    domain1->UniformRefine(1);
+    domain2->UniformRefine(1);
     domain1->KnotInsertion(1,.6,1);
     Vector2d u(.2, .6);
     domain1->PrintKnots(1);
@@ -49,13 +49,18 @@ int main() {
     PoissonMapperInitiator<double> visit(s);
     cell1->accept(visit);
     cell2->accept(visit);
-    cout<<s.FreeDof()<<endl;
-    PoissonVisitor<double> poisson([](Coordinate u)->vector<double>{
+    cout<<s.Dof()<<endl;
+    PoissonVisitor<double> poisson(s, [](Coordinate u)->vector<double>{
         return vector<double>({0});
     });
     cell1->accept(poisson);
     cell2->accept(poisson);
-    cout<<s.FreeIndex(domain2,3)<<" "<<s.Index(domain2,3);
+    PoissonBoundaryVisitor<double> boundary(s, [](Coordinate u)->vector<double>{
+        return vector<double>{sin(u(0))*sin(u(1))};
+    });
+    cell1->accept(boundary);
+    cell2->accept(boundary);
+    poisson.StiffnessMatrix();
 /*
     shared_ptr<Cell<double>> cell2 = make_shared<Cell<double>>(domain2);
     auto indices = domain1->AllActivatedDofsOnBoundary(1,0);

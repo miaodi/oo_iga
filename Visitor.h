@@ -38,6 +38,20 @@ public:
 
     virtual void visit(Cell<T> *g) = 0;
 
+protected:
+    void SparseMatrixMaker(const IndexedValueList &_list, Eigen::SparseMatrix<T> &matrix) {
+        auto row = std::max_element(_list.begin(), _list.end(),
+                                    [](const IndexedValue &a, const IndexedValue &b) -> bool {
+                                        return a.row() < b.row();
+                                    });
+        auto col = std::max_element(_list.begin(), _list.end(),
+                                    [](const IndexedValue &a, const IndexedValue &b) -> bool {
+                                        return a.col() < b.col();
+                                    });
+
+        matrix.resize(row->row()+1,col->col()+1);
+        matrix.setFromTriplets(_list.begin(), _list.end());
+    }
 
 };
 
@@ -77,7 +91,7 @@ public:
     using CoordinatePairList = typename Visitor<T>::CoordinatePairList;
     using Quadlist = typename Visitor<T>::Quadlist;
 public:
-    PoissonVisitor(const LoadFunctor & load):_bodyForceFunctor(load) {
+    PoissonVisitor(const DofMapper<T> &dof, const LoadFunctor &load) : _bodyForceFunctor(load), _dofmap(dof) {
 
     }
 
@@ -101,17 +115,18 @@ public:
         g->KnotSpansGetter(elements);
         Quadlist quadratures;
         IndexedValueList tempList;
-        auto domain =  g->GetDomain();
+        auto domain = g->GetDomain();
         for (const auto &i : elements) {
             this->_quadrature.MapToQuadrature(i, quadratures);
             LocalAssemble(g, domain, quadratures, _bodyForceFunctor);
         }
-        this->_poissonStiffness[domain].shrink_to_fit();
-        this->_poissonBodyForce[domain].shrink_to_fit();
+        this->_poissonStiffness.shrink_to_fit();
+        this->_poissonBodyForce.shrink_to_fit();
     }
 
     void
     LocalAssemble(Cell<T> *g, DomainShared_ptr const basis, const Quadlist &quadratures, const LoadFunctor &load) {
+        auto initialIndex = _dofmap.StartingIndex(basis);
         auto index = basis->ActiveIndex(quadratures[0].first);
         Eigen::Matrix<T, Eigen::Dynamic, 1> weights(quadratures.size() * 2);
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> basisFuns(quadratures.size() * 2, index.size());
@@ -140,18 +155,121 @@ public:
         for (int i = 0; i != tempStiffMatrix.rows(); ++i) {
             for (int j = 0; j != tempStiffMatrix.cols(); ++j) {
                 if (i >= j) {
-                    this->_poissonStiffness[basis].push_back(IndexedValue(index[i], index[j], tempStiffMatrix(i, j)));
+                    this->_poissonStiffness.push_back(
+                            IndexedValue(index[i] + initialIndex, index[j] + initialIndex, tempStiffMatrix(i, j)));
                 }
             }
-            this->_poissonBodyForce[basis].push_back(IndexedValue(index[i], 0, tempLoadVector(i)));
+            this->_poissonBodyForce.push_back(IndexedValue(index[i] + initialIndex, 0, tempLoadVector(i)));
         }
     }
 
+    void StiffnessMatrix() {
+        Eigen::SparseMatrix<T> a;
+        this->SparseMatrixMaker(_poissonStiffness, a);
+        std::cout<<Eigen::MatrixXd(a);
+    }
 private:
-    std::map<DomainShared_ptr, IndexedValueList> _poissonStiffness;
-    std::map<DomainShared_ptr, IndexedValueList> _poissonBodyForce;
+    IndexedValueList _poissonStiffness;
+    IndexedValueList _poissonBodyForce;
+    const DofMapper<T> &_dofmap;
     QuadratureRule<T> _quadrature;
     LoadFunctor _bodyForceFunctor;
+};
+
+
+template<typename T>
+class PoissonBoundaryVisitor : public Visitor<T> {
+public:
+    using DomainShared_ptr = typename Visitor<T>::DomainShared_ptr;
+    using IndexedValue = typename Visitor<T>::IndexedValue;
+    using IndexedValueList = typename Visitor<T>::IndexedValueList;
+    using LoadFunctor = typename Visitor<T>::LoadFunctor;
+    using CoordinatePairList = typename Visitor<T>::CoordinatePairList;
+    using Quadlist = typename Visitor<T>::Quadlist;
+public:
+    PoissonBoundaryVisitor(const DofMapper<T> &dof, const LoadFunctor &load) : _deformationFunctor(load), _dofmap(dof) {
+
+    }
+
+    void visit(Cell<T> *g) {
+    }
+
+    void visit(Edge<T> *g) {
+        if (!g->GetMatchInfo()) {
+            Initialize(g);
+            Assemble(g);
+        }
+    }
+
+    void Initialize(Element<T> *g) {
+        auto deg_x = g->GetDegree(0);
+        auto deg_y = g->GetDegree(1);
+        this->_quadrature.SetUpQuadrature(deg_x >= deg_y ? (deg_x + 1) : (deg_y + 1));
+    }
+
+    void Assemble(Element<T> *g) {
+        CoordinatePairList elements;
+        g->KnotSpansGetter(elements);
+        Quadlist quadratures;
+        IndexedValueList tempList;
+        auto domain = g->GetDomain();
+        for (const auto &i : elements) {
+            this->_quadrature.MapToQuadrature(i, quadratures);
+            LocalAssemble(g, domain, quadratures, _deformationFunctor);
+        }
+        this->_poissonMass.shrink_to_fit();
+        this->_poissonBoundary.shrink_to_fit();
+    }
+
+    void
+    LocalAssemble(Element<T> *g, DomainShared_ptr const basis, const Quadlist &quadratures, const LoadFunctor &load) {
+        auto initialIndex = _dofmap.StartingIndex(basis);
+        auto index = basis->ActiveIndex(quadratures[0].first);
+        Eigen::Matrix<T, Eigen::Dynamic, 1> weights(quadratures.size());
+        Eigen::Matrix<T, Eigen::Dynamic, 1> boundaryInfo(quadratures.size());
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> basisFuns(quadratures.size(), index.size());
+        int it = 0;
+        for (const auto &i : quadratures) {
+            auto evals = basis->EvalDerAllTensor(i.first);
+            weights(it) = i.second;
+            boundaryInfo(it) = _deformationFunctor(basis->AffineMap(i.first))[0];
+            int itit = 0;
+            for (const auto &j : *evals) {
+                basisFuns(it, itit) = j.second[0];
+                itit++;
+            }
+            it++;
+        }
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tempStiffMatrix;
+        tempStiffMatrix =
+                basisFuns.transpose() * Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(weights.asDiagonal()) *
+                basisFuns;
+        Eigen::Matrix<T, Eigen::Dynamic, 1> tempLoadVector(
+                basisFuns.transpose() * Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(weights.asDiagonal()) *
+                boundaryInfo);
+        for (int i = 0; i != tempStiffMatrix.rows(); ++i) {
+            for (int j = 0; j != tempStiffMatrix.cols(); ++j) {
+                if (i >= j) {
+                    this->_poissonMass.push_back(
+                            IndexedValue(index[i] + initialIndex, index[j] + initialIndex, tempStiffMatrix(i, j)));
+                }
+            }
+            this->_poissonBoundary.push_back(IndexedValue(index[i] + initialIndex, 0, tempLoadVector(i)));
+        }
+    }
+
+    void Boundary() {
+        Eigen::SparseMatrix<T> a;
+        this->SparseMatrixMaker(_poissonMass, a);
+
+    }
+
+private:
+    IndexedValueList _poissonMass;
+    IndexedValueList _poissonBoundary;
+    const DofMapper<T> &_dofmap;
+    QuadratureRule<T> _quadrature;
+    LoadFunctor _deformationFunctor;
 };
 
 #endif //OO_IGA_VISITOR_H
