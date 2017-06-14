@@ -9,7 +9,6 @@
 #include "DofMapper.h"
 #include <boost/bimap.hpp>
 
-
 template<typename T>
 class Element;
 
@@ -84,8 +83,43 @@ protected:
                 result->coeffRef(row_iter->second,col_iter->second)+=i.value();
             }
         }
-        std::cout<<Eigen::MatrixXd(*result);
         return std::make_tuple(row,col,std::move(result));
+    }
+
+
+    //Create load vector/matrix that is consistent with the condensed Gramian/Stiffness matrix.
+    std::tuple<IndexBiMap,std::unique_ptr<Eigen::SparseMatrix<T>>> CondensedLoadSparseMatrixMaker(const IndexedValueList &_list, const IndexBiMap & rowMap) {
+        IndexBiMap col;
+        std::unique_ptr<Eigen::SparseMatrix<T>> result(new Eigen::SparseMatrix<T>);
+        std::set<int> colIndex,rowIndex;
+        for(const auto &i:_list){
+            if(i.value()!=0){
+                colIndex.insert(i.col());
+                rowIndex.insert(i.row());
+            }
+        }
+
+        std::vector<int> diff;
+        std::vector<int> rowGramian;
+        for(const auto &i:rowMap) {
+            rowGramian.push_back(i.right);
+        }
+        std::set_difference(rowIndex.begin(),rowIndex.end(),rowGramian.begin(),rowGramian.end(),std::inserter(diff,diff.begin()));
+        ASSERT(diff.size()==0,"Error happens when matrix is condensed.");
+        int num=0;
+        for(const auto &i:colIndex){
+            col.insert(IndexPair(num,i));
+            num++;
+        }
+        result->resize(rowMap.size(),col.size());
+        for(const auto &i:_list){
+            auto col_iter = col.right.find(i.col());
+            auto row_iter = rowMap.right.find(i.row());
+            if(col_iter!=col.right.end()&&row_iter!=rowMap.right.end()){
+                result->coeffRef(row_iter->second,col_iter->second)+=i.value();
+            }
+        }
+        return std::make_tuple(col,std::move(result));
     }
 };
 
@@ -293,9 +327,15 @@ public:
         }
     }
 
-    void Boundary() {
+    std::tuple<IndexBiMap, Eigen::Matrix<T,Eigen::Dynamic,1>> Boundary() {
         auto a = this->CondensedSparseMatrixMaker(_poissonMass);
-
+        auto b = this->CondensedLoadSparseMatrixMaker(_poissonBoundary,std::get<0>(a));
+        Eigen::SparseMatrix<T> Gramian;
+        Gramian = std::get<2>(a)->template selfadjointView<Eigen::Lower>();
+        Eigen::ConjugateGradient<Eigen::SparseMatrix<T>, Eigen::Lower|Eigen::Upper> cg;
+        cg.compute(Gramian);
+        Eigen::Matrix<T,Eigen::Dynamic,1> x = cg.solve(*std::get<1>(b));
+        return std::make_tuple(std::get<0>(a), x);
     }
 
 private:

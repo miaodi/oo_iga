@@ -56,7 +56,7 @@ int main() {
     cell1->accept(poisson);
     cell2->accept(poisson);
     PoissonBoundaryVisitor<double> boundary(s, [](Coordinate u)->vector<double>{
-        return vector<double>{sin(u(0))*sin(u(1))};
+        return vector<double>{sin(10*u(0))*sin(10*u(1))};
     });
     cell1->accept(boundary);
     cell2->accept(boundary);
