@@ -7,6 +7,8 @@
 
 #include "Topology.h"
 #include "DofMapper.h"
+#include <boost/bimap.hpp>
+
 
 template<typename T>
 class Element;
@@ -30,8 +32,8 @@ public:
     using IndexedValue = Eigen::Triplet<T>;
     using IndexedValueList = std::vector<IndexedValue>;
     using LoadFunctor = std::function<std::vector<T>(const Coordinate &)>;
-
-
+    using IndexBiMap = boost::bimap<int,int>;
+    using IndexPair = IndexBiMap::value_type;
     Visitor() {};
 
     virtual void visit(Edge<T> *g) = 0;
@@ -39,7 +41,8 @@ public:
     virtual void visit(Cell<T> *g) = 0;
 
 protected:
-    void SparseMatrixMaker(const IndexedValueList &_list, Eigen::SparseMatrix<T> &matrix) {
+    std::unique_ptr<Eigen::SparseMatrix<T>> SparseMatrixMaker(const IndexedValueList &_list) {
+        std::unique_ptr<Eigen::SparseMatrix<T>> matrix(new Eigen::SparseMatrix<T>);
         auto row = std::max_element(_list.begin(), _list.end(),
                                     [](const IndexedValue &a, const IndexedValue &b) -> bool {
                                         return a.row() < b.row();
@@ -48,11 +51,42 @@ protected:
                                     [](const IndexedValue &a, const IndexedValue &b) -> bool {
                                         return a.col() < b.col();
                                     });
-
-        matrix.resize(row->row()+1,col->col()+1);
-        matrix.setFromTriplets(_list.begin(), _list.end());
+        matrix->resize(row->row()+1,col->col()+1);
+        matrix->setFromTriplets(_list.begin(), _list.end());
+        return matrix;
     }
-
+    //Dense out all zero columns and rows.
+    std::tuple<IndexBiMap,IndexBiMap,std::unique_ptr<Eigen::SparseMatrix<T>>> CondensedSparseMatrixMaker(const IndexedValueList &_list) {
+        IndexBiMap col,row;
+        std::unique_ptr<Eigen::SparseMatrix<T>> result(new Eigen::SparseMatrix<T>);
+        std::set<int> colIndex,rowIndex;
+        for(const auto &i:_list){
+            if(i.value()!=0){
+                colIndex.insert(i.col());
+                rowIndex.insert(i.row());
+            }
+        }
+        int num=0;
+        for(const auto &i:rowIndex){
+            row.insert(IndexPair(num,i));
+            num++;
+        }
+        num = 0;
+        for(const auto &i:colIndex){
+            col.insert(IndexPair(num,i));
+            num++;
+        }
+        result->resize(row.size(),col.size());
+        for(const auto &i:_list){
+            auto col_iter = col.right.find(i.col());
+            auto row_iter = row.right.find(i.row());
+            if(col_iter!=col.right.end()&&row_iter!=row.right.end()){
+                result->coeffRef(row_iter->second,col_iter->second)+=i.value();
+            }
+        }
+        std::cout<<Eigen::MatrixXd(*result);
+        return std::make_tuple(row,col,std::move(result));
+    }
 };
 
 template<typename T>
@@ -164,9 +198,8 @@ public:
     }
 
     void StiffnessMatrix() {
-        Eigen::SparseMatrix<T> a;
-        this->SparseMatrixMaker(_poissonStiffness, a);
-        std::cout<<Eigen::MatrixXd(a);
+        auto stiffnessmatrix = this->SparseMatrixMaker(_poissonStiffness);
+
     }
 private:
     IndexedValueList _poissonStiffness;
@@ -186,6 +219,8 @@ public:
     using LoadFunctor = typename Visitor<T>::LoadFunctor;
     using CoordinatePairList = typename Visitor<T>::CoordinatePairList;
     using Quadlist = typename Visitor<T>::Quadlist;
+    using IndexBiMap = typename Visitor<T>::IndexBiMap;
+    using IndexPair = typename Visitor<T>::IndexPair;
 public:
     PoissonBoundaryVisitor(const DofMapper<T> &dof, const LoadFunctor &load) : _deformationFunctor(load), _dofmap(dof) {
 
@@ -259,8 +294,7 @@ public:
     }
 
     void Boundary() {
-        Eigen::SparseMatrix<T> a;
-        this->SparseMatrixMaker(_poissonMass, a);
+        auto a = this->CondensedSparseMatrixMaker(_poissonMass);
 
     }
 

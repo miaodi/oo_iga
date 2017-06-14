@@ -34,8 +34,8 @@ int main() {
     auto domain2 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(b, b, points2);
     domain1->DegreeElevate(2);
     domain2->DegreeElevate(2);
-    domain1->UniformRefine(1);
-    domain2->UniformRefine(1);
+    domain1->UniformRefine(5);
+    domain2->UniformRefine(5);
     domain1->KnotInsertion(1,.6,1);
     Vector2d u(.2, .6);
     domain1->PrintKnots(1);
@@ -61,6 +61,7 @@ int main() {
     cell1->accept(boundary);
     cell2->accept(boundary);
     poisson.StiffnessMatrix();
+    boundary.Boundary();
 /*
     shared_ptr<Cell<double>> cell2 = make_shared<Cell<double>>(domain2);
     auto indices = domain1->AllActivatedDofsOnBoundary(1,0);
