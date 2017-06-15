@@ -34,55 +34,32 @@ int main() {
     auto domain2 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(b, b, points2);
     domain1->DegreeElevate(2);
     domain2->DegreeElevate(2);
-    domain1->UniformRefine(5);
-    domain2->UniformRefine(5);
-    domain1->KnotInsertion(1,.6,1);
-    Vector2d u(.2, .6);
+    domain1->UniformRefine(1);
     domain1->PrintKnots(1);
-    cout<<domain1->AffineMap(u);
+    domain1->KnotInsertion(1,.6);
     shared_ptr<Cell<double>> cell1 = make_shared<Cell<double>>(domain1);
-    shared_ptr<Cell<double>> cell2 = make_shared<Cell<double>>(domain2);
-    cell1->Match(cell2);
     cell1->PrintEdgeInfo();
-    cell2->PrintEdgeInfo();
+    cell1->_edges[1]->PrintActivatedDofsOfLayers(0);
+
+
     DofMapper<double> s;
     PoissonMapperInitiator<double> visit(s);
     cell1->accept(visit);
-    cell2->accept(visit);
-    cout<<s.Dof()<<endl;
     PoissonVisitor<double> poisson(s, [](Coordinate u)->vector<double>{
         return vector<double>({0});
     });
     cell1->accept(poisson);
-    cell2->accept(poisson);
     PoissonBoundaryVisitor<double> boundary(s, [](Coordinate u)->vector<double>{
         return vector<double>{sin(10*u(0))*sin(10*u(1))};
     });
     cell1->accept(boundary);
-    cell2->accept(boundary);
     poisson.StiffnessMatrix();
     boundary.Boundary();
-/*
-    shared_ptr<Cell<double>> cell2 = make_shared<Cell<double>>(domain2);
-    auto indices = domain1->AllActivatedDofsOnBoundary(1,0);
-    LoadFunctor haha;
-    haha = [] (const VectorXd & u){ return vector<double> {pow(u(0)*u(1),1)};};
-    PoissonDomainVisitor<double> poisson;
-    cell1->accept(poisson, haha);
-    auto matrix = poisson.MakeDenseVector();
-    cout<<*matrix;
-
-    PoissonBoundaryVisitor<double> poissonBoundary;
-    cell1->_edges[2]->accept(poissonBoundary, haha);
-
-    auto matrix1 = poissonBoundary.MakeDenseMatrix();
-    cout<<*matrix1<<endl;
-    mmpMatrix<double> edgemass(*poissonBoundary.MakeDenseMatrix());
-    edgemass.removeZero();
-    mmpMatrix<double> edgeload(*poissonBoundary.MakeDenseVector());
-    edgeload.removeZero();
-    edgemass.triangularView<Eigen::Lower>().solveInPlace(edgeload);
-    cout<<edgeload<<endl;
-*/
+    s.PrintDofIn(cell1->GetDomain());
+    s.PrintFreeDofIn(cell1->GetDomain());
+    s.PrintFreezedDofIn(cell1->GetDomain());
+    auto indexmap = s.CondensedBiMap();
+    auto transfer = BiMapToSparseMatrix<double>(s.FreeDof(),s.Dof(),indexmap);
+    cout<< *transfer;
     return 0;
 }

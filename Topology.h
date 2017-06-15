@@ -314,8 +314,6 @@ public:
 
     //Given the layer number, it returns a pointer to a vector that contains all control points index of that layer.
     std::unique_ptr<std::vector<int>> AllActivatedDofsOfLayers(const int &layerNum) {
-        auto dof = GetDof();
-        ASSERT(layerNum < dof, "Invalid layerNum.");
         std::unique_ptr<std::vector<int>> res(new std::vector<int>);
         switch (_position) {
             case west: {
@@ -327,14 +325,14 @@ public:
             }
             case east: {
                 for (int i = 0; i <= layerNum; ++i) {
-                    auto tmp = this->_domain->AllActivatedDofsOnBoundary(0, dof - 1 - i);
+                    auto tmp = this->_domain->AllActivatedDofsOnBoundary(0, this->_domain->GetDof(0) - 1 - i);
                     res->insert(res->end(), tmp->begin(), tmp->end());
                 }
                 break;
             }
             case north: {
                 for (int i = 0; i <= layerNum; ++i) {
-                    auto tmp = this->_domain->AllActivatedDofsOnBoundary(1, dof - 1 - i);
+                    auto tmp = this->_domain->AllActivatedDofsOnBoundary(1, this->_domain->GetDof(1) - 1 - i);
                     res->insert(res->end(), tmp->begin(), tmp->end());
                 }
                 break;
@@ -350,6 +348,14 @@ public:
         return res;
     }
 
+    void PrintActivatedDofsOfLayers(const int &layerNum){
+        auto res = AllActivatedDofsOfLayers(layerNum);
+        std::cout<<"Activated Dofs on this edge are:";
+        for(const auto &i:*res){
+            std::cout<<i<<" ";
+        }
+        std::cout<<std::endl;
+    }
 private:
     Orientation _position;
     bool _matched;

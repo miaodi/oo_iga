@@ -21,6 +21,8 @@ Visitor.h
 /Users/dimiao/CLionProjects/oo_iga/Visitor.h
 set
 -
+boost/bimap.hpp
+-
 
 /Users/dimiao/CLionProjects/oo_iga/KnotVector.cpp
 KnotVector.h

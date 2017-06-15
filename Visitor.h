@@ -31,8 +31,8 @@ public:
     using IndexedValue = Eigen::Triplet<T>;
     using IndexedValueList = std::vector<IndexedValue>;
     using LoadFunctor = std::function<std::vector<T>(const Coordinate &)>;
-    using IndexBiMap = boost::bimap<int,int>;
-    using IndexPair = IndexBiMap::value_type;
+    using IndexBiMap = typename DofMapper<T>::IndexBiMap;
+    using IndexPair = typename DofMapper<T>::IndexPair;
     Visitor() {};
 
     virtual void visit(Edge<T> *g) = 0;
