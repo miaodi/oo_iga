@@ -58,8 +58,10 @@ int main() {
     s.PrintDofIn(cell1->GetDomain());
     s.PrintFreeDofIn(cell1->GetDomain());
     s.PrintFreezedDofIn(cell1->GetDomain());
-    auto indexmap = s.CondensedBiMap();
-    auto transfer = BiMapToSparseMatrix<double>(s.FreeDof(),s.Dof(),indexmap);
+    auto indexmap = s.CondensedIndexMap();
+    for(auto i:indexmap)
+        cout<<i<<" ";
+    auto transfer = MapToSparseMatrix<double>(s.FreeDof(),s.Dof(),indexmap);
     cout<< *transfer;
     return 0;
 }

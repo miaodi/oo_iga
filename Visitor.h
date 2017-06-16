@@ -31,8 +31,6 @@ public:
     using IndexedValue = Eigen::Triplet<T>;
     using IndexedValueList = std::vector<IndexedValue>;
     using LoadFunctor = std::function<std::vector<T>(const Coordinate &)>;
-    using IndexBiMap = typename DofMapper<T>::IndexBiMap;
-    using IndexPair = typename DofMapper<T>::IndexPair;
     Visitor() {};
 
     virtual void visit(Edge<T> *g) = 0;
@@ -55,8 +53,8 @@ protected:
         return matrix;
     }
     //Dense out all zero columns and rows.
-    std::tuple<IndexBiMap,IndexBiMap,std::unique_ptr<Eigen::SparseMatrix<T>>> CondensedSparseMatrixMaker(const IndexedValueList &_list) {
-        IndexBiMap col,row;
+    std::tuple<std::vector<int>,std::vector<int>,std::unique_ptr<Eigen::SparseMatrix<T>>> CondensedSparseMatrixMaker(const IndexedValueList &_list) {
+        std::vector<int> col,row;
         std::unique_ptr<Eigen::SparseMatrix<T>> result(new Eigen::SparseMatrix<T>);
         std::set<int> colIndex,rowIndex;
         for(const auto &i:_list){
@@ -65,31 +63,20 @@ protected:
                 rowIndex.insert(i.row());
             }
         }
-        int num=0;
-        for(const auto &i:rowIndex){
-            row.insert(IndexPair(num,i));
-            num++;
-        }
-        num = 0;
-        for(const auto &i:colIndex){
-            col.insert(IndexPair(num,i));
-            num++;
-        }
-        result->resize(row.size(),col.size());
-        for(const auto &i:_list){
-            auto col_iter = col.right.find(i.col());
-            auto row_iter = row.right.find(i.row());
-            if(col_iter!=col.right.end()&&row_iter!=row.right.end()){
-                result->coeffRef(row_iter->second,col_iter->second)+=i.value();
-            }
-        }
+        col.resize(colIndex.size()),row.resize(rowIndex.size());
+        std::copy(rowIndex.begin(),rowIndex.end(),row.begin());
+        std::copy(colIndex.begin(),colIndex.end(),col.begin());
+        auto original = SparseMatrixMaker(_list);
+        auto colTransform = Accessory::MapToSparseMatrix<T>(colIndex.size(),original->cols(),col);
+        auto rowTransform = Accessory::MapToSparseMatrix<T>(rowIndex.size(),original->rows(),row);
+        *result = (*rowTransform) * (*original) * (*colTransform).transpose();
         return std::make_tuple(row,col,std::move(result));
     }
 
 
     //Create load vector/matrix that is consistent with the condensed Gramian/Stiffness matrix.
-    std::tuple<IndexBiMap,std::unique_ptr<Eigen::SparseMatrix<T>>> CondensedLoadSparseMatrixMaker(const IndexedValueList &_list, const IndexBiMap & rowMap) {
-        IndexBiMap col;
+    std::tuple<std::vector<int>,std::unique_ptr<Eigen::SparseMatrix<T>>> CondensedLoadSparseMatrixMaker(const IndexedValueList &_list, const std::vector<int> & row) {
+        std::vector<int> col;
         std::unique_ptr<Eigen::SparseMatrix<T>> result(new Eigen::SparseMatrix<T>);
         std::set<int> colIndex,rowIndex;
         for(const auto &i:_list){
@@ -98,28 +85,16 @@ protected:
                 rowIndex.insert(i.row());
             }
         }
-
         std::vector<int> diff;
-        std::vector<int> rowGramian;
-        for(const auto &i:rowMap) {
-            rowGramian.push_back(i.right);
-        }
-        std::set_difference(rowIndex.begin(),rowIndex.end(),rowGramian.begin(),rowGramian.end(),std::inserter(diff,diff.begin()));
+        std::set_difference(rowIndex.begin(),rowIndex.end(),row.begin(),row.end(),std::inserter(diff,diff.begin()));
         ASSERT(diff.size()==0,"Error happens when matrix is condensed.");
-        int num=0;
-        for(const auto &i:colIndex){
-            col.insert(IndexPair(num,i));
-            num++;
-        }
-        result->resize(rowMap.size(),col.size());
-        for(const auto &i:_list){
-            auto col_iter = col.right.find(i.col());
-            auto row_iter = rowMap.right.find(i.row());
-            if(col_iter!=col.right.end()&&row_iter!=rowMap.right.end()){
-                result->coeffRef(row_iter->second,col_iter->second)+=i.value();
-            }
-        }
-        return std::make_tuple(col,std::move(result));
+        col.resize(colIndex.size());
+        std::copy(colIndex.begin(),colIndex.end(),col.begin());
+        auto original = SparseMatrixMaker(_list);
+        auto colTransform = Accessory::MapToSparseMatrix<T>(colIndex.size(),original->cols(),col);
+
+        std::cout<<original->rows()<<" "<<*(row.end()-1)<<std::endl;
+        return std::make_tuple(col,std::move(original));
     }
 };
 
@@ -253,8 +228,6 @@ public:
     using LoadFunctor = typename Visitor<T>::LoadFunctor;
     using CoordinatePairList = typename Visitor<T>::CoordinatePairList;
     using Quadlist = typename Visitor<T>::Quadlist;
-    using IndexBiMap = typename Visitor<T>::IndexBiMap;
-    using IndexPair = typename Visitor<T>::IndexPair;
 public:
     PoissonBoundaryVisitor(const DofMapper<T> &dof, const LoadFunctor &load) : _deformationFunctor(load), _dofmap(dof) {
 
@@ -327,15 +300,19 @@ public:
         }
     }
 
-    std::tuple<IndexBiMap, Eigen::Matrix<T,Eigen::Dynamic,1>> Boundary() {
+    std::tuple<std::vector<int>, Eigen::Matrix<T,Eigen::Dynamic,1>> Boundary() {
         auto a = this->CondensedSparseMatrixMaker(_poissonMass);
+        std::cout<<*std::get<2>(a);
         auto b = this->CondensedLoadSparseMatrixMaker(_poissonBoundary,std::get<0>(a));
+        /*
         Eigen::SparseMatrix<T> Gramian;
         Gramian = std::get<2>(a)->template selfadjointView<Eigen::Lower>();
         Eigen::ConjugateGradient<Eigen::SparseMatrix<T>, Eigen::Lower|Eigen::Upper> cg;
         cg.compute(Gramian);
         Eigen::Matrix<T,Eigen::Dynamic,1> x = cg.solve(*std::get<1>(b));
+        std::cout<<x;
         return std::make_tuple(std::get<0>(a), x);
+         */
     }
 
 private:

@@ -7,7 +7,6 @@
 
 #include "Visitor.h"
 #include <set>
-#include <boost/bimap.hpp>
 
 template<typename T>
 class Element;
@@ -15,19 +14,18 @@ class Element;
 template<typename T>
 class Visitor;
 namespace Accessory {
-    using IndexBiMap = boost::bimap<int, int>;
-
     template<typename T>
-    std::unique_ptr<Eigen::SparseMatrix<T>> BiMapToSparseMatrix(int row, int col,const IndexBiMap &bimap) {
+    std::unique_ptr<Eigen::SparseMatrix<T>> MapToSparseMatrix(int row, int col, const std::vector<int> &bimap) {
         using IndexedValue = Eigen::Triplet<T>;
         using IndexedValueList = std::vector<IndexedValue>;
         IndexedValueList temp;
-        for (auto it = bimap.right.begin(); it != bimap.right.end(); ++it) {
-            temp.push_back(IndexedValue(it->second, it->first, 1));
+        int num = 0;
+        for (auto it = bimap.begin(); it != bimap.end(); ++it) {
+            temp.push_back(IndexedValue(num++, *it, 1));
         }
         std::unique_ptr<Eigen::SparseMatrix<T>> res(new Eigen::SparseMatrix<T>);
         res->resize(row, col);
-        res->setFromTriplets(temp.begin(),temp.end());
+        res->setFromTriplets(temp.begin(), temp.end());
         return res;
     }
 
@@ -36,8 +34,6 @@ template<typename T>
 class DofMapper {
 public:
     using DomainShared_ptr = typename Element<T>::DomainShared_ptr;
-    using IndexBiMap = boost::bimap<int, int>;
-    using IndexPair = IndexBiMap::value_type;
 
 public:
     DofMapper() {};
@@ -123,15 +119,14 @@ public:
         return res;
     }
 
-    IndexBiMap CondensedBiMap() {
-        IndexBiMap res;
+    std::vector<int> CondensedIndexMap() {
+        std::vector<int> res;
         for (const auto &i:_domains) {
             auto startIndex = StartingIndex(i);
-            auto startFreeIndex = FreeStartingIndex(i);
             for (int inDomainIndex = 0, domainDof = _patchDof[i]; inDomainIndex != domainDof; ++inDomainIndex) {
                 int copyIndex = inDomainIndex;
                 if (FreeIndexInDomain(i, copyIndex)) {
-                    res.insert(IndexPair(startFreeIndex + copyIndex, inDomainIndex + startIndex));
+                    res.push_back(startIndex + inDomainIndex);
                 }
             }
         }
@@ -157,9 +152,10 @@ public:
     void PrintFreeDofIn(const DomainShared_ptr domain) {
         auto it = _patchDof.find(domain);
         auto itit = _freezeDof.find(domain);
-        std::cout << "Free Dof of given domain are:" << it->second-itit->second.size();
+        std::cout << "Free Dof of given domain are:" << it->second - itit->second.size();
         std::cout << std::endl;
     }
+
 private:
     std::vector<DomainShared_ptr> _domains;
     std::map<DomainShared_ptr, int> _patchDof;
