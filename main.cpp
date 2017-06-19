@@ -13,6 +13,7 @@ using CoordinatePairList=Element<double>::CoordinatePairList;
 using Quadrature = QuadratureRule<double>::Quadrature;
 using QuadList = QuadratureRule<double>::QuadList;
 using LoadFunctor = Element<double>::LoadFunctor;
+
 int main() {
     KnotVector<double> a;
     a.InitClosed(1, 0, 1);
@@ -34,34 +35,34 @@ int main() {
     auto domain2 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(b, b, points2);
     domain1->DegreeElevate(2);
     domain2->DegreeElevate(2);
-    domain1->UniformRefine(1);
+    domain1->UniformRefine(3);
     domain1->PrintKnots(1);
-    domain1->KnotInsertion(1,.6);
+    domain1->KnotInsertion(1, .6);
     shared_ptr<Cell<double>> cell1 = make_shared<Cell<double>>(domain1);
     cell1->PrintEdgeInfo();
     cell1->_edges[1]->PrintActivatedDofsOfLayers(0);
-
-
     DofMapper<double> s;
     PoissonMapperInitiator<double> visit(s);
     cell1->accept(visit);
-    PoissonVisitor<double> poisson(s, [](Coordinate u)->vector<double>{
-        return vector<double>({0});
+    PoissonVisitor<double> poisson(s, [](Coordinate u) -> vector<double> {
+        return vector < double > ({ -200 * sin(10 * u(0)) * sin(10 * u(1)) });
     });
     cell1->accept(poisson);
-    PoissonBoundaryVisitor<double> boundary(s, [](Coordinate u)->vector<double>{
-        return vector<double>{sin(10*u(0))*sin(10*u(1))};
+    PoissonBoundaryVisitor<double> boundary(s, [](Coordinate u) -> vector<double> {
+        return vector<double>{sin(10 * u(0)) * sin(10 * u(1))};
     });
     cell1->accept(boundary);
-    poisson.StiffnessMatrix();
-    boundary.Boundary();
-    s.PrintDofIn(cell1->GetDomain());
-    s.PrintFreeDofIn(cell1->GetDomain());
-    s.PrintFreezedDofIn(cell1->GetDomain());
-    auto indexmap = s.CondensedIndexMap();
-    for(auto i:indexmap)
-        cout<<i<<" ";
-    auto transfer = MapToSparseMatrix<double>(s.FreeDof(),s.Dof(),indexmap);
-    cout<< *transfer;
+    unique_ptr<SparseMatrix<double>> stiffness, load;
+    tie(stiffness, load) = poisson.Domain();
+
+    auto boundaryValue = boundary.Boundary();
+    auto freedof = s.CondensedIndexMap();
+    SparseMatrix<double> loadSum = (*load-*stiffness*(*boundaryValue));
+    auto loadSol = SparseMatrixGivenColRow<double>(freedof,vector<int>{0},loadSum);
+    SparseMatrix<double> stiffnessSol = SparseMatrixGivenColRow<double>(freedof,freedof,stiffness)->selfadjointView<Eigen::Lower>();
+    ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower | Eigen::Upper> cg;
+    cg.compute(stiffnessSol);
+    MatrixXd solution = cg.solve(*loadSol);
+    cout<<solution;
     return 0;
 }

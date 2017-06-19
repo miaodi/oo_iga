@@ -15,18 +15,100 @@ template<typename T>
 class Visitor;
 namespace Accessory {
     template<typename T>
-    std::unique_ptr<Eigen::SparseMatrix<T>> MapToSparseMatrix(int row, int col, const std::vector<int> &bimap) {
+    std::unique_ptr<Eigen::SparseMatrix<T>> SparseMatrixMaker(const std::vector<Eigen::Triplet<T>> &_list) {
         using IndexedValue = Eigen::Triplet<T>;
         using IndexedValueList = std::vector<IndexedValue>;
-        IndexedValueList temp;
-        int num = 0;
-        for (auto it = bimap.begin(); it != bimap.end(); ++it) {
-            temp.push_back(IndexedValue(num++, *it, 1));
+        std::unique_ptr<Eigen::SparseMatrix<T>> matrix(new Eigen::SparseMatrix<T>);
+        auto row = std::max_element(_list.begin(), _list.end(),
+                                    [](const IndexedValue &a, const IndexedValue &b) -> bool {
+                                        return a.row() < b.row();
+                                    });
+        auto col = std::max_element(_list.begin(), _list.end(),
+                                    [](const IndexedValue &a, const IndexedValue &b) -> bool {
+                                        return a.col() < b.col();
+                                    });
+        matrix->resize(row->row() + 1, col->col() + 1);
+        matrix->setFromTriplets(_list.begin(), _list.end());
+        return matrix;
+    }
+
+    template<typename T>
+    std::vector<int> NonZeroCols(const std::vector<Eigen::Triplet<T>> &matrix) {
+        std::vector<int> col;
+        std::set<int> colIndex;
+        for (const auto &i:matrix) {
+            if (i.value() != 0) {
+                colIndex.insert(i.col());
+            }
         }
-        std::unique_ptr<Eigen::SparseMatrix<T>> res(new Eigen::SparseMatrix<T>);
-        res->resize(row, col);
-        res->setFromTriplets(temp.begin(), temp.end());
-        return res;
+        col.resize(colIndex.size());
+        std::copy(colIndex.begin(), colIndex.end(), col.begin());
+        return col;
+    }
+
+    template<typename T>
+    std::vector<int> NonZeroRows(const std::vector<Eigen::Triplet<T>> &matrix) {
+        std::vector<int> row;
+        std::set<int> rowIndex;
+        for (const auto &i:matrix) {
+            if (i.value() != 0) {
+                rowIndex.insert(i.row());
+            }
+        }
+        row.resize(rowIndex.size());
+        std::copy(rowIndex.begin(), rowIndex.end(), row.begin());
+        return row;
+    }
+
+    template<typename T>
+    std::unique_ptr<Eigen::SparseMatrix<T>> SparseTransform(const std::vector<int> &mapInform) {
+        std::unique_ptr<Eigen::SparseMatrix<T>> matrix(new Eigen::SparseMatrix<T>);
+        int row = mapInform.size();
+        int col = mapInform[mapInform.size() - 1] + 1;
+        matrix->resize(row, col);
+        for (int i = 0; i != row; i++) {
+            matrix->coeffRef(i, mapInform[i]) = 1;
+        }
+        return matrix;
+    }
+
+    template<typename T>
+    std::unique_ptr<Eigen::SparseMatrix<T>>
+    SparseMatrixGivenColRow(const std::vector<int> &row, const std::vector<int> &col,
+                            const Eigen::SparseMatrix<T> &original) {
+        ASSERT(original.cols() > *(col.end() - 1) && original.rows() > *(row.end() - 1),
+               "The original size of the given matrix is inconsistent with the give row/col");
+        std::unique_ptr<Eigen::SparseMatrix<T>> result(new Eigen::SparseMatrix<T>);
+        auto colTransform = Accessory::SparseTransform<T>(col);
+        colTransform->conservativeResize(col.size(), original.cols());
+        auto rowTransform = Accessory::SparseTransform<T>(row);
+        rowTransform->conservativeResize(row.size(), original.rows());
+        *result = (*rowTransform) * (original) * (*colTransform).transpose();
+        return result;
+    }
+    template<typename T>
+    std::unique_ptr<Eigen::SparseMatrix<T>>
+    SparseMatrixGivenColRow(const std::vector<int> &row, const std::vector<int> &col,
+                            const std::unique_ptr<Eigen::SparseMatrix<T>> &original) {
+        return SparseMatrixGivenColRow<T>(row,col,*original);
+    }
+    template<typename T>
+    std::unique_ptr<Eigen::SparseMatrix<T>>
+    SparseMatrixGivenColRow(const std::vector<int> &row, const std::vector<int> &col,
+                            const std::vector<Eigen::Triplet<T>> &_list) {
+        auto original = Accessory::SparseMatrixMaker<T>(_list);
+        return SparseMatrixGivenColRow<T>(row,col,std::move(original));
+    }
+
+    template<typename T>
+    //Dense out all zero columns and rows.
+    std::tuple<std::vector<int>, std::vector<int>, std::unique_ptr<Eigen::SparseMatrix<T>>>
+    CondensedSparseMatrixMaker(const std::vector<Eigen::Triplet<T>> &_list) {
+        auto col = NonZeroCols(_list);
+        auto row = NonZeroRows(_list);
+        std::unique_ptr<Eigen::SparseMatrix<T>> result(new Eigen::SparseMatrix<T>);
+        result = SparseMatrixGivenColRow<T>(col, row, _list);
+        return std::make_tuple(row, col, std::move(result));
     }
 
 }

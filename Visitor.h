@@ -31,71 +31,12 @@ public:
     using IndexedValue = Eigen::Triplet<T>;
     using IndexedValueList = std::vector<IndexedValue>;
     using LoadFunctor = std::function<std::vector<T>(const Coordinate &)>;
+
     Visitor() {};
 
     virtual void visit(Edge<T> *g) = 0;
 
     virtual void visit(Cell<T> *g) = 0;
-
-protected:
-    std::unique_ptr<Eigen::SparseMatrix<T>> SparseMatrixMaker(const IndexedValueList &_list) {
-        std::unique_ptr<Eigen::SparseMatrix<T>> matrix(new Eigen::SparseMatrix<T>);
-        auto row = std::max_element(_list.begin(), _list.end(),
-                                    [](const IndexedValue &a, const IndexedValue &b) -> bool {
-                                        return a.row() < b.row();
-                                    });
-        auto col = std::max_element(_list.begin(), _list.end(),
-                                    [](const IndexedValue &a, const IndexedValue &b) -> bool {
-                                        return a.col() < b.col();
-                                    });
-        matrix->resize(row->row()+1,col->col()+1);
-        matrix->setFromTriplets(_list.begin(), _list.end());
-        return matrix;
-    }
-    //Dense out all zero columns and rows.
-    std::tuple<std::vector<int>,std::vector<int>,std::unique_ptr<Eigen::SparseMatrix<T>>> CondensedSparseMatrixMaker(const IndexedValueList &_list) {
-        std::vector<int> col,row;
-        std::unique_ptr<Eigen::SparseMatrix<T>> result(new Eigen::SparseMatrix<T>);
-        std::set<int> colIndex,rowIndex;
-        for(const auto &i:_list){
-            if(i.value()!=0){
-                colIndex.insert(i.col());
-                rowIndex.insert(i.row());
-            }
-        }
-        col.resize(colIndex.size()),row.resize(rowIndex.size());
-        std::copy(rowIndex.begin(),rowIndex.end(),row.begin());
-        std::copy(colIndex.begin(),colIndex.end(),col.begin());
-        auto original = SparseMatrixMaker(_list);
-        auto colTransform = Accessory::MapToSparseMatrix<T>(colIndex.size(),original->cols(),col);
-        auto rowTransform = Accessory::MapToSparseMatrix<T>(rowIndex.size(),original->rows(),row);
-        *result = (*rowTransform) * (*original) * (*colTransform).transpose();
-        return std::make_tuple(row,col,std::move(result));
-    }
-
-
-    //Create load vector/matrix that is consistent with the condensed Gramian/Stiffness matrix.
-    std::tuple<std::vector<int>,std::unique_ptr<Eigen::SparseMatrix<T>>> CondensedLoadSparseMatrixMaker(const IndexedValueList &_list, const std::vector<int> & row) {
-        std::vector<int> col;
-        std::unique_ptr<Eigen::SparseMatrix<T>> result(new Eigen::SparseMatrix<T>);
-        std::set<int> colIndex,rowIndex;
-        for(const auto &i:_list){
-            if(i.value()!=0){
-                colIndex.insert(i.col());
-                rowIndex.insert(i.row());
-            }
-        }
-        std::vector<int> diff;
-        std::set_difference(rowIndex.begin(),rowIndex.end(),row.begin(),row.end(),std::inserter(diff,diff.begin()));
-        ASSERT(diff.size()==0,"Error happens when matrix is condensed.");
-        col.resize(colIndex.size());
-        std::copy(colIndex.begin(),colIndex.end(),col.begin());
-        auto original = SparseMatrixMaker(_list);
-        auto colTransform = Accessory::MapToSparseMatrix<T>(colIndex.size(),original->cols(),col);
-
-        std::cout<<original->rows()<<" "<<*(row.end()-1)<<std::endl;
-        return std::make_tuple(col,std::move(original));
-    }
 };
 
 template<typename T>
@@ -206,10 +147,12 @@ public:
         }
     }
 
-    void StiffnessMatrix() {
-        auto stiffnessmatrix = this->SparseMatrixMaker(_poissonStiffness);
-
+    std::tuple<std::unique_ptr<Eigen::SparseMatrix<T>>, std::unique_ptr<Eigen::SparseMatrix<T>>> Domain() {
+        auto stiffnessmatrix = Accessory::SparseMatrixMaker<T>(_poissonStiffness);
+        auto load = Accessory::SparseMatrixMaker<T>(_poissonBodyForce);
+        return std::make_tuple(std::move(stiffnessmatrix), std::move(load));
     }
+
 private:
     IndexedValueList _poissonStiffness;
     IndexedValueList _poissonBodyForce;
@@ -300,19 +243,17 @@ public:
         }
     }
 
-    std::tuple<std::vector<int>, Eigen::Matrix<T,Eigen::Dynamic,1>> Boundary() {
-        auto a = this->CondensedSparseMatrixMaker(_poissonMass);
-        std::cout<<*std::get<2>(a);
-        auto b = this->CondensedLoadSparseMatrixMaker(_poissonBoundary,std::get<0>(a));
-        /*
+    std::unique_ptr<Eigen::SparseMatrix<T>> Boundary() {
+        auto a = Accessory::CondensedSparseMatrixMaker<T>(_poissonMass);
+        auto b = Accessory::SparseMatrixGivenColRow<T>(std::get<0>(a), std::vector<int>{0}, _poissonBoundary);
         Eigen::SparseMatrix<T> Gramian;
         Gramian = std::get<2>(a)->template selfadjointView<Eigen::Lower>();
-        Eigen::ConjugateGradient<Eigen::SparseMatrix<T>, Eigen::Lower|Eigen::Upper> cg;
+        Eigen::ConjugateGradient<Eigen::SparseMatrix<T>, Eigen::Lower | Eigen::Upper> cg;
         cg.compute(Gramian);
-        Eigen::Matrix<T,Eigen::Dynamic,1> x = cg.solve(*std::get<1>(b));
-        std::cout<<x;
-        return std::make_tuple(std::get<0>(a), x);
-         */
+        auto transform = Accessory::SparseTransform<T>(std::get<0>(a));
+        std::unique_ptr<Eigen::SparseMatrix<T>> result(new Eigen::SparseMatrix<T>);
+        *result = transform->transpose()*cg.solve(*b);
+        return result;
     }
 
 private:
