@@ -19,10 +19,10 @@ int main() {
     a.InitClosed(1, 0, 1);
     KnotVector<double> b;
     b.InitClosed(1, -1, 3);
-    Vector2d point1(0, 4);
-    Vector2d point2(2, 4);
-    Vector2d point3(0, 0);
-    Vector2d point4(2, 2);
+    Vector2d point1(0, 0);
+    Vector2d point2(0, 1);
+    Vector2d point3(1, 0);
+    Vector2d point4(1, 1);
 
 
     Vector2d point5(0, 0);
@@ -33,11 +33,10 @@ int main() {
     vector<Vector2d> points2({point5, point6, point7, point8});
     auto domain1 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(a, a, points1);
     auto domain2 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(b, b, points2);
+
     domain1->DegreeElevate(2);
-    domain2->DegreeElevate(2);
     domain1->UniformRefine(3);
     domain1->PrintKnots(1);
-    domain1->KnotInsertion(1, .6);
     shared_ptr<Cell<double>> cell1 = make_shared<Cell<double>>(domain1);
     cell1->PrintEdgeInfo();
     cell1->_edges[1]->PrintActivatedDofsOfLayers(0);
@@ -45,24 +44,31 @@ int main() {
     PoissonMapperInitiator<double> visit(s);
     cell1->accept(visit);
     PoissonVisitor<double> poisson(s, [](Coordinate u) -> vector<double> {
-        return vector < double > ({ -200 * sin(10 * u(0)) * sin(10 * u(1)) });
+        return vector<double>{sin(u(0)*u(1))*u(1)*u(1)+sin(u(0)*u(1))*u(0)*u(0)};
     });
     cell1->accept(poisson);
-    PoissonBoundaryVisitor<double> boundary(s, [](Coordinate u) -> vector<double> {
-        return vector<double>{sin(10 * u(0)) * sin(10 * u(1))};
-    });
+    function<vector<double>(const Coordinate &)> Analytical =[](const Coordinate &u){return vector<double>{sin(u(0)*u(1))+u(0)*u(1)};};
+    PoissonBoundaryVisitor<double> boundary(s, Analytical);
     cell1->accept(boundary);
-    unique_ptr<SparseMatrix<double>> stiffness, load;
+    unique_ptr<SparseMatrix<double>> stiffness, load, boundaryValue;
     tie(stiffness, load) = poisson.Domain();
 
-    auto boundaryValue = boundary.Boundary();
+    boundaryValue = boundary.Boundary();
     auto freedof = s.CondensedIndexMap();
-    SparseMatrix<double> loadSum = (*load-*stiffness*(*boundaryValue));
-    auto loadSol = SparseMatrixGivenColRow<double>(freedof,vector<int>{0},loadSum);
-    SparseMatrix<double> stiffnessSol = SparseMatrixGivenColRow<double>(freedof,freedof,stiffness)->selfadjointView<Eigen::Lower>();
+    SparseMatrix<double> loadSum = (*load - *stiffness * (*boundaryValue));
+    auto loadSol = SparseMatrixGivenColRow<double>(freedof, vector<int>{0}, loadSum);
+    auto stiffnessSol = SparseMatrixGivenColRow<double>(freedof, freedof, stiffness);
     ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower | Eigen::Upper> cg;
-    cg.compute(stiffnessSol);
+    cg.compute(*stiffnessSol);
     MatrixXd solution = cg.solve(*loadSol);
-    cout<<solution;
+    solution=SparseTransform<double>(freedof,s.Dof())->transpose()*solution+MatrixXd(*boundaryValue);
+    vector<KnotVector<double>> solutionKnot;
+    solutionKnot.push_back(domain1->KnotVectorGetter(0));
+    solutionKnot.push_back(domain1->KnotVectorGetter(1));
+    auto solutionDomain = PhyTensorBsplineBasis<2, 1, double>(solutionKnot,solution);
+    Vector2d u(.1, .73);
+
+    cout<<solutionDomain.AffineMap(u)<<endl;
+    cout<<Analytical(domain1->AffineMap(u))[0];
     return 0;
 }

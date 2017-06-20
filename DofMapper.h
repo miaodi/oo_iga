@@ -61,10 +61,10 @@ namespace Accessory {
     }
 
     template<typename T>
-    std::unique_ptr<Eigen::SparseMatrix<T>> SparseTransform(const std::vector<int> &mapInform) {
+    std::unique_ptr<Eigen::SparseMatrix<T>> SparseTransform(const std::vector<int> &mapInform, const int &col) {
         std::unique_ptr<Eigen::SparseMatrix<T>> matrix(new Eigen::SparseMatrix<T>);
         int row = mapInform.size();
-        int col = mapInform[mapInform.size() - 1] + 1;
+        ASSERT(mapInform[mapInform.size() - 1] + 1<=col,"Invalide matrix col/row.");
         matrix->resize(row, col);
         for (int i = 0; i != row; i++) {
             matrix->coeffRef(i, mapInform[i]) = 1;
@@ -79,10 +79,8 @@ namespace Accessory {
         ASSERT(original.cols() > *(col.end() - 1) && original.rows() > *(row.end() - 1),
                "The original size of the given matrix is inconsistent with the give row/col");
         std::unique_ptr<Eigen::SparseMatrix<T>> result(new Eigen::SparseMatrix<T>);
-        auto colTransform = Accessory::SparseTransform<T>(col);
-        colTransform->conservativeResize(col.size(), original.cols());
-        auto rowTransform = Accessory::SparseTransform<T>(row);
-        rowTransform->conservativeResize(row.size(), original.rows());
+        auto colTransform = Accessory::SparseTransform<T>(col,original.cols());
+        auto rowTransform = Accessory::SparseTransform<T>(row,original.rows());
         *result = (*rowTransform) * (original) * (*colTransform).transpose();
         return result;
     }
@@ -110,7 +108,6 @@ namespace Accessory {
         result = SparseMatrixGivenColRow<T>(col, row, _list);
         return std::make_tuple(row, col, std::move(result));
     }
-
 }
 template<typename T>
 class DofMapper {

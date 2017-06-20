@@ -148,9 +148,11 @@ public:
     }
 
     std::tuple<std::unique_ptr<Eigen::SparseMatrix<T>>, std::unique_ptr<Eigen::SparseMatrix<T>>> Domain() {
-        auto stiffnessmatrix = Accessory::SparseMatrixMaker<T>(_poissonStiffness);
+        auto triangleStiffnessMatrix = Accessory::SparseMatrixMaker<T>(_poissonStiffness);
+        std::unique_ptr<Eigen::SparseMatrix<T>> stiffnessMatrix(new Eigen::SparseMatrix<T>);
+        *stiffnessMatrix = triangleStiffnessMatrix->template selfadjointView<Eigen::Lower>();
         auto load = Accessory::SparseMatrixMaker<T>(_poissonBodyForce);
-        return std::make_tuple(std::move(stiffnessmatrix), std::move(load));
+        return std::make_tuple(std::move(stiffnessMatrix), std::move(load));
     }
 
 private:
@@ -250,10 +252,11 @@ public:
         Gramian = std::get<2>(a)->template selfadjointView<Eigen::Lower>();
         Eigen::ConjugateGradient<Eigen::SparseMatrix<T>, Eigen::Lower | Eigen::Upper> cg;
         cg.compute(Gramian);
-        auto transform = Accessory::SparseTransform<T>(std::get<0>(a));
+        auto transform = Accessory::SparseTransform<T>(std::get<0>(a), _dofmap.Dof());
         std::unique_ptr<Eigen::SparseMatrix<T>> result(new Eigen::SparseMatrix<T>);
         *result = transform->transpose()*cg.solve(*b);
         return result;
+
     }
 
 private:

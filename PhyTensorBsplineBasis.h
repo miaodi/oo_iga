@@ -34,6 +34,8 @@ public:
 
     PhyTensorBsplineBasis(const std::vector<KnotVector<T>> &, const GeometryVector &);
 
+    PhyTensorBsplineBasis(const std::vector<KnotVector<T>> &, const Eigen::Matrix<T, Eigen::Dynamic, 1> &);
+
     PhyPts AffineMap(const Pts &, const DiffPattern &i = DiffPattern(d, 0)) const;
 
     T Jacobian(const Pts &) const;
@@ -57,7 +59,7 @@ public:
 
     void UniformRefine(int, int, int m = 1);
 
-    void KnotInsertion(int , T, int =1);
+    void KnotInsertion(int, T, int = 1);
 
     void DegreeElevate(int p) {
         for (int i = 0; i != d; ++i)
@@ -347,8 +349,9 @@ PhyTensorBsplineBasis<d, N, T>::JacobianMatrix(const PhyTensorBsplineBasis::Pts 
 };
 
 template<int d, int N, typename T>
-bool PhyTensorBsplineBasis<d, N, T>::InversePts(const PhyTensorBsplineBasis::PhyPts &phyu, PhyTensorBsplineBasis::Pts &result, int maxLoop, T error) const {
-    result=Middle();
+bool PhyTensorBsplineBasis<d, N, T>::InversePts(const PhyTensorBsplineBasis::PhyPts &phyu, PhyTensorBsplineBasis::Pts &result, int maxLoop,
+                                                T error) const {
+    result = Middle();
     Pts suppBegin, suppEnd;
     for (int i = 0; i != d; ++i) {
         suppBegin(i) = this->DomainStart(i);
@@ -395,7 +398,6 @@ PhyTensorBsplineBasis<2, 2, double>::Eval1DerAllTensor(const vector &u) const {
         i.second[2] = solution(1);
     }
     return parametric;
-
 }
 
 template<>
@@ -449,7 +451,14 @@ PhyTensorBsplineBasis<d, N, T>::MakeHyperPlane(const int &orientation, const int
     return std::make_shared<HyperPlane>(hpknotvector, tempGeometry);
 }
 
-
+template<>
+PhyTensorBsplineBasis<2, 1, double>::PhyTensorBsplineBasis(const std::vector<KnotVector<double>> &base,
+                                                           const Eigen::Matrix<double, Eigen::Dynamic, 1> &geometry):TensorBsplineBasis<2, double>(base) {
+    ASSERT(geometry.rows()==(this->TensorBsplineBasis<2, double>::GetDof()),"Invalid geometrical information input, check size bro.");
+    for(int i=0;i!=geometry.rows();++i){
+        _geometricInfo.push_back(Eigen::Matrix<double,1,1>(geometry(i)));
+    }
+}
 
 
 #endif //OO_IGA_PHYTENSORBSPLINEBASIS_H
