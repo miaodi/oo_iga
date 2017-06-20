@@ -48,12 +48,17 @@ public:
     }
 
     void visit(Edge<T> *g) {
+        if (g->BeCalled()) return;
         if (!g->GetMatchInfo()) {
             auto tmp = g->AllActivatedDofsOfLayers(0);
             for (const auto &i:*tmp) {
                 _dofMap.FreezedDofInserter(g->GetDomain(), i);
             }
+            g->Called();
+        }else{
+            
         }
+
     }
 
     void visit(Cell<T> *g) {
@@ -254,7 +259,7 @@ public:
         cg.compute(Gramian);
         auto transform = Accessory::SparseTransform<T>(std::get<0>(a), _dofmap.Dof());
         std::unique_ptr<Eigen::SparseMatrix<T>> result(new Eigen::SparseMatrix<T>);
-        *result = transform->transpose()*cg.solve(*b);
+        *result = transform->transpose() * cg.solve(*b);
         return result;
 
     }

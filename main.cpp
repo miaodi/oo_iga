@@ -19,10 +19,10 @@ int main() {
     a.InitClosed(1, 0, 1);
     KnotVector<double> b;
     b.InitClosed(1, -1, 3);
-    Vector2d point1(0, 0);
-    Vector2d point2(0, 1);
-    Vector2d point3(1, 0);
-    Vector2d point4(1, 1);
+    Vector2d point1(0, 4);
+    Vector2d point2(2, 4);
+    Vector2d point3(0, 0);
+    Vector2d point4(2, 2);
 
 
     Vector2d point5(0, 0);
@@ -34,9 +34,11 @@ int main() {
     auto domain1 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(a, a, points1);
     auto domain2 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(b, b, points2);
 
-    domain1->DegreeElevate(2);
-    domain1->UniformRefine(3);
-    domain1->PrintKnots(1);
+    domain1->DegreeElevate(3);
+    domain1->UniformRefine(4);
+    domain1->KnotInsertion(0,.32);
+    domain1->KnotInsertion(1,.62);
+    domain1->PrintKnots(0);
     shared_ptr<Cell<double>> cell1 = make_shared<Cell<double>>(domain1);
     cell1->PrintEdgeInfo();
     cell1->_edges[1]->PrintActivatedDofsOfLayers(0);
@@ -66,7 +68,7 @@ int main() {
     solutionKnot.push_back(domain1->KnotVectorGetter(0));
     solutionKnot.push_back(domain1->KnotVectorGetter(1));
     auto solutionDomain = PhyTensorBsplineBasis<2, 1, double>(solutionKnot,solution);
-    Vector2d u(.1, .73);
+    Vector2d u(.145, .73);
 
     cout<<solutionDomain.AffineMap(u)<<endl;
     cout<<Analytical(domain1->AffineMap(u))[0];
