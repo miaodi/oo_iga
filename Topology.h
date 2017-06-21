@@ -297,7 +297,8 @@ public:
     }
 
     bool InversePts(const PhyPts &point, T &knotCoordinate) const {
-        Coordinate pt = this->_domain->InversePts(point);
+        Coordinate pt;
+        if(!this->_domain->InversePts(point,pt)) return false;
         if (IsOn(pt)) {
             switch (_position) {
                 case west: {

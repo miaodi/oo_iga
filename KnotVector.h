@@ -16,6 +16,7 @@
 #else
 #   define ASSERT(condition, message) do { } while (false)
 #endif
+
 #include <vector>
 #include <map>
 #include <eigen3/Eigen/Dense>
@@ -34,9 +35,9 @@ public:
 
     KnotVector(const uniContainer &target);
 
-    const T& operator[](int i) const;
+    const T &operator[](int i) const;
 
-    T& operator()(int i);
+    T &operator()(int i);
 
 
     void Insert(T knot);
@@ -59,19 +60,21 @@ public:
 
     int GetDOF() const;
 
-    void InitClosed(int _deg, T first=T(0.0), T last=T(1.0));
+    void InitClosed(int _deg, T first = T(0.0), T last = T(1.0));
 
-    void InitClosedUniform(int _dof, int _deg, T first=T(0.0), T last=T(1.0));
+    void InitClosedUniform(int _dof, int _deg, T first = T(0.0), T last = T(1.0));
 
-    KnotVector UniKnotUnion(const KnotVector & vb) const;
+    KnotVector UniKnotUnion(const KnotVector &vb) const;
 
     int FindSpan(const T &u) const;
 
-    std::vector<std::pair<T,T>> KnotSpans() const;
+    std::vector<std::pair<T, T>> KnotSpans() const;
 
-    void resize(int t){_multiKnots.resize(t);};
+    std::vector<std::pair<Eigen::Matrix<T, 1, 1>, Eigen::Matrix<T, 1, 1>>> KnotEigenSpans() const;
 
-    KnotVector Difference(const KnotVector&) const;
+    void resize(int t) { _multiKnots.resize(t); };
+
+    KnotVector Difference(const KnotVector &) const;
 
 private:
     //Knots with repetitions {0,0,0,.5,1,1,1}

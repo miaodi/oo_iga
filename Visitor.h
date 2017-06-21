@@ -53,9 +53,9 @@ public:
             for (const auto &i:*tmp) {
                 _dofMap.FreezedDofInserter(g->GetDomain(), i);
             }
-        }else{
-            if(!g->Slave()) return;
-            auto tmp = g->AllActivatedDofsOfLayersExcept(0,1);
+        } else {
+            if (!g->Slave()) return;
+            auto tmp = g->AllActivatedDofsOfLayersExcept(0, 1);
             for (const auto &i:*tmp) {
                 _dofMap.SlaveDofInserter(g->GetDomain(), i);
             }
@@ -280,11 +280,12 @@ public:
     using DomainShared_ptr = typename Visitor<T>::DomainShared_ptr;
     using IndexedValue = typename Visitor<T>::IndexedValue;
     using IndexedValueList = typename Visitor<T>::IndexedValueList;
-    using LoadFunctor = typename Visitor<T>::LoadFunctor;
+    using Coordinate = typename Visitor<T>::Coordinate;
     using CoordinatePairList = typename Visitor<T>::CoordinatePairList;
     using Quadlist = typename Visitor<T>::Quadlist;
+    using Pts = typename PhyTensorBsplineBasis<1, 2, T>::Pts;
 public:
-    PoissonInterfaceVisitor(const DofMapper<T> &dof): _dofmap(dof) {
+    PoissonInterfaceVisitor(const DofMapper<T> &dof) : _dofmap(dof) {
 
     }
 
@@ -292,7 +293,7 @@ public:
     }
 
     void visit(Edge<T> *g) {
-        if (!g->GetMatchInfo()) {
+        if (g->GetMatchInfo()&&g->Slave()) {
             Initialize(g);
             Assemble(g);
         }
@@ -309,36 +310,54 @@ public:
 
     void Assemble(Edge<T> *g) {
         EdgeShared_Ptr lagrange;
-        if(g->Slave()){
+        EdgeShared_Ptr edgeDomain = g->MakeEdge();
+        if (g->Slave()) {
             lagrange = g->MakeEdge();
-        }else{
+        } else {
             lagrange = g->Counterpart()->MakeEdge();
         }
-        CoordinatePairList elements;
-        g->KnotSpansGetter(elements);
-        /*
+        auto multiplierKnots = lagrange->KnotVectorGetter(0);
+        auto thisKnots = edgeDomain->KnotVectorGetter(0);
+        auto thisUniKnots = thisKnots.GetUnique();
+        Pts u, v;
+        for (const auto &i:thisUniKnots) {
+            u(0) = i;
+            lagrange->InversePts(edgeDomain->AffineMap(u), v);
+            multiplierKnots.Insert(v(0));
+        }
+        multiplierKnots.printKnotVector();
+        auto elements = multiplierKnots.KnotEigenSpans();
         Quadlist quadratures;
-        IndexedValueList tempList;
         auto domain = g->GetDomain();
+        IndexedValueList matrixContainer;
         for (const auto &i : elements) {
             this->_quadrature.MapToQuadrature(i, quadratures);
-            LocalAssemble(g, domain, lagrange, quadratures);
+            LocalAssemble(g, domain, lagrange, quadratures, matrixContainer);
+            LocalAssemble(&*g->Counterpart(), g->Counterpart()->GetDomain(), lagrange, quadratures, matrixContainer);
+        }
+        for(auto i:matrixContainer){
+            std::cout<<i.row()<<" "<<i.col()<<" "<<i.value()<<std::endl;
         }
         this->_poissonInterface.shrink_to_fit();
-        */
     }
 
     void
-    LocalAssemble(Element<T> *g, DomainShared_ptr const basis, EdgeShared_Ptr const lagrange, const Quadlist &quadratures) {
+    LocalAssemble(Edge<T> *g, DomainShared_ptr const basis, EdgeShared_Ptr const lagrange,
+                  const Quadlist &quadratures, IndexedValueList& matrix) {
         auto initialIndex = _dofmap.StartingIndex(basis);
-        auto index = basis->ActiveIndex(quadratures[0].first);
+        Coordinate u;
+        basis->InversePts(lagrange->AffineMap(quadratures[0].first), u);
+        auto index = basis->ActiveIndex(u);
+        auto lagrangeIndex = lagrange->ActiveIndex(quadratures[0].first);
         Eigen::Matrix<T, Eigen::Dynamic, 1> weights(quadratures.size());
         Eigen::Matrix<T, Eigen::Dynamic, 1> boundaryInfo(quadratures.size());
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> basisFuns(quadratures.size(), index.size());
-        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> lagrangeBasisFuns(quadratures.size(), index.size());
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> lagrangeBasisFuns(quadratures.size(), lagrangeIndex.size());
         int it = 0;
         for (const auto &i : quadratures) {
-            auto evals = basis->EvalDerAllTensor(i.first);
+            ASSERT(basis->InversePts(lagrange->AffineMap(i.first), u), "Inverse fail.");
+            ASSERT(g->IsOn(u), "Gauss points is not on the edge");
+            auto evals = basis->EvalDerAllTensor(u);
             auto lagrangeEvals = lagrange->EvalDerAllTensor(i.first);
             weights(it) = i.second;
             int itit = 0;
@@ -353,7 +372,18 @@ public:
             }
             it++;
         }
-
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tempStiffMatrix;
+        tempStiffMatrix =
+                lagrangeBasisFuns.transpose() * Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(weights.asDiagonal()) *
+                basisFuns;
+        for (int i = 0; i != tempStiffMatrix.rows(); ++i) {
+            for (int j = 0; j != tempStiffMatrix.cols(); ++j) {
+                if (tempStiffMatrix(i,j)!=0) {
+                    matrix.push_back(
+                            IndexedValue(i, index[j] + initialIndex, tempStiffMatrix(i, j)));
+                }
+            }
+        }
     }
 
 
@@ -362,4 +392,5 @@ private:
     const DofMapper<T> &_dofmap;
     QuadratureRule<T> _quadrature;
 };
+
 #endif //OO_IGA_VISITOR_H

@@ -34,11 +34,13 @@ int main() {
     auto domain1 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(a, a, points1);
     auto domain2 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(b, b, points2);
 
-    domain1->DegreeElevate(3);
-    domain1->UniformRefine(4);
+    domain1->DegreeElevate(1);
+    domain2->DegreeElevate(1);
+    domain1->UniformRefine(1);
     domain1->KnotInsertion(0,.32);
     domain1->KnotInsertion(1,.62);
-    domain1->PrintKnots(0);
+
+    domain2->PrintKnots(1);
     shared_ptr<Cell<double>> cell1 = make_shared<Cell<double>>(domain1);
     shared_ptr<Cell<double>> cell2 = make_shared<Cell<double>>(domain2);
     cell1->Match(cell2);
@@ -58,6 +60,9 @@ int main() {
     PoissonBoundaryVisitor<double> boundary(s, Analytical);
     cell1->accept(boundary);
     s.PrintSlaveDofIn(domain2);
+    PoissonInterfaceVisitor<double> interface(s);
+    cell1->accept(interface);
+    cell2->accept(interface);
     /*
 unique_ptr<SparseMatrix<double>> stiffness, load, boundaryValue;
 tie(stiffness, load) = poisson.Domain();

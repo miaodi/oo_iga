@@ -212,10 +212,22 @@ KnotVector<T> KnotVector<T>::Difference(const KnotVector &reference) const {
     knotContainer diff;
     typename knotContainer::iterator it;
     std::set_difference(_multiKnots.begin(), _multiKnots.end(), reference._multiKnots.begin(),
-                             reference._multiKnots.end(), std::back_inserter(diff));
+                        reference._multiKnots.end(), std::back_inserter(diff));
     return KnotVector(diff);
 }
 
+template<typename T>
+std::vector<std::pair<Eigen::Matrix<T, 1, 1>, Eigen::Matrix<T, 1, 1>>>
+KnotVector<T>::KnotEigenSpans() const {
+    using Coordinate = Eigen::Matrix<T, 1, 1>;
+    uniContainer _uniKnots;
+    UniQue(_uniKnots);
+    std::vector<std::pair<Coordinate, Coordinate>> tmp;
+    for (auto it = _uniKnots.begin(); it != std::prev(_uniKnots.end()); ++it) {
+        tmp.push_back(std::make_pair(Coordinate(it->first), Coordinate(std::next(it, 1)->first)));
+    }
+    return tmp;
+}
 
 
 template
