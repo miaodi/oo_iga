@@ -140,6 +140,10 @@ public:
         _freezeDof[domain].insert(num);
     }
 
+    void SlaveDofInserter(DomainShared_ptr domain, int num) {
+        _slaveDof[domain].insert(num);
+    }
+
     int StartingIndex(DomainShared_ptr domain) const {
         int index = DomainIndex(domain);
         int res = 0;
@@ -154,6 +158,7 @@ public:
         int index = DomainIndex(domain);
         for (int i = 0; i != index; ++i) {
             res -= _freezeDof.at(_domains[i]).size();
+            res -= _slaveDof.at(_domains[i]).size();
         }
         return res;
     }
@@ -171,6 +176,7 @@ public:
         for (const auto &i:_domains) {
             res += _patchDof.at(i);
             res -= _freezeDof.at(i).size();
+            res -= _slaveDof.at(i).size();
         }
         return res;
     }
@@ -185,6 +191,9 @@ public:
         if (res) {
             i -= std::count_if(_freezeDof.at(_domains[domainIndex]).begin(),
                                _freezeDof.at(_domains[domainIndex]).end(),
+                               [&i](int num) { return num < i; });
+            i -= std::count_if(_slaveDof.at(_domains[domainIndex]).begin(),
+                               _slaveDof.at(_domains[domainIndex]).end(),
                                [&i](int num) { return num < i; });
         }
         return res;
@@ -221,6 +230,19 @@ public:
         std::cout << std::endl;
     }
 
+    void PrintSlaveDofIn(const DomainShared_ptr domain) {
+        auto it = _slaveDof.find(domain);
+        if(it==_slaveDof.end()){
+            std::cout<<"No Slave Dof is found."<<std::endl;
+            return;
+        }
+        std::cout << "Slave Dof Index in given domain are:";
+        for (const auto &i:it->second) {
+            std::cout << i << " ";
+        }
+        std::cout << std::endl;
+    }
+
     void PrintDofIn(const DomainShared_ptr domain) {
         auto it = _patchDof.find(domain);
         std::cout << "Dof of given domain are:" << it->second;
@@ -239,6 +261,7 @@ private:
     std::vector<DomainShared_ptr> _domains;
     std::map<DomainShared_ptr, int> _patchDof;
     std::map<DomainShared_ptr, std::set<int>> _freezeDof;
+    std::map<DomainShared_ptr, std::set<int>> _slaveDof;
 
 };
 

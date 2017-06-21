@@ -48,15 +48,17 @@ public:
     }
 
     void visit(Edge<T> *g) {
-        if (g->BeCalled()) return;
         if (!g->GetMatchInfo()) {
             auto tmp = g->AllActivatedDofsOfLayers(0);
             for (const auto &i:*tmp) {
                 _dofMap.FreezedDofInserter(g->GetDomain(), i);
             }
-            g->Called();
         }else{
-            
+            if(!g->Slave()) return;
+            auto tmp = g->AllActivatedDofsOfLayersExcept(0,1);
+            for (const auto &i:*tmp) {
+                _dofMap.SlaveDofInserter(g->GetDomain(), i);
+            }
         }
 
     }
@@ -103,7 +105,6 @@ public:
         CoordinatePairList elements;
         g->KnotSpansGetter(elements);
         Quadlist quadratures;
-        IndexedValueList tempList;
         auto domain = g->GetDomain();
         for (const auto &i : elements) {
             this->_quadrature.MapToQuadrature(i, quadratures);
@@ -203,7 +204,6 @@ public:
         CoordinatePairList elements;
         g->KnotSpansGetter(elements);
         Quadlist quadratures;
-        IndexedValueList tempList;
         auto domain = g->GetDomain();
         for (const auto &i : elements) {
             this->_quadrature.MapToQuadrature(i, quadratures);
@@ -272,4 +272,94 @@ private:
     LoadFunctor _deformationFunctor;
 };
 
+
+template<typename T>
+class PoissonInterfaceVisitor : public Visitor<T> {
+public:
+    using EdgeShared_Ptr = typename Element<T>::EdgeShared_Ptr;
+    using DomainShared_ptr = typename Visitor<T>::DomainShared_ptr;
+    using IndexedValue = typename Visitor<T>::IndexedValue;
+    using IndexedValueList = typename Visitor<T>::IndexedValueList;
+    using LoadFunctor = typename Visitor<T>::LoadFunctor;
+    using CoordinatePairList = typename Visitor<T>::CoordinatePairList;
+    using Quadlist = typename Visitor<T>::Quadlist;
+public:
+    PoissonInterfaceVisitor(const DofMapper<T> &dof): _dofmap(dof) {
+
+    }
+
+    void visit(Cell<T> *g) {
+    }
+
+    void visit(Edge<T> *g) {
+        if (!g->GetMatchInfo()) {
+            Initialize(g);
+            Assemble(g);
+        }
+    }
+
+    void Initialize(Edge<T> *g) {
+        auto deg_x = g->GetDegree(0);
+        auto deg_y = g->GetDegree(1);
+        auto pairDeg_x = g->Counterpart()->GetDegree(0);
+        auto pairDeg_y = g->Counterpart()->GetDegree(1);
+        std::vector<int> degrees{deg_x, deg_y, pairDeg_x, pairDeg_y};
+        this->_quadrature.SetUpQuadrature(*std::max_element(degrees.begin(), degrees.end()) + 1);
+    }
+
+    void Assemble(Edge<T> *g) {
+        EdgeShared_Ptr lagrange;
+        if(g->Slave()){
+            lagrange = g->MakeEdge();
+        }else{
+            lagrange = g->Counterpart()->MakeEdge();
+        }
+        CoordinatePairList elements;
+        g->KnotSpansGetter(elements);
+        /*
+        Quadlist quadratures;
+        IndexedValueList tempList;
+        auto domain = g->GetDomain();
+        for (const auto &i : elements) {
+            this->_quadrature.MapToQuadrature(i, quadratures);
+            LocalAssemble(g, domain, lagrange, quadratures);
+        }
+        this->_poissonInterface.shrink_to_fit();
+        */
+    }
+
+    void
+    LocalAssemble(Element<T> *g, DomainShared_ptr const basis, EdgeShared_Ptr const lagrange, const Quadlist &quadratures) {
+        auto initialIndex = _dofmap.StartingIndex(basis);
+        auto index = basis->ActiveIndex(quadratures[0].first);
+        Eigen::Matrix<T, Eigen::Dynamic, 1> weights(quadratures.size());
+        Eigen::Matrix<T, Eigen::Dynamic, 1> boundaryInfo(quadratures.size());
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> basisFuns(quadratures.size(), index.size());
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> lagrangeBasisFuns(quadratures.size(), index.size());
+        int it = 0;
+        for (const auto &i : quadratures) {
+            auto evals = basis->EvalDerAllTensor(i.first);
+            auto lagrangeEvals = lagrange->EvalDerAllTensor(i.first);
+            weights(it) = i.second;
+            int itit = 0;
+            for (const auto &j : *evals) {
+                basisFuns(it, itit) = j.second[0];
+                itit++;
+            }
+            itit = 0;
+            for (const auto &j : *lagrangeEvals) {
+                lagrangeBasisFuns(it, itit) = j.second[0];
+                itit++;
+            }
+            it++;
+        }
+
+    }
+
+
+private:
+    IndexedValueList _poissonInterface;
+    const DofMapper<T> &_dofmap;
+    QuadratureRule<T> _quadrature;
+};
 #endif //OO_IGA_VISITOR_H

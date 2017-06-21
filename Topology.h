@@ -214,9 +214,18 @@ public:
             _matched = true;
             counterpart->_pair = this->shared_from_this();
             counterpart->_matched = true;
+            if(this->GetDof()>_pair->GetDof()){
+                _slave=true;
+            }else{
+                _pair->_slave=true;
+            }
             return true;
         }
         return false;
+    }
+
+    bool Slave() const{
+        return _slave;
     }
 
     bool IsOn(Coordinate &u) const {
@@ -312,40 +321,47 @@ public:
         return false;
     }
 
-    //Given the layer number, it returns a pointer to a vector that contains all control points index of that layer.
-    std::unique_ptr<std::vector<int>> AllActivatedDofsOfLayers(const int &layerNum) {
+    std::shared_ptr<Edge<T>> Counterpart() const{
+        return _pair;
+    }
+
+    std::unique_ptr<std::vector<int>> AllActivatedDofsOfLayersExcept(const int &layerNum, const int &exceptNum) {
         std::unique_ptr<std::vector<int>> res(new std::vector<int>);
         switch (_position) {
             case west: {
                 for (int i = 0; i <= layerNum; ++i) {
                     auto tmp = this->_domain->AllActivatedDofsOnBoundary(0, i);
-                    res->insert(res->end(), tmp->begin(), tmp->end());
+                    res->insert(res->end(), tmp->begin()+exceptNum, tmp->end()-exceptNum);
                 }
                 break;
             }
             case east: {
                 for (int i = 0; i <= layerNum; ++i) {
                     auto tmp = this->_domain->AllActivatedDofsOnBoundary(0, this->_domain->GetDof(0) - 1 - i);
-                    res->insert(res->end(), tmp->begin(), tmp->end());
+                    res->insert(res->end(), tmp->begin()+exceptNum, tmp->end()-exceptNum);
                 }
                 break;
             }
             case north: {
                 for (int i = 0; i <= layerNum; ++i) {
                     auto tmp = this->_domain->AllActivatedDofsOnBoundary(1, this->_domain->GetDof(1) - 1 - i);
-                    res->insert(res->end(), tmp->begin(), tmp->end());
+                    res->insert(res->end(), tmp->begin()+exceptNum, tmp->end()-exceptNum);
                 }
                 break;
             }
             case south: {
                 for (int i = 0; i <= layerNum; ++i) {
                     auto tmp = this->_domain->AllActivatedDofsOnBoundary(1, i);
-                    res->insert(res->end(), tmp->begin(), tmp->end());
+                    res->insert(res->end(), tmp->begin()+exceptNum, tmp->end()-exceptNum);
                 }
                 break;
             }
         }
         return res;
+    }
+    //Given the layer number, it returns a pointer to a vector that contains all control points index of that layer.
+    std::unique_ptr<std::vector<int>> AllActivatedDofsOfLayers(const int &layerNum) {
+        return AllActivatedDofsOfLayersExcept(layerNum,0);
     }
 
     void PrintActivatedDofsOfLayers(const int &layerNum){
@@ -356,9 +372,11 @@ public:
         }
         std::cout<<std::endl;
     }
+
 private:
     Orientation _position;
     bool _matched;
+    bool _slave = false;
     Coordinate _begin;
     Coordinate _end;
     std::shared_ptr<Edge<T>> _pair;
