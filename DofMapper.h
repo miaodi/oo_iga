@@ -64,7 +64,7 @@ namespace Accessory {
     std::unique_ptr<Eigen::SparseMatrix<T>> SparseTransform(const std::vector<int> &mapInform, const int &col) {
         std::unique_ptr<Eigen::SparseMatrix<T>> matrix(new Eigen::SparseMatrix<T>);
         int row = mapInform.size();
-        ASSERT(mapInform[mapInform.size() - 1] + 1<=col,"Invalide matrix col/row.");
+        ASSERT(mapInform[mapInform.size() - 1] + 1 <= col, "Invalide matrix col/row.");
         matrix->resize(row, col);
         for (int i = 0; i != row; i++) {
             matrix->coeffRef(i, mapInform[i]) = 1;
@@ -79,23 +79,25 @@ namespace Accessory {
         ASSERT(original.cols() > *(col.end() - 1) && original.rows() > *(row.end() - 1),
                "The original size of the given matrix is inconsistent with the give row/col");
         std::unique_ptr<Eigen::SparseMatrix<T>> result(new Eigen::SparseMatrix<T>);
-        auto colTransform = Accessory::SparseTransform<T>(col,original.cols());
-        auto rowTransform = Accessory::SparseTransform<T>(row,original.rows());
+        auto colTransform = Accessory::SparseTransform<T>(col, original.cols());
+        auto rowTransform = Accessory::SparseTransform<T>(row, original.rows());
         *result = (*rowTransform) * (original) * (*colTransform).transpose();
         return result;
     }
+
     template<typename T>
     std::unique_ptr<Eigen::SparseMatrix<T>>
     SparseMatrixGivenColRow(const std::vector<int> &row, const std::vector<int> &col,
                             const std::unique_ptr<Eigen::SparseMatrix<T>> &original) {
-        return SparseMatrixGivenColRow<T>(row,col,*original);
+        return SparseMatrixGivenColRow<T>(row, col, *original);
     }
+
     template<typename T>
     std::unique_ptr<Eigen::SparseMatrix<T>>
     SparseMatrixGivenColRow(const std::vector<int> &row, const std::vector<int> &col,
                             const std::vector<Eigen::Triplet<T>> &_list) {
         auto original = Accessory::SparseMatrixMaker<T>(_list);
-        return SparseMatrixGivenColRow<T>(row,col,std::move(original));
+        return SparseMatrixGivenColRow<T>(row, col, std::move(original));
     }
 
     template<typename T>
@@ -107,6 +109,28 @@ namespace Accessory {
         std::unique_ptr<Eigen::SparseMatrix<T>> result(new Eigen::SparseMatrix<T>);
         result = SparseMatrixGivenColRow<T>(col, row, _list);
         return std::make_tuple(row, col, std::move(result));
+    }
+
+    template<typename T>
+    void removeRow(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> &matrix, unsigned int rowToRemove) {
+        unsigned int numRows = matrix.rows() - 1;
+        unsigned int numCols = matrix.cols();
+
+        if (rowToRemove < numRows)
+            matrix.block(rowToRemove, 0, numRows - rowToRemove, numCols) = matrix.block(rowToRemove + 1, 0, numRows - rowToRemove, numCols);
+
+        matrix.conservativeResize(numRows, numCols);
+    }
+
+    template<typename T>
+    void removeColumn(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> &matrix, unsigned int colToRemove) {
+        unsigned int numRows = matrix.rows();
+        unsigned int numCols = matrix.cols() - 1;
+
+        if (colToRemove < numCols)
+            matrix.block(0, colToRemove, numRows, numCols - colToRemove) = matrix.block(0, colToRemove + 1, numRows, numCols - colToRemove);
+
+        matrix.conservativeResize(numRows, numCols);
     }
 }
 template<typename T>
@@ -122,6 +146,8 @@ public:
         if (std::find(_domains.begin(), _domains.end(), domain) == _domains.end()) {
             _domains.push_back(domain);
         }
+        _freezeDof[domain] = std::set<int>{};
+        _slaveDof[domain] = std::set<int>{};
     }
 
     int DomainIndex(DomainShared_ptr domain) const {
@@ -155,10 +181,15 @@ public:
 
     int FreeStartingIndex(DomainShared_ptr domain) const {
         int res = StartingIndex(domain);
-        int index = DomainIndex(domain);
-        for (int i = 0; i != index; ++i) {
-            res -= _freezeDof.at(_domains[i]).size();
-            res -= _slaveDof.at(_domains[i]).size();
+        for (auto it = _domains.begin(); *it != domain; it++) {
+            auto slaveIt = _slaveDof.find(*it);
+            auto freezeIt = _freezeDof.find(*it);
+            if (slaveIt != _slaveDof.end()) {
+                res -= slaveIt->size();
+            }
+            if (freezeIt != _freezeDof.end()) {
+                res -= freezeIt->size();
+            }
         }
         return res;
     }
@@ -175,8 +206,14 @@ public:
         int res = 0;
         for (const auto &i:_domains) {
             res += _patchDof.at(i);
-            res -= _freezeDof.at(i).size();
-            res -= _slaveDof.at(i).size();
+            auto slaveIt = _slaveDof.find(i);
+            auto freezeIt = _freezeDof.find(i);
+            if (slaveIt != _slaveDof.end()) {
+                res -= slaveIt->size();
+            }
+            if (freezeIt != _freezeDof.end()) {
+                res -= freezeIt->size();
+            }
         }
         return res;
     }
@@ -187,22 +224,39 @@ public:
 
     bool FreeIndexInDomain(DomainShared_ptr domain, int &i) const {
         auto domainIndex = DomainIndex(domain);
-        auto res = _freezeDof.at(_domains[domainIndex]).find(i) == _freezeDof.at(_domains[domainIndex]).end();
-        if (res) {
-            i -= std::count_if(_freezeDof.at(_domains[domainIndex]).begin(),
-                               _freezeDof.at(_domains[domainIndex]).end(),
-                               [&i](int num) { return num < i; });
-            i -= std::count_if(_slaveDof.at(_domains[domainIndex]).begin(),
+        if (_patchDof.at(_domains[domainIndex]) <= i) return false;
+        auto slaveIt = _slaveDof.find(domain);
+        auto freezeIt = _freezeDof.find(domain);
+        if (slaveIt->second.find(i) != slaveIt->second.end()) return false;
+        if (freezeIt->second.find(i) != freezeIt->second.end()) return false;
+        int count = 0;
+        count += std::count_if(_slaveDof.at(_domains[domainIndex]).begin(),
                                _slaveDof.at(_domains[domainIndex]).end(),
                                [&i](int num) { return num < i; });
-        }
-        return res;
+        count += std::count_if(_freezeDof.at(_domains[domainIndex]).begin(),
+                               _freezeDof.at(_domains[domainIndex]).end(),
+                               [&i](int num) { return num < i; });
+        i -= count;
+        return true;
     }
 
     int FreeIndex(DomainShared_ptr domain, int &i) const {
         auto res = FreeIndexInDomain(domain, i);
         if (res) {
             i += FreeStartingIndex(domain);
+        }
+        return res;
+    }
+
+    std::vector<int> SlaveDofIn(DomainShared_ptr const domain) const {
+        int initial = StartingIndex(domain);
+        std::vector<int> res;
+        auto it = _slaveDof.find(domain);
+        if (it == _slaveDof.end()) {
+            return res;
+        }
+        for (const auto &i:it->second) {
+            res.push_back(initial + i);
         }
         return res;
     }
@@ -221,9 +275,13 @@ public:
         return res;
     }
 
-    void PrintFreezedDofIn(const DomainShared_ptr domain) {
+    void PrintBoundaryDofIn(const DomainShared_ptr domain) {
         auto it = _freezeDof.find(domain);
-        std::cout << "Freezed Dof Index in given domain are:";
+        if (it == _freezeDof.end()) {
+            std::cout << "No Boundary Dof is found." << std::endl;
+            return;
+        }
+        std::cout << "Boundary Dof Index in given domain are:";
         for (const auto &i:it->second) {
             std::cout << i << " ";
         }
@@ -232,8 +290,8 @@ public:
 
     void PrintSlaveDofIn(const DomainShared_ptr domain) {
         auto it = _slaveDof.find(domain);
-        if(it==_slaveDof.end()){
-            std::cout<<"No Slave Dof is found."<<std::endl;
+        if (it->second.size() == 0) {
+            std::cout << "No Slave Dof is found." << std::endl;
             return;
         }
         std::cout << "Slave Dof Index in given domain are:";

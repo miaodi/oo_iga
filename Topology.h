@@ -462,7 +462,7 @@ public:
     void Match(std::shared_ptr<Cell<T>> counterpart) {
         for (auto &i:_edges) {
             for (auto &j:counterpart->_edges) {
-                if (i->Match(j) == true) break;
+                i->Match(j) ;
             }
 
         }

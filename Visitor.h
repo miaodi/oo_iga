@@ -7,8 +7,8 @@
 
 #include "Topology.h"
 #include "DofMapper.h"
-#include <boost/bimap.hpp>
-
+#include <thread>
+#include <mutex>
 template<typename T>
 class Element;
 
@@ -81,6 +81,7 @@ public:
     using LoadFunctor = typename Visitor<T>::LoadFunctor;
     using CoordinatePairList = typename Visitor<T>::CoordinatePairList;
     using Quadlist = typename Visitor<T>::Quadlist;
+    using CoordinatePair = typename QuadratureRule<T>::CoordinatePair;
 public:
     PoissonVisitor(const DofMapper<T> &dof, const LoadFunctor &load) : _bodyForceFunctor(load), _dofmap(dof) {
 
@@ -104,18 +105,35 @@ public:
     void Assemble(Cell<T> *g) {
         CoordinatePairList elements;
         g->KnotSpansGetter(elements);
-        Quadlist quadratures;
         auto domain = g->GetDomain();
-        for (const auto &i : elements) {
-            this->_quadrature.MapToQuadrature(i, quadratures);
-            LocalAssemble(g, domain, quadratures, _bodyForceFunctor);
+
+        std::mutex pmutex;
+        std::vector<std::thread> threads(8);
+        const int grainsize = elements.size() / 8;
+        auto work_iter = elements.begin();
+
+
+        auto lambda = [&](typename CoordinatePairList::iterator begin,typename CoordinatePairList::iterator end)->void{
+            for (auto i=begin;i!=end;++i) {
+                LocalAssemble(g, domain, *i, _bodyForceFunctor,pmutex);
+            }
+        };
+        for(auto it = std::begin(threads); it != std::end(threads) - 1; ++it) {
+            *it = std::thread(lambda, work_iter, work_iter + grainsize);
+            work_iter += grainsize;
+        }
+        threads.back() = std::thread(lambda, work_iter, elements.end());
+        for(auto &i:threads){
+            i.join();
         }
         this->_poissonStiffness.shrink_to_fit();
         this->_poissonBodyForce.shrink_to_fit();
     }
 
     void
-    LocalAssemble(Cell<T> *g, DomainShared_ptr const basis, const Quadlist &quadratures, const LoadFunctor &load) {
+    LocalAssemble(Cell<T> *g, DomainShared_ptr const basis, const CoordinatePair &element, const LoadFunctor &load, std::mutex &pmutex) {
+        Quadlist quadratures;
+        this->_quadrature.MapToQuadrature(element, quadratures);
         auto initialIndex = _dofmap.StartingIndex(basis);
         auto index = basis->ActiveIndex(quadratures[0].first);
         Eigen::Matrix<T, Eigen::Dynamic, 1> weights(quadratures.size() * 2);
@@ -145,10 +163,12 @@ public:
         for (int i = 0; i != tempStiffMatrix.rows(); ++i) {
             for (int j = 0; j != tempStiffMatrix.cols(); ++j) {
                 if (i >= j) {
+                    std::lock_guard<std::mutex> lock(pmutex);
                     this->_poissonStiffness.push_back(
                             IndexedValue(index[i] + initialIndex, index[j] + initialIndex, tempStiffMatrix(i, j)));
                 }
             }
+            std::lock_guard<std::mutex> lock(pmutex);
             this->_poissonBodyForce.push_back(IndexedValue(index[i] + initialIndex, 0, tempLoadVector(i)));
         }
     }
@@ -286,14 +306,17 @@ public:
     using Pts = typename PhyTensorBsplineBasis<1, 2, T>::Pts;
 public:
     PoissonInterfaceVisitor(const DofMapper<T> &dof) : _dofmap(dof) {
-
+        int Dof = _dofmap.Dof();
+        for (int i = 0; i != Dof; ++i) {
+            _poissonInterface.push_back(IndexedValue(i, i, 1));
+        }
     }
 
     void visit(Cell<T> *g) {
     }
 
     void visit(Edge<T> *g) {
-        if (g->GetMatchInfo()&&g->Slave()) {
+        if (g->GetMatchInfo() && g->Slave()) {
             Initialize(g);
             Assemble(g);
         }
@@ -309,13 +332,8 @@ public:
     }
 
     void Assemble(Edge<T> *g) {
-        EdgeShared_Ptr lagrange;
-        EdgeShared_Ptr edgeDomain = g->MakeEdge();
-        if (g->Slave()) {
-            lagrange = g->MakeEdge();
-        } else {
-            lagrange = g->Counterpart()->MakeEdge();
-        }
+        EdgeShared_Ptr lagrange = g->MakeEdge();
+        EdgeShared_Ptr edgeDomain = g->Counterpart()->MakeEdge();
         auto multiplierKnots = lagrange->KnotVectorGetter(0);
         auto thisKnots = edgeDomain->KnotVectorGetter(0);
         auto thisUniKnots = thisKnots.GetUnique();
@@ -325,7 +343,6 @@ public:
             lagrange->InversePts(edgeDomain->AffineMap(u), v);
             multiplierKnots.Insert(v(0));
         }
-        multiplierKnots.printKnotVector();
         auto elements = multiplierKnots.KnotEigenSpans();
         Quadlist quadratures;
         auto domain = g->GetDomain();
@@ -335,15 +352,13 @@ public:
             LocalAssemble(g, domain, lagrange, quadratures, matrixContainer);
             LocalAssemble(&*g->Counterpart(), g->Counterpart()->GetDomain(), lagrange, quadratures, matrixContainer);
         }
-        for(auto i:matrixContainer){
-            std::cout<<i.row()<<" "<<i.col()<<" "<<i.value()<<std::endl;
-        }
+        SolveCouplingRelation(g, domain, matrixContainer);
         this->_poissonInterface.shrink_to_fit();
     }
 
     void
     LocalAssemble(Edge<T> *g, DomainShared_ptr const basis, EdgeShared_Ptr const lagrange,
-                  const Quadlist &quadratures, IndexedValueList& matrix) {
+                  const Quadlist &quadratures, IndexedValueList &matrix) {
         auto initialIndex = _dofmap.StartingIndex(basis);
         Coordinate u;
         basis->InversePts(lagrange->AffineMap(quadratures[0].first), u);
@@ -357,6 +372,7 @@ public:
         for (const auto &i : quadratures) {
             ASSERT(basis->InversePts(lagrange->AffineMap(i.first), u), "Inverse fail.");
             ASSERT(g->IsOn(u), "Gauss points is not on the edge");
+            std::cout<<i.first<<" "<<i.second<<std::endl;
             auto evals = basis->EvalDerAllTensor(u);
             auto lagrangeEvals = lagrange->EvalDerAllTensor(i.first);
             weights(it) = i.second;
@@ -378,14 +394,60 @@ public:
                 basisFuns;
         for (int i = 0; i != tempStiffMatrix.rows(); ++i) {
             for (int j = 0; j != tempStiffMatrix.cols(); ++j) {
-                if (tempStiffMatrix(i,j)!=0) {
+                if (tempStiffMatrix(i, j) != 0) {
                     matrix.push_back(
-                            IndexedValue(i, index[j] + initialIndex, tempStiffMatrix(i, j)));
+                            IndexedValue(lagrangeIndex[i], index[j] + initialIndex, tempStiffMatrix(i, j)));
                 }
             }
         }
     }
 
+    void SolveCouplingRelation(Edge<T> *g, DomainShared_ptr const basis, IndexedValueList &matrix) {
+        using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
+        auto index = Accessory::NonZeroCols<T>(matrix);
+        auto row = Accessory::NonZeroRows<T>(matrix);
+        auto slaveInDomain = _dofmap.SlaveDofIn(basis);
+        auto slaveSideIndex = g->AllActivatedDofsOfLayers(0);
+        int start = _dofmap.StartingIndex(basis);
+        std::transform(slaveSideIndex->cbegin(),slaveSideIndex->cend(),slaveSideIndex->begin(),[&start](const int &i){return i+start;});
+
+        std::vector<int> slaveIndex, masterIndex, slaveMaster;
+        std::set_intersection(index.begin(), index.end(), slaveInDomain.begin(), slaveInDomain.end(), std::back_inserter(slaveIndex));
+        std::set_difference(index.begin(), index.end(), slaveInDomain.begin(), slaveInDomain.end(), std::back_inserter(masterIndex));
+        std::set_difference(slaveSideIndex->begin(), slaveSideIndex->end(), slaveInDomain.begin(), slaveInDomain.end(), std::back_inserter(slaveMaster));
+        Matrix mass = *Accessory::SparseMatrixGivenColRow(row, slaveIndex, matrix);
+        Matrix load = *Accessory::SparseMatrixGivenColRow(row, masterIndex, matrix);
+        for(auto i:slaveMaster){
+            int j = std::find(masterIndex.begin(),masterIndex.end(),i)-masterIndex.begin();
+            load.col(j)*=-1;
+        }
+        mass.row(1) = mass.row(1) + mass.row(0);
+        mass.row(mass.rows() - 2) = mass.row(mass.rows() - 2) + mass.row(mass.rows() - 1);
+        load.row(1) = load.row(1) + load.row(0);
+        load.row(load.rows() - 2) = load.row(load.rows() - 2) + load.row(load.rows() - 1);
+        Accessory::removeRow<T>(mass, 0);
+        Accessory::removeRow<T>(mass, mass.rows() - 1);
+        Accessory::removeRow<T>(load, 0);
+        Accessory::removeRow<T>(load, load.rows() - 1);
+        Matrix temp = mass.partialPivLu().solve(load);
+
+        T tol = 1E-11;
+        for (int i = 0; i != temp.rows(); ++i) {
+            for (int j = 0; j != temp.cols(); ++j) {
+                if (std::abs(temp(i, j)) > tol) {
+                    _poissonInterface.push_back(
+                            IndexedValue(masterIndex[j], slaveIndex[i], temp(i, j)));
+                }
+            }
+        }
+    }
+
+    std::unique_ptr<Eigen::SparseMatrix<T>> Coupling() {
+        std::unique_ptr<Eigen::SparseMatrix<T>> result(new Eigen::SparseMatrix<T>);
+        result->resize(_dofmap.Dof(), _dofmap.Dof());
+        result->setFromTriplets(_poissonInterface.begin(), _poissonInterface.end());
+        return result;
+    }
 
 private:
     IndexedValueList _poissonInterface;

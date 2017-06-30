@@ -99,7 +99,8 @@ void KnotVector<T>::RefineSpan(std::pair<T, T> span, int r, int multi) {
     uniContainer _uniKnots, temp_uniKnots;
     UniQue(_uniKnots);
     auto itlow = _uniKnots.lower_bound(span.first), itup = _uniKnots.upper_bound(span.second);
-    KnotVector<T> temp({itlow, itup});
+    auto spanOnKnot = {*itlow, *itup};
+    KnotVector<T> temp(spanOnKnot);
     temp.UniQue(temp_uniKnots);
     temp.UniformRefine(r, multi);
     _uniKnots.insert(temp_uniKnots.begin(), temp_uniKnots.end());
