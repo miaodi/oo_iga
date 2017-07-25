@@ -4,6 +4,8 @@
 #include "QuadratureRule.h"
 #include "Topology.h"
 #include <fstream>
+#include <iomanip>
+#include <ctime>
 
 using namespace Eigen;
 using namespace std;
@@ -15,106 +17,97 @@ using QuadList = QuadratureRule<double>::QuadList;
 using LoadFunctor = Element<double>::LoadFunctor;
 
 int main() {
+    time_t start, end;
+    time(&start);
     KnotVector<double> a;
     a.InitClosed(1, 0, 1);
     Vector2d point1(0, 4);
-    Vector2d point2(0, 0);
-    Vector2d point3(1, 3);
-    Vector2d point4(1, 1);
-    Vector2d point5(3, 3);
-    Vector2d point6(3, 1);
-    Vector2d point7(4, 4);
-    Vector2d point8(4, 0);
+    Vector2d point2(2, 4);
+    Vector2d point3(0, 0);
+    Vector2d point4(2, 2);
+    Vector2d point5(4, 0);
+    Vector2d point6(4, 2);
 
-    vector<Vector2d> points1({point1, point3, point2, point4});
-    vector<Vector2d> points2({point2, point4, point8, point6});
-    vector<Vector2d> points3({point4, point3, point6, point5});
-    vector<Vector2d> points4({point6, point5, point8, point7});
-    vector<Vector2d> points5({point3, point1, point5, point7});
+    vector<Vector2d> points1({point1, point2, point3, point4});
+    vector<Vector2d> points2({point3, point4, point5, point6});
 
 
     auto domain1 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(a, a, points1);
     auto domain2 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(a, a, points2);
-    auto domain3 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(a, a, points3);
-    auto domain4 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(a, a, points4);
-    auto domain5 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(a, a, points5);
     domain1->DegreeElevate(1);
     domain2->DegreeElevate(1);
-    domain3->DegreeElevate(1);
-    domain4->DegreeElevate(1);
-    domain5->DegreeElevate(1);
-    domain3->KnotInsertion(1, 1.0 / 3);
-    domain3->KnotInsertion(1, 2.0 / 3);
-    domain3->KnotInsertion(0, 1.0 / 3);
-    domain3->KnotInsertion(0, 2.0 / 3);
 
+    domain1->UniformRefine(1);
+    domain2->UniformRefine(1);
 
-    array<shared_ptr<Cell<double>>, 5> cells;
+    array<shared_ptr<Cell<double>>, 2> cells;
     cells[0] = make_shared<Cell<double>>(domain1);
     cells[1] = make_shared<Cell<double>>(domain2);
-    cells[2] = make_shared<Cell<double>>(domain3);
-    cells[3] = make_shared<Cell<double>>(domain4);
-    cells[4] = make_shared<Cell<double>>(domain5);
-    for (int i = 0; i < 4; i++) {
-        for (int j = i + 1; j < 5; j++)
+    for (int i = 0; i < 1; i++) {
+        for (int j = i + 1; j < 2; j++)
             cells[i]->Match(cells[j]);
     }
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 2; i++) {
         cells[i]->PrintEdgeInfo();
     }
 
 
     DofMapper<double> s;
     PoissonMapperInitiator<double> visit(s);
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 2; i++) {
         cells[i]->accept(visit);
     }
-
+    PoissonDGInterfaceVisitor<double> interface(s);
+    for (int i = 0; i < 2; i++) {
+        cells[i]->accept(interface);
+    }
+    /*
     const double pi = 3.141592653589793238462643383279502884;
-    PoissonVisitor<double> poisson(s, [&pi](Coordinate u) -> vector<double> {
-        return vector<double>{2 * sin(pi / 2.0 * u(0)) * sin(pi / 2.0 * u(1)) * pow(pi / 2.0, 2)};
+
+    BiharmonicVisitor<double> biharmonic(s, [&pi](Coordinate u) -> vector<double> {
+        return vector<double>{4 * pow(pi, 4) * sin(pi * u(0)) * sin(pi * u(1))};
     });
 
     for (int i = 0; i < 5; i++) {
-        cells[i]->accept(poisson);
+        cells[i]->accept(biharmonic);
     }
 
+
     function<vector<double>(const Coordinate &)> Analytical = [&pi](const Coordinate &u) {
-        return vector<double>{sin(pi / 2.0 * u(0)) * sin(pi / 2.0 * u(1))};
+        return vector<double>{sin(pi * u(0)) * sin(pi * u(1)), pi * cos(pi * u(0)) * sin(pi * u(1)),
+                              pi * sin(pi * u(0)) * cos(pi * u(1))};
     };
-    PoissonBoundaryVisitor<double> boundary(s, Analytical);
+    BiharmonicBoundaryVisitor<double> boundary(s, Analytical);
 
     for (int i = 0; i < 5; i++) {
         cells[i]->accept(boundary);
     }
 
-    PoissonInterfaceVisitor<double> interface(s);
+    s.PrintSlaveDofIn(domain2);
+    s.PrintDofIn(domain1);
+    BiharmonicInterfaceVisitor<double> interface(s);
 
     for (int i = 0; i < 5; i++) {
         cells[i]->accept(interface);
     }
+    unique_ptr<SparseMatrix<double>> coupling = interface.Coupling();
 
-
-    auto coupling = interface.Coupling();
     unique_ptr<SparseMatrix<double>> stiffness, load, boundaryValue;
-    tie(stiffness, load) = poisson.Domain();
-    *stiffness = *coupling * (*stiffness) * coupling->transpose();
+    tie(stiffness, load) = biharmonic.Domain();
     boundaryValue = boundary.Boundary();
+
+    *stiffness = *coupling * (*stiffness) * coupling->transpose();
+    VectorXd loadSum = (*coupling * *load) - (*stiffness * *boundaryValue);
     auto freedof = s.CondensedIndexMap();
 
-    SparseMatrix<double> loadSum = (*coupling) * (*load) - *stiffness * (*boundaryValue);
+    VectorXd loadSol = *SparseTransform<double>(freedof, s.Dof()) * loadSum;
+    unique_ptr<SparseMatrix<double>> stiffnessSol = SparseMatrixGivenColRow<double>(freedof, freedof, stiffness);
 
-    auto loadSol = SparseMatrixGivenColRow<double>(freedof, vector<int>{0}, loadSum);
-    auto stiffnessSol = SparseMatrixGivenColRow<double>(freedof, freedof, stiffness);
-
-/*
     ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower | Eigen::Upper> cg;
     cg.compute(*stiffnessSol);
-    VectorXd solution = cg.solve(*loadSol);
-
-    cout << *boundaryValue << endl;
-    solution = coupling->transpose() * SparseTransform<double>(freedof, s.Dof())->transpose() * solution + MatrixXd(*boundaryValue);
-
+    VectorXd Solution = cg.solve(loadSol);
+    VectorXd boundaryDense = VectorXd(*boundaryValue);
+    VectorXd solution = coupling->transpose() * (SparseTransform<double>(freedof, s.Dof())->transpose() * Solution + boundaryDense);
 
     vector<KnotVector<double>> solutionDomain1, solutionDomain2, solutionDomain3, solutionDomain4, solutionDomain5;
     solutionDomain1.push_back(domain1->KnotVectorGetter(0));
@@ -145,9 +138,9 @@ int main() {
     file3.open("domain3.txt");
     file4.open("domain4.txt");
     file5.open("domain5.txt");
-    for (int i = 0; i <= 100; i++) {
-        for (int j = 0; j <= 100; j++) {
-            double xi = 1.0 * i / 100, eta = 1.0 * j / 100;
+    for (int i = 0; i <= 300; i++) {
+        for (int j = 0; j <= 300; j++) {
+            double xi = 1.0 * i / 300, eta = 1.0 * j / 300;
             Vector2d u(xi, eta);
 
             VectorXd position1 = domain1->AffineMap(u);
@@ -167,6 +160,8 @@ int main() {
             file5 << position5(0) << " " << position5(1) << " " << result5 << endl;
         }
     }
+    time(&end);
+    std::cout << difftime(end, start) << " seconds" << std::endl;
     */
     return 0;
 }

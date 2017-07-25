@@ -43,6 +43,7 @@ public:
 
     virtual void KnotSpansGetter(CoordinatePairList &) = 0;
 
+    virtual T Size() const = 0;
 
     virtual T Jacobian(const Coordinate &) const =0;
 
@@ -104,7 +105,32 @@ public:
         return _end;
     }
 
-    T Jacobian(const Coordinate &u) const { return 0; } //need specific define.
+    T Size() const {
+        return sqrt(pow(_begin(0) - _end(0), 2) + pow(_begin(1) - _end(1), 2));
+    }
+
+    T Jacobian(const Coordinate &u) const {
+        Coordinate derivative;
+        switch (_position) {
+            case west: {
+                derivative = -this->_domain->AffineMap(u, {0, 1});
+                break;
+            }
+            case east: {
+                derivative = this->_domain->AffineMap(u, {0, 1});
+                break;
+            }
+            case north: {
+                derivative = -this->_domain->AffineMap(u, {1, 0});
+                break;
+            }
+            case south: {
+                derivative = this->_domain->AffineMap(u, {1, 0});
+                break;
+            }
+        }
+        return sqrt(pow(derivative(0), 2) + pow(derivative(1), 2));
+    } //need specific define.
 
     bool GetMatchInfo() const {
         return _matched;
@@ -214,17 +240,17 @@ public:
             _matched = true;
             counterpart->_pair = this->shared_from_this();
             counterpart->_matched = true;
-            if(this->GetDof()>_pair->GetDof()){
-                _slave=true;
-            }else{
-                _pair->_slave=true;
+            if (this->GetDof() > _pair->GetDof()) {
+                _slave = true;
+            } else {
+                _pair->_slave = true;
             }
             return true;
         }
         return false;
     }
 
-    bool Slave() const{
+    bool Slave() const {
         return _slave;
     }
 
@@ -298,7 +324,7 @@ public:
 
     bool InversePts(const PhyPts &point, T &knotCoordinate) const {
         Coordinate pt;
-        if(!this->_domain->InversePts(point,pt)) return false;
+        if (!this->_domain->InversePts(point, pt)) return false;
         if (IsOn(pt)) {
             switch (_position) {
                 case west: {
@@ -322,7 +348,7 @@ public:
         return false;
     }
 
-    std::shared_ptr<Edge<T>> Counterpart() const{
+    std::shared_ptr<Edge<T>> Counterpart() const {
         return _pair;
     }
 
@@ -332,46 +358,47 @@ public:
             case west: {
                 for (int i = 0; i <= layerNum; ++i) {
                     auto tmp = this->_domain->AllActivatedDofsOnBoundary(0, i);
-                    res->insert(res->end(), tmp->begin()+exceptNum, tmp->end()-exceptNum);
+                    res->insert(res->end(), tmp->begin() + exceptNum, tmp->end() - exceptNum);
                 }
                 break;
             }
             case east: {
                 for (int i = 0; i <= layerNum; ++i) {
                     auto tmp = this->_domain->AllActivatedDofsOnBoundary(0, this->_domain->GetDof(0) - 1 - i);
-                    res->insert(res->end(), tmp->begin()+exceptNum, tmp->end()-exceptNum);
+                    res->insert(res->end(), tmp->begin() + exceptNum, tmp->end() - exceptNum);
                 }
                 break;
             }
             case north: {
                 for (int i = 0; i <= layerNum; ++i) {
                     auto tmp = this->_domain->AllActivatedDofsOnBoundary(1, this->_domain->GetDof(1) - 1 - i);
-                    res->insert(res->end(), tmp->begin()+exceptNum, tmp->end()-exceptNum);
+                    res->insert(res->end(), tmp->begin() + exceptNum, tmp->end() - exceptNum);
                 }
                 break;
             }
             case south: {
                 for (int i = 0; i <= layerNum; ++i) {
                     auto tmp = this->_domain->AllActivatedDofsOnBoundary(1, i);
-                    res->insert(res->end(), tmp->begin()+exceptNum, tmp->end()-exceptNum);
+                    res->insert(res->end(), tmp->begin() + exceptNum, tmp->end() - exceptNum);
                 }
                 break;
             }
         }
         return res;
     }
+
     //Given the layer number, it returns a pointer to a vector that contains all control points index of that layer.
     std::unique_ptr<std::vector<int>> AllActivatedDofsOfLayers(const int &layerNum) {
-        return AllActivatedDofsOfLayersExcept(layerNum,0);
+        return AllActivatedDofsOfLayersExcept(layerNum, 0);
     }
 
-    void PrintActivatedDofsOfLayers(const int &layerNum){
+    void PrintActivatedDofsOfLayers(const int &layerNum) {
         auto res = AllActivatedDofsOfLayers(layerNum);
-        std::cout<<"Activated Dofs on this edge are:";
-        for(const auto &i:*res){
-            std::cout<<i<<" ";
+        std::cout << "Activated Dofs on this edge are:";
+        for (const auto &i:*res) {
+            std::cout << i << " ";
         }
-        std::cout<<std::endl;
+        std::cout << std::endl;
     }
 
 private:
@@ -459,10 +486,14 @@ public:
         }
     };
 
+    T Size() const {
+        return 0;
+    }
+
     void Match(std::shared_ptr<Cell<T>> counterpart) {
         for (auto &i:_edges) {
             for (auto &j:counterpart->_edges) {
-                i->Match(j) ;
+                i->Match(j);
             }
 
         }

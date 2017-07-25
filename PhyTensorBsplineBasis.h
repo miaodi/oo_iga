@@ -342,8 +342,7 @@ PhyTensorBsplineBasis<d, N, T>::JacobianMatrix(const PhyTensorBsplineBasis::Pts 
     for (int i = 0; i != d; i++) {
         std::vector<int> differentiation(d, 0);
         differentiation[i] = 1;
-        auto aa = AffineMap(u, differentiation);
-        result.col(i) = aa;
+        result.col(i) = AffineMap(u, differentiation);
     }
     return result;
 };
