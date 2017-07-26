@@ -1096,12 +1096,27 @@ public:
         tempFlux += tempFlux.transpose();
         tempStablize = sigma / h * basisFunctionTerm.transpose() * Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(weights.asDiagonal()) *
                        basisFunctionTerm;
-        std::cout << tempStablize << std::endl << std::endl;
+        for (int i = 0; i != tempFlux.rows(); ++i) {
+            for (int j = 0; j != tempFlux.cols(); ++j) {
+                if (tempFlux(i, j) != 0) {
+                    _poissonInterface.push_back(
+                            IndexedValue(index[i], index[j], tempFlux(i, j)));
+                }
+            }
+        }
+        for (int i = 0; i != tempStablize.rows(); ++i) {
+            for (int j = 0; j != tempStablize.cols(); ++j) {
+                if (tempStablize(i, j) != 0) {
+                    _poissonInterface.push_back(
+                            IndexedValue(index[i], index[j], tempStablize(i, j)));
+                }
+            }
+        }
 
     }
 
 
-    std::unique_ptr<Eigen::SparseMatrix<T>> Coupling() {
+    std::unique_ptr<Eigen::SparseMatrix<T>> DGInterface() {
         std::unique_ptr<Eigen::SparseMatrix<T>> result(new Eigen::SparseMatrix<T>);
         result->resize(_dofmap.Dof(), _dofmap.Dof());
         result->setFromTriplets(_poissonInterface.begin(), _poissonInterface.end());
