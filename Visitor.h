@@ -450,6 +450,127 @@ public:
 };
 
 template<typename T>
+class PoissonDGBoundaryVisitor : public Visitor<T> {
+public:
+    using DomainShared_ptr = typename Visitor<T>::DomainShared_ptr;
+    using IndexedValue = typename Visitor<T>::IndexedValue;
+    using IndexedValueList = typename Visitor<T>::IndexedValueList;
+    using LoadFunctor = typename Visitor<T>::LoadFunctor;
+    using CoordinatePairList = typename Visitor<T>::CoordinatePairList;
+    using Quadlist = typename Visitor<T>::Quadlist;
+    using Coordinate = typename Visitor<T>::Coordinate;
+public:
+    PoissonDGBoundaryVisitor(const DofMapper<T> &dof, const LoadFunctor &load) : _deformationFunctor(load), _dofmap(dof) {
+
+    }
+
+    void visit(Cell<T> *g) {
+    }
+
+    void visit(Edge<T> *g) {
+        if (!g->GetMatchInfo()) {
+            Initialize(g);
+            Assemble(g);
+        }
+    }
+
+    void Initialize(Edge<T> *g) {
+        auto deg_x = g->GetDegree(0);
+        auto deg_y = g->GetDegree(1);
+        this->_quadrature.SetUpQuadrature(deg_x >= deg_y ? (deg_x + 1) : (deg_y + 1));
+    }
+
+    void Assemble(Edge<T> *g) {
+        CoordinatePairList elements;
+        g->KnotSpansGetter(elements);
+        Quadlist quadratures;
+        auto domain = g->GetDomain();
+        T h = g->Size() / elements.size();
+        for (const auto &i : elements) {
+            this->_quadrature.MapToQuadrature(i, quadratures);
+            LocalAssemble(g, domain, h, quadratures);
+        }
+        this->_poissonMass.shrink_to_fit();
+        this->_poissonBoundary.shrink_to_fit();
+    }
+
+    virtual void
+    LocalAssemble(Edge<T> *g, DomainShared_ptr const basis, T h, const Quadlist &quadratures) {
+        auto initialIndex = _dofmap.StartingIndex(basis);
+        auto index = basis->ActiveIndex(quadratures[0].first);
+        Eigen::Matrix<T, Eigen::Dynamic, 1> weights(quadratures.size());
+        Eigen::Matrix<T, Eigen::Dynamic, 1> boundaryInfo(quadratures.size());
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> derivativeTerm(quadratures.size(), index.size());
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> basisFunctionTerm(quadratures.size(), index.size());
+        int it = 0;
+        T sigma = 1e4;
+        for (const auto &i : quadratures) {
+            auto evals = basis->Eval1DerAllTensor(i.first);
+            auto Jac = g->Jacobian(i.first);
+            Coordinate normal = g->NormalDirection(i.first);
+            weights(it) = i.second * Jac;
+            int itit = 0;
+            for (const auto &j : *evals) {
+                derivativeTerm(it, itit) = (j.second[1] * normal(0) + j.second[2] * normal(1));
+                basisFunctionTerm(it, itit) = j.second[0];
+                itit++;
+            }
+            boundaryInfo(it) = _deformationFunctor(basis->AffineMap(i.first))[0];
+            it++;
+        }
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tempFlux;
+        tempFlux =
+                -derivativeTerm.transpose() * Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(weights.asDiagonal()) *
+                basisFunctionTerm;
+        tempFlux += tempFlux.transpose();
+        Eigen::Matrix<T, Eigen::Dynamic, 1> tempFluxLoad(
+                -derivativeTerm.transpose() * Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(weights.asDiagonal()) *
+                boundaryInfo);
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tempStablize;
+        tempStablize =
+                sigma / h * basisFunctionTerm.transpose() * Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(weights.asDiagonal()) *
+                basisFunctionTerm;
+        Eigen::Matrix<T, Eigen::Dynamic, 1> tempStablizeLoad(
+                sigma / h * basisFunctionTerm.transpose() * Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(weights.asDiagonal()) *
+                boundaryInfo);
+        for (int i = 0; i != tempFlux.rows(); ++i) {
+            for (int j = 0; j != tempFlux.cols(); ++j) {
+                if (i >= j && tempFlux(i, j) != 0) {
+                    this->_poissonMass.push_back(
+                            IndexedValue(index[i] + initialIndex, index[j] + initialIndex, tempFlux(i, j)));
+                }
+            }
+            this->_poissonBoundary.push_back(IndexedValue(index[i] + initialIndex, 0, tempFluxLoad(i)));
+        }
+        for (int i = 0; i != tempStablize.rows(); ++i) {
+            for (int j = 0; j != tempStablize.cols(); ++j) {
+                if (i >= j && tempStablize(i, j) != 0) {
+                    this->_poissonMass.push_back(
+                            IndexedValue(index[i] + initialIndex, index[j] + initialIndex, tempStablize(i, j)));
+                }
+            }
+            this->_poissonBoundary.push_back(IndexedValue(index[i] + initialIndex, 0, tempStablizeLoad(i)));
+        }
+    }
+
+    std::tuple<std::unique_ptr<Eigen::SparseMatrix<T>>, std::unique_ptr<Eigen::SparseMatrix<T>>> Boundary() {
+        auto dof = _dofmap.Dof();
+        auto triangleStiffnessMatrix = Accessory::SparseMatrixMaker<T>(_poissonMass, dof, dof);
+        std::unique_ptr<Eigen::SparseMatrix<T>> stiffnessMatrix(new Eigen::SparseMatrix<T>);
+        *stiffnessMatrix = triangleStiffnessMatrix->template selfadjointView<Eigen::Lower>();
+        auto load = Accessory::SparseMatrixMaker<T>(_poissonBoundary, dof, 1);
+        return std::make_tuple(std::move(stiffnessMatrix), std::move(load));
+    }
+
+protected:
+    IndexedValueList _poissonMass;
+    IndexedValueList _poissonBoundary;
+    const DofMapper<T> &_dofmap;
+    QuadratureRule<T> _quadrature;
+    LoadFunctor _deformationFunctor;
+};
+
+template<typename T>
 class PoissonInterfaceVisitor : public Visitor<T> {
 public:
     using EdgeShared_Ptr = typename Element<T>::EdgeShared_Ptr;
@@ -1065,7 +1186,7 @@ public:
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> derivativeTerm(quadratures.size(), index.size());
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> basisFunctionTerm(quadratures.size(), index.size());
         int it = 0;
-        T sigma = 1e5;
+        T sigma = 1e4;
         for (const auto &i : quadratures) {
             if (!slaveBasis->InversePts(lagrange->AffineMap(i.first), u)) {
                 std::cout << "InversePts fail" << std::endl;
@@ -1100,7 +1221,7 @@ public:
             for (int j = 0; j != tempFlux.cols(); ++j) {
                 if (tempFlux(i, j) != 0) {
                     _poissonInterface.push_back(
-                            IndexedValue(index[i], index[j], tempFlux(i, j)));
+                            IndexedValue(index[i], index[j], -tempFlux(i, j)));
                 }
             }
         }
@@ -1112,7 +1233,6 @@ public:
                 }
             }
         }
-
     }
 
 
