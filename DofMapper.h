@@ -31,6 +31,15 @@ namespace Accessory {
         matrix->setFromTriplets(_list.begin(), _list.end());
         return matrix;
     }
+    template<typename T>
+    std::unique_ptr<Eigen::SparseMatrix<T>> SparseMatrixMaker(const std::vector<Eigen::Triplet<T>> &_list, int row, int col) {
+        using IndexedValue = Eigen::Triplet<T>;
+        using IndexedValueList = std::vector<IndexedValue>;
+        std::unique_ptr<Eigen::SparseMatrix<T>> matrix(new Eigen::SparseMatrix<T>);
+        matrix->resize(row, col);
+        matrix->setFromTriplets(_list.begin(), _list.end());
+        return matrix;
+    }
 
     template<typename T>
     std::vector<int> NonZeroCols(const std::vector<Eigen::Triplet<T>> &matrix) {
