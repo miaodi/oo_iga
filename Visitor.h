@@ -503,7 +503,7 @@ public:
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> derivativeTerm(quadratures.size(), index.size());
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> basisFunctionTerm(quadratures.size(), index.size());
         int it = 0;
-        T sigma = 1e4;
+        T sigma = 1e3;
         for (const auto &i : quadratures) {
             auto evals = basis->Eval1DerAllTensor(i.first);
             auto Jac = g->Jacobian(i.first);
@@ -693,7 +693,8 @@ public:
         std::vector<int> slaveIndex, masterIndex, slaveMaster;
         std::set_intersection(index.begin(), index.end(), slaveInDomain.begin(), slaveInDomain.end(), std::back_inserter(slaveIndex));
         std::set_difference(index.begin(), index.end(), slaveInDomain.begin(), slaveInDomain.end(), std::back_inserter(masterIndex));
-        std::set_difference(slaveSideIndex->begin(), slaveSideIndex->end(), slaveInDomain.begin(), slaveInDomain.end(), std::back_inserter(slaveMaster));
+        std::set_difference(slaveSideIndex->begin(), slaveSideIndex->end(), slaveInDomain.begin(), slaveInDomain.end(),
+                            std::back_inserter(slaveMaster));
         Matrix mass = *Accessory::SparseMatrixGivenColRow(row, slaveIndex, matrix);
         Matrix load = *Accessory::SparseMatrixGivenColRow(row, masterIndex, matrix);
         for (auto i:slaveMaster) {
@@ -989,7 +990,8 @@ public:
         std::vector<int> C0slaveIndex, C0masterIndex, C0slaveMaster;
         std::set_intersection(C0index.begin(), C0index.end(), slaveInDomain.begin(), slaveInDomain.end(), std::back_inserter(C0slaveIndex));
         std::set_difference(C0index.begin(), C0index.end(), slaveInDomain.begin(), slaveInDomain.end(), std::back_inserter(C0masterIndex));
-        std::set_difference(C0slaveSideIndex->begin(), C0slaveSideIndex->end(), slaveInDomain.begin(), slaveInDomain.end(), std::back_inserter(C0slaveMaster));
+        std::set_difference(C0slaveSideIndex->begin(), C0slaveSideIndex->end(), slaveInDomain.begin(), slaveInDomain.end(),
+                            std::back_inserter(C0slaveMaster));
 
         Matrix C0mass = *Accessory::SparseMatrixGivenColRow(C0row, C0slaveIndex, C0matrix);
         Matrix C0load = *Accessory::SparseMatrixGivenColRow(C0row, C0masterIndex, C0matrix);
@@ -1024,12 +1026,14 @@ public:
         auto C1index = Accessory::NonZeroCols<T>(C1matrix);
         auto C1row = Accessory::NonZeroRows<T>(C1matrix);
         auto C0C1slaveSideIndex = g->AllActivatedDofsOfLayers(1);
-        std::transform(C0C1slaveSideIndex->cbegin(), C0C1slaveSideIndex->cend(), C0C1slaveSideIndex->begin(), [&start](const int &i) { return i + start; });
+        std::transform(C0C1slaveSideIndex->cbegin(), C0C1slaveSideIndex->cend(), C0C1slaveSideIndex->begin(),
+                       [&start](const int &i) { return i + start; });
         auto C1slaveSideIndex = std::make_shared<std::vector<int>>();
         std::set_difference(C0C1slaveSideIndex->begin(), C0C1slaveSideIndex->end(), C0slaveSideIndex->begin(), C0slaveSideIndex->end(),
                             std::back_inserter(*C1slaveSideIndex));
         std::vector<int> C1slaveIndex, C1masterIndex, C1slaveMaster;
-        std::set_intersection(C1slaveSideIndex->begin(), C1slaveSideIndex->end(), slaveInDomain.begin(), slaveInDomain.end(), std::back_inserter(C1slaveIndex));
+        std::set_intersection(C1slaveSideIndex->begin(), C1slaveSideIndex->end(), slaveInDomain.begin(), slaveInDomain.end(),
+                              std::back_inserter(C1slaveIndex));
         std::set_difference(C1index.begin(), C1index.end(), slaveInDomain.begin(), slaveInDomain.end(), std::back_inserter(C1masterIndex));
         std::set_difference(C0C1slaveSideIndex->begin(), C0C1slaveSideIndex->end(), C1slaveIndex.begin(), C1slaveIndex.end(),
                             std::back_inserter(C1slaveMaster));
@@ -1058,7 +1062,8 @@ public:
         C1load.row(2) = C1load.row(2) + (C1load.row(1) + C1load.row(0));
         C1load.row(C1load.rows() - 3) = C1load.row(C1load.rows() - 3) + (C1load.row(C1load.rows() - 2) + C1load.row(C1load.rows() - 1));
         C1C0load.row(2) = C1C0load.row(2) + (C1C0load.row(1) + C1C0load.row(0));
-        C1C0load.row(C1C0load.rows() - 3) = C1C0load.row(C1C0load.rows() - 3) + (C1C0load.row(C1C0load.rows() - 2) + C1C0load.row(C1C0load.rows() - 1));
+        C1C0load.row(C1C0load.rows() - 3) =
+                C1C0load.row(C1C0load.rows() - 3) + (C1C0load.row(C1C0load.rows() - 2) + C1C0load.row(C1C0load.rows() - 1));
         Accessory::removeRow<T>(C1mass, 0);
         Accessory::removeRow<T>(C1mass, 0);
         Accessory::removeRow<T>(C1mass, C1mass.rows() - 1);
@@ -1178,15 +1183,17 @@ public:
         auto slaveIndex = slaveBasis->ActiveIndex(u);
         masterBasis->InversePts(lagrange->AffineMap(quadratures[0].first), u);
         auto masterIndex = masterBasis->ActiveIndex(u);
+        std::transform(slaveIndex.cbegin(), slaveIndex.cend(), slaveIndex.begin(),
+                       [&initialSlaveIndex](const int &i) { return i + initialSlaveIndex; });
+        std::transform(masterIndex.cbegin(), masterIndex.cend(), masterIndex.begin(),
+                       [&initialMasterIndex](const int &i) { return i + initialMasterIndex; });
         auto index = slaveIndex;
         index.insert(index.end(), masterIndex.cbegin(), masterIndex.cend());
-        std::transform(slaveIndex.cbegin(), slaveIndex.cend(), slaveIndex.begin(), [&initialSlaveIndex](const int &i) { return i + initialSlaveIndex; });
-        std::transform(masterIndex.cbegin(), masterIndex.cend(), masterIndex.begin(), [&initialMasterIndex](const int &i) { return i + initialMasterIndex; });
         Eigen::Matrix<T, Eigen::Dynamic, 1> weights(quadratures.size());
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> derivativeTerm(quadratures.size(), index.size());
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> basisFunctionTerm(quadratures.size(), index.size());
         int it = 0;
-        T sigma = 1e4;
+        T sigma = 1e3;
         for (const auto &i : quadratures) {
             if (!slaveBasis->InversePts(lagrange->AffineMap(i.first), u)) {
                 std::cout << "InversePts fail" << std::endl;
@@ -1213,15 +1220,15 @@ public:
             it++;
         }
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tempFlux, tempStablize;
-        tempFlux = derivativeTerm.transpose() * Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(weights.asDiagonal()) * basisFunctionTerm;
-        tempFlux += tempFlux.transpose();
+        tempFlux = -derivativeTerm.transpose() * Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(weights.asDiagonal()) * basisFunctionTerm;
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tempFluxSym = tempFlux + tempFlux.transpose();
         tempStablize = sigma / h * basisFunctionTerm.transpose() * Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(weights.asDiagonal()) *
                        basisFunctionTerm;
-        for (int i = 0; i != tempFlux.rows(); ++i) {
-            for (int j = 0; j != tempFlux.cols(); ++j) {
-                if (tempFlux(i, j) != 0) {
+        for (int i = 0; i != tempFluxSym.rows(); ++i) {
+            for (int j = 0; j != tempFluxSym.cols(); ++j) {
+                if (tempFluxSym(i, j) != 0) {
                     _poissonInterface.push_back(
-                            IndexedValue(index[i], index[j], -tempFlux(i, j)));
+                            IndexedValue(index[i], index[j], tempFluxSym(i, j)));
                 }
             }
         }
