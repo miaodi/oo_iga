@@ -84,6 +84,8 @@ public:
 
     BasisFunValDerAllList_ptr Eval2DerAllTensor(const vector &u) const;
 
+    BasisFunValDerAllList_ptr Eval3DerAllTensor(const vector &u) const;
+
 
 private:
     GeometryVector _geometricInfo;
@@ -434,6 +436,79 @@ PhyTensorBsplineBasis<2, 2, double>::Eval2DerAllTensor(const PhyTensorBsplineBas
     return parametric;
 }
 
+template<>
+typename PhyTensorBsplineBasis<2, 2, double>::BasisFunValDerAllList_ptr
+PhyTensorBsplineBasis<2, 2, double>::Eval3DerAllTensor(const PhyTensorBsplineBasis::vector &u) const {
+    auto parametric = TensorBsplineBasis<2, double>::EvalDerAllTensor(u, 3);
+    Eigen::Vector2d Pxi, Peta, PxiPxi, PxiPeta, PetaPeta, PxiPxiPxi, PxiPxiPeta, PxiPetaPeta, PetaPetaPeta;
+    Pxi.setZero();
+    Peta.setZero();
+    PxiPxi.setZero();
+    PxiPeta.setZero();
+    PetaPeta.setZero();
+    PxiPxiPxi.setZero();
+    PxiPxiPeta.setZero();
+    PxiPetaPeta.setZero();
+    PetaPetaPeta.setZero();
+    for (const auto &i:*parametric) {
+        Pxi += i.second[1] * _geometricInfo[i.first];
+        Peta += i.second[2] * _geometricInfo[i.first];
+        PxiPxi += i.second[3] * _geometricInfo[i.first];
+        PxiPeta += i.second[4] * _geometricInfo[i.first];
+        PetaPeta += i.second[5] * _geometricInfo[i.first];
+        PxiPxiPxi += i.second[6] * _geometricInfo[i.first];
+        PxiPxiPeta += i.second[7] * _geometricInfo[i.first];
+        PxiPetaPeta += i.second[8] * _geometricInfo[i.first];
+        PetaPetaPeta += i.second[9] * _geometricInfo[i.first];
+    }
+    Eigen::Matrix<double, 9, 9> Hessian;
+    Hessian.setZero();
+    Hessian(0, 0) = Pxi(0), Hessian(0, 1) = Pxi(1);
+    Hessian(1, 0) = Peta(0), Hessian(1, 1) = Peta(1);
+    Hessian(2, 0) = PxiPxi(0), Hessian(2, 1) = PxiPxi(1), Hessian(2, 2) = Pxi(0) * Pxi(0), Hessian(2, 3) = 2 * Pxi(0) * Pxi(1), Hessian(2, 4) =
+            Pxi(1) * Pxi(1);
+    Hessian(3, 0) = PxiPeta(0), Hessian(3, 1) = PxiPeta(1), Hessian(3, 2) = Pxi(0) * Peta(0), Hessian(3, 3) =
+            Pxi(0) * Peta(1) + Peta(0) * Pxi(1), Hessian(3, 4) = Pxi(1) * Peta(1);
+    Hessian(4, 0) = PetaPeta(0), Hessian(4, 1) = PetaPeta(1), Hessian(4, 2) = Peta(0) * Peta(0), Hessian(4, 3) = 2 * Peta(0) * Peta(1), Hessian(4,
+                                                                                                                                                4) =
+            Peta(1) * Peta(1);
+
+    Hessian(5, 0) = PxiPxiPxi(0), Hessian(5, 1) = PxiPxiPxi(1), Hessian(5, 2) = 3 * Pxi(0) * PxiPxi(0), Hessian(5, 3) =
+            3 * Pxi(1) * PxiPxi(0) + 3 * Pxi(0) * PxiPxi(1), Hessian(5, 4) = 3 * Pxi(1) * PxiPxi(1), Hessian(5, 5) = pow(Pxi(0), 3), Hessian(5, 6) =
+            3 * pow(Pxi(0), 2) * Pxi(1), Hessian(5, 7) = 3 * Pxi(0) * pow(Pxi(1), 2), Hessian(5, 8) = pow(Pxi(1), 3);
+
+    Hessian(6, 0) = PxiPxiPeta(0), Hessian(6, 1) = PxiPxiPeta(1), Hessian(6, 2) = 2 * Pxi(0) * PxiPeta(0) + Peta(0) * PxiPxi(0), Hessian(6, 3) =
+            2 * Pxi(1) * PxiPeta(0) + 2 * Pxi(0) * PxiPeta(1) + Peta(1) * PxiPxi(0) + Peta(0) * PxiPxi(1), Hessian(6, 4) =
+            2 * Pxi(1) * PxiPxi(1) + Peta(1) * PxiPxi(1), Hessian(6, 5) = Peta(0) * pow(Pxi(0), 2), Hessian(6, 6) =
+            Peta(1) * pow(Pxi(0), 2) + 2 * Peta(0) * Pxi(0) * Pxi(1), Hessian(6, 7) =
+            2 * Peta(1) * Pxi(0) * Pxi(1) + Peta(0) * pow(Pxi(1), 2), Hessian(6, 8) = Peta(1) * pow(Pxi(1), 2);
+
+    Hessian(7, 0) = PxiPetaPeta(0), Hessian(7, 1) = PxiPetaPeta(1), Hessian(7, 2) = PetaPeta(0) * Pxi(0) + 2 * Peta(0) * PxiPeta(0), Hessian(7, 3) =
+            2 * Peta(1) * PxiPeta(0) + 2 * Peta(0) * PxiPeta(1) + Pxi(0) * PetaPeta(1) + Pxi(1) * PetaPeta(0), Hessian(7, 4) =
+            2 * Peta(1) * PxiPeta(1) + Pxi(1) * PetaPeta(1), Hessian(7, 5) = Pxi(0) * pow(Peta(0), 2), Hessian(7, 6) =
+            Peta(1) * pow(Peta(0), 2) + 2 * Peta(0) * Peta(1) * Pxi(0), Hessian(7, 7) =
+            2 * Peta(0) * Peta(1) * Pxi(1) + Pxi(0) * pow(Peta(1), 2), Hessian(7, 8) = Pxi(1) * pow(Peta(1), 2);
+
+    Hessian(8, 0) = PetaPetaPeta(0), Hessian(8, 1) = PetaPetaPeta(1), Hessian(8, 2) = 3 * Peta(0) * PetaPeta(0), Hessian(8, 3) =
+            3 * Peta(1) * PetaPeta(0) + 3 * Peta(0) * PetaPeta(1), Hessian(8, 4) = 3 * Peta(1) * PetaPeta(1), Hessian(8, 5) = pow(Peta(0), 3), Hessian(8, 6) =
+            3 * pow(Peta(0), 2) * Peta(1), Hessian(8, 7) = 3 * Peta(0) * pow(Peta(1), 2), Hessian(8, 8) = pow(Peta(1), 3);
+    for (auto &i:*parametric) {
+        Eigen::Map<Eigen::VectorXd> temp(i.second.data() + 1, i.second.size() - 1);
+        Eigen::VectorXd solution = Hessian.partialPivLu().solve(temp);
+        i.second[1] = solution(0);
+        i.second[2] = solution(1);
+        i.second[3] = solution(2);
+        i.second[4] = solution(3);
+        i.second[5] = solution(4);
+        i.second[6] = solution(5);
+        i.second[7] = solution(6);
+        i.second[8] = solution(7);
+        i.second[9] = solution(8);
+    }
+    return parametric;
+}
+
+
 template<int d, int N, typename T>
 typename PhyTensorBsplineBasis<d, N, T>::HyperPlaneSharedPts
 PhyTensorBsplineBasis<d, N, T>::MakeHyperPlane(const int &orientation, const int &layer) const {
@@ -452,10 +527,11 @@ PhyTensorBsplineBasis<d, N, T>::MakeHyperPlane(const int &orientation, const int
 
 template<>
 PhyTensorBsplineBasis<2, 1, double>::PhyTensorBsplineBasis(const std::vector<KnotVector<double>> &base,
-                                                           const Eigen::Matrix<double, Eigen::Dynamic, 1> &geometry):TensorBsplineBasis<2, double>(base) {
-    ASSERT(geometry.rows()==(this->TensorBsplineBasis<2, double>::GetDof()),"Invalid geometrical information input, check size bro.");
-    for(int i=0;i!=geometry.rows();++i){
-        _geometricInfo.push_back(Eigen::Matrix<double,1,1>(geometry(i)));
+                                                           const Eigen::Matrix<double, Eigen::Dynamic, 1> &geometry):TensorBsplineBasis<2, double>(
+        base) {
+    ASSERT(geometry.rows() == (this->TensorBsplineBasis<2, double>::GetDof()), "Invalid geometrical information input, check size bro.");
+    for (int i = 0; i != geometry.rows(); ++i) {
+        _geometricInfo.push_back(Eigen::Matrix<double, 1, 1>(geometry(i)));
     }
 }
 
