@@ -627,7 +627,7 @@ public:
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> derivativeTerm(quadratures.size(), index.size());
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> basisFunctionTerm(quadratures.size(), index.size());
         int it = 0;
-        T sigma = 1e3;
+        T sigma = 1e5;
         for (const auto &i : quadratures) {
             auto evals = basis->Eval3DerAllTensor(i.first);
             auto Jac = g->Jacobian(i.first);
@@ -698,7 +698,6 @@ protected:
     QuadratureRule<T> _quadrature;
     LoadFunctor _deformationFunctor;
 };
-
 
 template<typename T>
 class PoissonInterfaceVisitor : public Visitor<T> {
@@ -864,7 +863,6 @@ private:
     const DofMapper<T> &_dofmap;
     QuadratureRule<T> _quadrature;
 };
-
 
 template<typename T>
 class BiharmonicInterfaceVisitor : public Visitor<T> {
@@ -1240,7 +1238,6 @@ private:
     QuadratureRule<T> _quadrature;
 };
 
-
 template<typename T>
 class PoissonDGInterfaceVisitor : public Visitor<T> {
 public:
@@ -1367,6 +1364,157 @@ public:
                 if (tempStablize(i, j) != 0) {
                     _poissonInterface.push_back(
                             IndexedValue(index[i], index[j], tempStablize(i, j)));
+                }
+            }
+        }
+    }
+
+
+    std::unique_ptr<Eigen::SparseMatrix<T>> DGInterface() {
+        std::unique_ptr<Eigen::SparseMatrix<T>> result(new Eigen::SparseMatrix<T>);
+        result->resize(_dofmap.Dof(), _dofmap.Dof());
+        result->setFromTriplets(_poissonInterface.begin(), _poissonInterface.end());
+        return result;
+    }
+
+private:
+    IndexedValueList _poissonInterface;
+    const DofMapper<T> &_dofmap;
+    QuadratureRule<T> _quadrature;
+};
+
+template<typename T>
+class BiharmonicDGInterfaceVisitor : public Visitor<T> {
+public:
+    using EdgeShared_Ptr = typename Element<T>::EdgeShared_Ptr;
+    using DomainShared_ptr = typename Visitor<T>::DomainShared_ptr;
+    using IndexedValue = typename Visitor<T>::IndexedValue;
+    using IndexedValueList = typename Visitor<T>::IndexedValueList;
+    using Coordinate = typename Visitor<T>::Coordinate;
+    using CoordinatePairList = typename Visitor<T>::CoordinatePairList;
+    using Quadlist = typename Visitor<T>::Quadlist;
+    using Pts = typename PhyTensorBsplineBasis<1, 2, T>::Pts;
+public:
+    BiharmonicDGInterfaceVisitor(const DofMapper<T> &dof) : _dofmap(dof) {
+    }
+
+    void visit(Cell<T> *g) {
+    }
+
+    void visit(Edge<T> *g) {
+        if (g->GetMatchInfo() && g->Slave()) {
+            Initialize(g);
+            Assemble(g);
+        }
+    }
+
+    void Initialize(Edge<T> *g) {
+        auto deg_x = g->GetDegree(0);
+        auto deg_y = g->GetDegree(1);
+        auto pairDeg_x = g->Counterpart()->GetDegree(0);
+        auto pairDeg_y = g->Counterpart()->GetDegree(1);
+        std::vector<int> degrees{deg_x, deg_y, pairDeg_x, pairDeg_y};
+        this->_quadrature.SetUpQuadrature(*std::max_element(degrees.begin(), degrees.end()) + 1);
+    }
+
+    void Assemble(Edge<T> *g) {
+        EdgeShared_Ptr lagrange = g->MakeEdge();
+        EdgeShared_Ptr edgeDomain = g->Counterpart()->MakeEdge();
+        auto multiplierKnots = lagrange->KnotVectorGetter(0);
+        auto thisKnots = edgeDomain->KnotVectorGetter(0);
+        auto thisUniKnots = thisKnots.GetUnique();
+        Pts u, v;
+        for (const auto &i:thisUniKnots) {
+            u(0) = i;
+            lagrange->InversePts(edgeDomain->AffineMap(u), v);
+            multiplierKnots.Insert(v(0));
+        }
+        auto elements = multiplierKnots.KnotEigenSpans();
+        Quadlist quadratures;
+        auto domain = g->GetDomain();
+        T h = g->Size() / elements.size();
+        IndexedValueList matrixContainer;
+        for (const auto &i : elements) {
+            Coordinate start, end;
+            start = lagrange->AffineMap(i.first);
+            end = lagrange->AffineMap(i.second);
+
+            this->_quadrature.MapToQuadrature(i, quadratures);
+            LocalAssemble(g, domain, g->Counterpart()->GetDomain(), lagrange, h, quadratures, matrixContainer);
+        }
+        this->_poissonInterface.shrink_to_fit();
+    }
+
+    void
+    LocalAssemble(Edge<T> *g, DomainShared_ptr const slaveBasis, DomainShared_ptr const masterBasis, EdgeShared_Ptr const lagrange,
+                  T h, const Quadlist &quadratures, IndexedValueList &matrix) {
+        auto initialSlaveIndex = _dofmap.StartingIndex(slaveBasis);
+        auto initialMasterIndex = _dofmap.StartingIndex(masterBasis);
+        Coordinate u, uM;
+        slaveBasis->InversePts(lagrange->AffineMap(quadratures[0].first), u);
+        auto slaveIndex = slaveBasis->ActiveIndex(u);
+        masterBasis->InversePts(lagrange->AffineMap(quadratures[0].first), u);
+        auto masterIndex = masterBasis->ActiveIndex(u);
+        std::transform(slaveIndex.cbegin(), slaveIndex.cend(), slaveIndex.begin(),
+                       [&initialSlaveIndex](const int &i) { return i + initialSlaveIndex; });
+        std::transform(masterIndex.cbegin(), masterIndex.cend(), masterIndex.begin(),
+                       [&initialMasterIndex](const int &i) { return i + initialMasterIndex; });
+        auto index = slaveIndex;
+        index.insert(index.end(), masterIndex.cbegin(), masterIndex.cend());
+        Eigen::Matrix<T, Eigen::Dynamic, 1> weights(quadratures.size());
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> thirdDerivativeTerm(quadratures.size(), index.size());
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> LaplacianTerm(quadratures.size(), index.size());
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> derivativeTerm(quadratures.size(), index.size());
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> basisFunctionTerm(quadratures.size(), index.size());
+        int it = 0;
+        T sigma = 1e4;
+        for (const auto &i : quadratures) {
+            if (!slaveBasis->InversePts(lagrange->AffineMap(i.first), u)) {
+                std::cout << "InversePts fail" << std::endl;
+            }
+            if (!masterBasis->InversePts(lagrange->AffineMap(i.first), uM)) {
+                std::cout << "InversePts fail" << std::endl;
+            }
+            auto evals = slaveBasis->Eval3DerAllTensor(u);
+            auto evalm = masterBasis->Eval3DerAllTensor(uM);
+            auto Jac = g->Jacobian(u);
+            Coordinate normal = g->NormalDirection(u);
+            weights(it) = i.second * Jac;
+            int itit = 0;
+            for (const auto &j : *evals) {
+                thirdDerivativeTerm(it, itit) = .5 * ((j.second[6] + j.second[8]) * normal(0) + (j.second[7] + j.second[9]) * normal(1));
+                LaplacianTerm(it, itit) = .5 * (j.second[3] + j.second[5]);
+                derivativeTerm(it, itit) = (j.second[1] * normal(0) + j.second[2] * normal(1));
+                basisFunctionTerm(it, itit) = j.second[0];
+                itit++;
+            }
+            for (const auto &j : *evalm) {
+                thirdDerivativeTerm(it, itit) = .5 * ((j.second[6] + j.second[8]) * normal(0) + (j.second[7] + j.second[9]) * normal(1));
+                LaplacianTerm(it, itit) = .5 * (j.second[3] + j.second[5]);
+                derivativeTerm(it, itit) = -(j.second[1] * normal(0) + j.second[2] * normal(1));
+                basisFunctionTerm(it, itit) = -j.second[0];
+                itit++;
+            }
+            it++;
+        }
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tempFlux1, tempFlux2;
+        tempFlux1 = basisFunctionTerm.transpose() * Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(weights.asDiagonal()) * thirdDerivativeTerm;
+
+        tempFlux2 = -derivativeTerm.transpose() * Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(weights.asDiagonal()) * LaplacianTerm;
+
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tempStablize1(
+                sigma / pow(h, 3) * basisFunctionTerm.transpose() * Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(weights.asDiagonal()) *
+                basisFunctionTerm);
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tempStablize2(
+                sigma / h * derivativeTerm.transpose() * Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(weights.asDiagonal()) *
+                derivativeTerm);
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> stiffness =
+                tempFlux1 - tempFlux1.transpose() + tempFlux2 - tempFlux2.transpose() + tempStablize1 + tempStablize2;
+        for (int i = 0; i != stiffness.rows(); ++i) {
+            for (int j = 0; j != stiffness.cols(); ++j) {
+                if (stiffness(i, j) != 0) {
+                    _poissonInterface.push_back(
+                            IndexedValue(index[i], index[j], stiffness(i, j)));
                 }
             }
         }
