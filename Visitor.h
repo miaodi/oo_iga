@@ -627,7 +627,7 @@ public:
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> derivativeTerm(quadratures.size(), index.size());
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> basisFunctionTerm(quadratures.size(), index.size());
         int it = 0;
-        T sigma = 1e6;
+        T sigma = 1e3;
         for (const auto &i : quadratures) {
             auto evals = basis->Eval3DerAllTensor(i.first);
             auto Jac = g->Jacobian(i.first);
@@ -1439,13 +1439,13 @@ public:
             end = lagrange->AffineMap(i.second);
 
             this->_quadrature.MapToQuadrature(i, quadratures);
-            LocalAssemble(g, domain, g->Counterpart()->GetDomain(), lagrange, h, quadratures, matrixContainer);
+            LocalAssemble(g, &*g->Counterpart(), domain, g->Counterpart()->GetDomain(), lagrange, h, quadratures, matrixContainer);
         }
         this->_poissonInterface.shrink_to_fit();
     }
 
     void
-    LocalAssemble(Edge<T> *g, DomainShared_ptr const slaveBasis, DomainShared_ptr const masterBasis, EdgeShared_Ptr const lagrange,
+    LocalAssemble(Edge<T> *g, Edge<T> *counterpart, DomainShared_ptr const slaveBasis, DomainShared_ptr const masterBasis, EdgeShared_Ptr const lagrange,
                   T h, const Quadlist &quadratures, IndexedValueList &matrix) {
         auto initialSlaveIndex = _dofmap.StartingIndex(slaveBasis);
         auto initialMasterIndex = _dofmap.StartingIndex(masterBasis);
@@ -1466,7 +1466,7 @@ public:
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> derivativeTerm(quadratures.size(), index.size());
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> basisFunctionTerm(quadratures.size(), index.size());
         int it = 0;
-        T sigma = 1e8;
+        T sigma = 1e3;
         for (const auto &i : quadratures) {
             if (!slaveBasis->InversePts(lagrange->AffineMap(i.first), u)) {
                 std::cout << "InversePts fail" << std::endl;
@@ -1474,6 +1474,12 @@ public:
             if (!masterBasis->InversePts(lagrange->AffineMap(i.first), uM)) {
                 std::cout << "InversePts fail" << std::endl;
             }
+            if (!g->IsOn(u)) {
+                std::cout << "Gauss points is not on the edge" << std::endl;
+            };
+            if (!counterpart->IsOn(uM)) {
+                std::cout << "Gauss points is not on the edge" << std::endl;
+            };
             auto evals = slaveBasis->Eval3DerAllTensor(u);
             auto evalm = masterBasis->Eval3DerAllTensor(uM);
             auto Jac = g->Jacobian(u);

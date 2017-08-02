@@ -1,3 +1,0 @@
-/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/CMakeFiles/rebuild_cache.dir
-/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/CMakeFiles/edit_cache.dir
-/Users/miaodi/ClionProjects/oo_iga/cmake-build-debug/CMakeFiles/oo_iga.dir
