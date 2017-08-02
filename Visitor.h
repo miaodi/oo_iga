@@ -627,7 +627,7 @@ public:
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> derivativeTerm(quadratures.size(), index.size());
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> basisFunctionTerm(quadratures.size(), index.size());
         int it = 0;
-        T sigma = 1e5;
+        T sigma = 1e6;
         for (const auto &i : quadratures) {
             auto evals = basis->Eval3DerAllTensor(i.first);
             auto Jac = g->Jacobian(i.first);
@@ -648,9 +648,7 @@ public:
         }
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tempFlux1, tempFlux2;
         tempFlux1 = basisFunctionTerm.transpose() * Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(weights.asDiagonal()) * thirdDerivativeTerm;
-        tempFlux1 += tempFlux1.transpose();
         tempFlux2 = -derivativeTerm.transpose() * Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(weights.asDiagonal()) * LaplacianTerm;
-        tempFlux2 += tempFlux2.transpose();
         Eigen::Matrix<T, Eigen::Dynamic, 1> tempFlux1Load(
                 thirdDerivativeTerm.transpose() * Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(weights.asDiagonal()) *
                 boundaryInfo);
@@ -669,7 +667,8 @@ public:
         Eigen::Matrix<T, Eigen::Dynamic, 1> tempStablizeLoad2(
                 sigma / h * derivativeTerm.transpose() * Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(weights.asDiagonal()) *
                 boundaryInfoDer);
-        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> stiffness = tempFlux1 + tempFlux2 + tempStablize1 + tempStablize2;
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> stiffness =
+                tempFlux1 + tempFlux1.transpose() + tempFlux2 + tempFlux2.transpose() + tempStablize1 + tempStablize2;
         Eigen::Matrix<T, Eigen::Dynamic, 1> load = tempFlux1Load + tempFlux2Load + tempStablizeLoad1 + tempStablizeLoad2;
         for (int i = 0; i != stiffness.rows(); ++i) {
             for (int j = 0; j != stiffness.cols(); ++j) {
@@ -1467,7 +1466,7 @@ public:
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> derivativeTerm(quadratures.size(), index.size());
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> basisFunctionTerm(quadratures.size(), index.size());
         int it = 0;
-        T sigma = 1e4;
+        T sigma = 1e8;
         for (const auto &i : quadratures) {
             if (!slaveBasis->InversePts(lagrange->AffineMap(i.first), u)) {
                 std::cout << "InversePts fail" << std::endl;
@@ -1509,10 +1508,10 @@ public:
                 sigma / h * derivativeTerm.transpose() * Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(weights.asDiagonal()) *
                 derivativeTerm);
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> stiffness =
-                tempFlux1 - tempFlux1.transpose() + tempFlux2 - tempFlux2.transpose() + tempStablize1 + tempStablize2;
+                tempFlux1 + tempFlux1.transpose() + tempFlux2 + tempFlux2.transpose() + tempStablize1 + tempStablize2;
         for (int i = 0; i != stiffness.rows(); ++i) {
             for (int j = 0; j != stiffness.cols(); ++j) {
-                if (stiffness(i, j) != 0) {
+                if (stiffness(i, j)!=0) {
                     _poissonInterface.push_back(
                             IndexedValue(index[i], index[j], stiffness(i, j)));
                 }

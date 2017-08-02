@@ -479,18 +479,19 @@ PhyTensorBsplineBasis<2, 2, double>::Eval3DerAllTensor(const PhyTensorBsplineBas
 
     Hessian(6, 0) = PxiPxiPeta(0), Hessian(6, 1) = PxiPxiPeta(1), Hessian(6, 2) = 2 * Pxi(0) * PxiPeta(0) + Peta(0) * PxiPxi(0), Hessian(6, 3) =
             2 * Pxi(1) * PxiPeta(0) + 2 * Pxi(0) * PxiPeta(1) + Peta(1) * PxiPxi(0) + Peta(0) * PxiPxi(1), Hessian(6, 4) =
-            2 * Pxi(1) * PxiPxi(1) + Peta(1) * PxiPxi(1), Hessian(6, 5) = Peta(0) * pow(Pxi(0), 2), Hessian(6, 6) =
+            2 * Pxi(1) * PxiPeta(1) + Peta(1) * PxiPxi(1), Hessian(6, 5) = Peta(0) * pow(Pxi(0), 2), Hessian(6, 6) =
             Peta(1) * pow(Pxi(0), 2) + 2 * Peta(0) * Pxi(0) * Pxi(1), Hessian(6, 7) =
             2 * Peta(1) * Pxi(0) * Pxi(1) + Peta(0) * pow(Pxi(1), 2), Hessian(6, 8) = Peta(1) * pow(Pxi(1), 2);
 
     Hessian(7, 0) = PxiPetaPeta(0), Hessian(7, 1) = PxiPetaPeta(1), Hessian(7, 2) = PetaPeta(0) * Pxi(0) + 2 * Peta(0) * PxiPeta(0), Hessian(7, 3) =
             2 * Peta(1) * PxiPeta(0) + 2 * Peta(0) * PxiPeta(1) + Pxi(0) * PetaPeta(1) + Pxi(1) * PetaPeta(0), Hessian(7, 4) =
             2 * Peta(1) * PxiPeta(1) + Pxi(1) * PetaPeta(1), Hessian(7, 5) = Pxi(0) * pow(Peta(0), 2), Hessian(7, 6) =
-            Peta(1) * pow(Peta(0), 2) + 2 * Peta(0) * Peta(1) * Pxi(0), Hessian(7, 7) =
+            Pxi(1) * pow(Peta(0), 2) + 2 * Peta(0) * Peta(1) * Pxi(0), Hessian(7, 7) =
             2 * Peta(0) * Peta(1) * Pxi(1) + Pxi(0) * pow(Peta(1), 2), Hessian(7, 8) = Pxi(1) * pow(Peta(1), 2);
 
     Hessian(8, 0) = PetaPetaPeta(0), Hessian(8, 1) = PetaPetaPeta(1), Hessian(8, 2) = 3 * Peta(0) * PetaPeta(0), Hessian(8, 3) =
-            3 * Peta(1) * PetaPeta(0) + 3 * Peta(0) * PetaPeta(1), Hessian(8, 4) = 3 * Peta(1) * PetaPeta(1), Hessian(8, 5) = pow(Peta(0), 3), Hessian(8, 6) =
+            3 * Peta(1) * PetaPeta(0) + 3 * Peta(0) * PetaPeta(1), Hessian(8, 4) = 3 * Peta(1) * PetaPeta(1), Hessian(8, 5) = pow(Peta(0),
+                                                                                                                                  3), Hessian(8, 6) =
             3 * pow(Peta(0), 2) * Peta(1), Hessian(8, 7) = 3 * Peta(0) * pow(Peta(1), 2), Hessian(8, 8) = pow(Peta(1), 3);
     for (auto &i:*parametric) {
         Eigen::Map<Eigen::VectorXd> temp(i.second.data() + 1, i.second.size() - 1);
