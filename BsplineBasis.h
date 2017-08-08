@@ -19,6 +19,64 @@
 
 #include "KnotVector.h"
 #include <memory>
+#include "QuadratureRule.h"
+
+namespace Accessory {
+    using namespace Eigen;
+    template<typename T>
+    using ExtractionOperator= Matrix<T, Dynamic, Dynamic>;
+    template<typename T>
+    using ExtractionOperatorContainer=std::vector<ExtractionOperator<T>>;
+
+    template<typename T>
+    std::unique_ptr<ExtractionOperatorContainer<T>> BezierExtraction(const KnotVector<T> &knot, const int p) {
+        std::unique_ptr<ExtractionOperatorContainer<T>> result(new ExtractionOperatorContainer<T>);
+        int m = knot.GetSize();
+        int a = p + 1;
+        int b = a + 1;
+        int nb = 1;
+        std::vector<T> alphas(p + 1);
+        ExtractionOperator<T> C = ExtractionOperator<T>::Identity(p + 1, p + 1);
+        while (b < m) {
+            ExtractionOperator<T> C_next = ExtractionOperator<T>::Identity(p + 1, p + 1);
+            int i = b;
+            while (b < m && knot[b] == knot[b - 1]) {
+                b++;
+            }
+            int mult = b - i + 1;
+            if (mult < p) {
+                T numer = knot[b - 1] - knot[a - 1];
+                for (int j = p; j > mult; j--) {
+                    alphas[j - mult - 1] = numer / (knot[a + j - 1] - knot[a - 1]);
+                }
+                int r = p - mult;
+                for (int j = 1; j <= r; j++) {
+                    int save = r - j + 1;
+                    int s = mult + j;
+                    for (int k = p + 1; k >= s + 1; k--) {
+                        T alpha = alphas[k - s - 1];
+                        C.col(k - 1) = alpha * C.col(k - 1) + (1.0 - alpha) * C.col(k - 2);
+                    }
+
+                    if (b < m) {
+                        for (int l = 0; l <= j; l++) {
+                            C_next(save + l - 1, save - 1) = C(p - j + l, p);
+                        }
+                    }
+                }
+                result->push_back(C);
+                C = C_next;
+                nb++;
+                if (b < m) {
+                    a = b;
+                    b++;
+                }
+            }
+        }
+        result->push_back(C);
+        return result;
+    }
+}
 
 template<typename T=double>
 class BsplineBasis {
@@ -48,7 +106,7 @@ public:
 
     BasisFunValDerAllList_ptr EvalDerAll(const T &u, int i) const {
         const int deg = GetDegree();
-        BasisFunValDerAll aaa {0,std::vector<T>(i+1,0)};
+        BasisFunValDerAll aaa{0, std::vector<T>(i + 1, 0)};
         BasisFunValDerAllList_ptr ders(new BasisFunValDerAllList(deg + 1, aaa));
         T *left = new T[2 * (deg + 1)];
         T *right = &left[deg + 1];
@@ -264,6 +322,39 @@ public:
 
     int FirstActive(T u) const {
         return (InDomain(u) ? FindSpan(u) - GetDegree() : 0);
+    }
+
+    std::unique_ptr<matrix> BasisWeight() const {
+        using QuadList = typename QuadratureRule<T>::QuadList;
+        std::unique_ptr<matrix> result(new matrix);
+        int dof = _basisKnot.GetDOF();
+        auto spans = _basisKnot.KnotEigenSpans();
+        int elements = spans.size();
+        int quadratureNum = _basisKnot.GetDegree();
+        result->resize(elements, dof);
+        result->setZero();
+        QuadratureRule<T> quadrature(quadratureNum);
+        int num = 0;
+        for (auto &i:spans) {
+            QuadList quadList;
+            quadrature.MapToQuadrature(i, quadList);
+            for (auto &j:quadList) {
+                auto evals = EvalDerAll(j.first(0), 0);
+                for (auto &k:*evals) {
+                    (*result)(num, k.first) += j.second * k.second[0];
+                }
+            }
+            num++;
+        }
+        vector sumWeight(dof);
+        sumWeight.setZero();
+        for (int i = 0; i < dof; i++) {
+            sumWeight(i) = result->col(i).sum();
+        }
+        for (int i = 0; i < dof; i++) {
+            result->col(i) /= sumWeight(i);
+        }
+        return result;
     }
 
     bool IsActive(const int i, const T u) const;
