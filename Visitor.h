@@ -627,7 +627,7 @@ public:
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> derivativeTerm(quadratures.size(), index.size());
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> basisFunctionTerm(quadratures.size(), index.size());
         int it = 0;
-        T sigma = 1e3;
+        T sigma = 1e4;
         for (const auto &i : quadratures) {
             auto evals = basis->Eval3DerAllTensor(i.first);
             auto Jac = g->Jacobian(i.first);
@@ -1466,7 +1466,7 @@ public:
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> derivativeTerm(quadratures.size(), index.size());
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> basisFunctionTerm(quadratures.size(), index.size());
         int it = 0;
-        T sigma = 1e3;
+        T sigma = 1e2;
         for (const auto &i : quadratures) {
             if (!slaveBasis->InversePts(lagrange->AffineMap(i.first), u)) {
                 std::cout << "InversePts fail" << std::endl;

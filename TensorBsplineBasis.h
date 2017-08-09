@@ -18,23 +18,6 @@ namespace Accessory {
     using DifferentialPatternList = std::vector<DifferentialPattern>;
     using DifferentialPatternList_ptr = std::unique_ptr<DifferentialPatternList>;
 
-    template<typename T>
-    void binomialCoef(Matrix<T, Dynamic, Dynamic> &Bin) {
-        int n, k;
-        // Setup the first line
-        Bin(0, 0) = 1.0;
-        for (k = static_cast<int>(Bin.cols()) - 1; k > 0; --k)
-            Bin(0, k) = 0.0;
-        // Setup the other lines
-        for (n = 0; n < static_cast<int>(Bin.rows()) - 1; n++) {
-            Bin(n + 1, 0) = 1.0;
-            for (k = 1; k < static_cast<int>(Bin.cols()); k++)
-                if (n + 1 < k)
-                    Bin(n, k) = 0.0;
-                else
-                    Bin(n + 1, k) = Bin(n, k) + Bin(n, k - 1);
-        }
-    }
 
     template<typename T, int N>
     void degreeElevate(int t, KnotVector<T> &U, ContPtsList<T, N> &P) {

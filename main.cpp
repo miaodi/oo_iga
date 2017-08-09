@@ -28,8 +28,13 @@ int main() {
         cout<<i<<endl<<endl;
     }
     BsplineBasis<double> c(a);
-    cout<<*c.BasisWeight();
 
+    MatrixXd graminv = GramianInverse<double>(8);
+    MatrixXd gram = Gramian<double>(8);
+    cout<<gram*graminv<<endl;
+    auto res = AllBernstein<double>(3,-1);
+    for(auto i:res)
+        cout<<i<<" ";
     /*
     auto interfaceStiffness = interface.DGInterface();
     SparseMatrix<double> stiffnessSol = *stiffness + *interfaceStiffness + *boundaryStiffness;

@@ -55,7 +55,7 @@ namespace Accessory {
                     int s = mult + j;
                     for (int k = p + 1; k >= s + 1; k--) {
                         T alpha = alphas[k - s - 1];
-                        C.col(k - 1) = alpha * C.col(k - 1) + (1.0 - alpha) * C.col(k - 2);
+                        C.col(k-1) = alpha * C.col(k - 1) + (1.0 - alpha) * C.col(k - 2);
                     }
 
                     if (b < m) {
@@ -75,6 +75,78 @@ namespace Accessory {
         }
         result->push_back(C);
         return result;
+    }
+
+    template<typename T>
+    void binomialCoef(Matrix<T, Dynamic, Dynamic> &Bin) {
+        int n, k;
+        // Setup the first line
+        Bin(0, 0) = 1.0;
+        for (k = static_cast<int>(Bin.cols()) - 1; k > 0; --k)
+            Bin(0, k) = 0.0;
+        // Setup the other lines
+        for (n = 0; n < static_cast<int>(Bin.rows()) - 1; n++) {
+            Bin(n + 1, 0) = 1.0;
+            for (k = 1; k < static_cast<int>(Bin.cols()); k++)
+                if (n + 1 < k)
+                    Bin(n, k) = 0.0;
+                else
+                    Bin(n + 1, k) = Bin(n, k) + Bin(n, k - 1);
+        }
+    }
+
+    template<typename T>
+    Matrix<T,Dynamic,Dynamic> Gramian(int p){
+        int n = p+1;
+        Matrix<T,Dynamic,Dynamic> res(n,n);
+        res.setZero();
+        Matrix<T, Dynamic, Dynamic> Bin(2*n,2*n);
+        binomialCoef(Bin);
+        for(int i=0;i<n;i++){
+            for(int j=0;j<=i;j++){
+                res(i,j)=Bin(p,i)*Bin(p,j)/(2*p+1)/Bin(2*p,i+j);
+            }
+        }
+        res=res.template selfadjointView<Eigen::Lower>();
+        return res;
+    };
+
+    template<typename T>
+    Matrix<T,Dynamic,Dynamic> GramianInverse(int p){
+        int n = p+1;
+        Matrix<T,Dynamic,Dynamic> res(n,n);
+        res.setZero();
+        Matrix<T, Dynamic, Dynamic> Bin(2*n,n+1);
+        binomialCoef(Bin);
+        for(int i=0;i<n;i++){
+            for(int j=0;j<=i;j++){
+                T sum=0;
+                for(int k=0;k<=std::min(i,j);k++){
+                    sum+=(2*k+1)*Bin(p+k+1,p-i)*Bin(p-k,p-i)*Bin(p+k+1,p-j)*Bin(p-k,p-j);
+                }
+                std::cout<<sum<<std::endl;
+                res(i,j)=sum*pow(-1,i+j)/Bin(p,i)/Bin(p,j);
+            }
+        }
+        res=res.template selfadjointView<Eigen::Lower>();
+        return res;
+    };
+
+    template<typename T>
+    std::vector<T> AllBernstein(int p, T u){
+        std::vector<T> res(p+1);
+        res[0]=1;
+        T u1=1-u;
+        for(int j=1;j<=p;j++){
+            T saved = 0;
+            for(int k=0;k<j;k++){
+                T temp = res[k];
+                res[k]= saved +u1*temp;
+                saved = u* temp;
+            }
+            res[j]=saved;
+        }
+        return res;
     }
 }
 
