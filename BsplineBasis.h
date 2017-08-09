@@ -20,7 +20,7 @@
 #include "KnotVector.h"
 #include <memory>
 #include "QuadratureRule.h"
-
+#include <boost/math/special_functions/binomial.hpp>
 namespace Accessory {
     using namespace Eigen;
     template<typename T>
@@ -29,9 +29,10 @@ namespace Accessory {
     using ExtractionOperatorContainer=std::vector<ExtractionOperator<T>>;
 
     template<typename T>
-    std::unique_ptr<ExtractionOperatorContainer<T>> BezierExtraction(const KnotVector<T> &knot, const int p) {
+    std::unique_ptr<ExtractionOperatorContainer<T>> BezierExtraction(const KnotVector<T> &knot) {
         std::unique_ptr<ExtractionOperatorContainer<T>> result(new ExtractionOperatorContainer<T>);
         int m = knot.GetSize();
+        int p = knot.GetDegree();
         int a = p + 1;
         int b = a + 1;
         int nb = 1;
@@ -55,7 +56,7 @@ namespace Accessory {
                     int s = mult + j;
                     for (int k = p + 1; k >= s + 1; k--) {
                         T alpha = alphas[k - s - 1];
-                        C.col(k-1) = alpha * C.col(k - 1) + (1.0 - alpha) * C.col(k - 2);
+                        C.col(k - 1) = alpha * C.col(k - 1) + (1.0 - alpha) * C.col(k - 2);
                     }
 
                     if (b < m) {
@@ -78,6 +79,15 @@ namespace Accessory {
     }
 
     template<typename T>
+    std::unique_ptr<ExtractionOperatorContainer<T>> BezierReconstruction(const KnotVector<T> &knot) {
+        auto res = BezierExtraction<T>(knot);
+        for (auto &i:*res) {
+            i = i.inverse();
+        }
+        return res;
+    }
+
+    template<typename T>
     void binomialCoef(Matrix<T, Dynamic, Dynamic> &Bin) {
         int n, k;
         // Setup the first line
@@ -96,58 +106,57 @@ namespace Accessory {
     }
 
     template<typename T>
-    Matrix<T,Dynamic,Dynamic> Gramian(int p){
-        int n = p+1;
-        Matrix<T,Dynamic,Dynamic> res(n,n);
+    Matrix<T, Dynamic, Dynamic> Gramian(int p) {
+        using namespace boost::math;
+        int n = p + 1;
+        Matrix<T, Dynamic, Dynamic> res(n, n);
         res.setZero();
-        Matrix<T, Dynamic, Dynamic> Bin(2*n,2*n);
-        binomialCoef(Bin);
-        for(int i=0;i<n;i++){
-            for(int j=0;j<=i;j++){
-                res(i,j)=Bin(p,i)*Bin(p,j)/(2*p+1)/Bin(2*p,i+j);
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j <= i; j++) {
+                res(i, j) = binomial_coefficient<double>(p, i) * binomial_coefficient<double>(p, j) / (2 * p + 1) / binomial_coefficient<double>(2 * p, i + j);
             }
         }
-        res=res.template selfadjointView<Eigen::Lower>();
+        res = res.template selfadjointView<Eigen::Lower>();
         return res;
     };
 
     template<typename T>
-    Matrix<T,Dynamic,Dynamic> GramianInverse(int p){
-        int n = p+1;
-        Matrix<T,Dynamic,Dynamic> res(n,n);
+    Matrix<T, Dynamic, Dynamic> GramianInverse(int p) {
+        int n = p + 1;
+        Matrix<T, Dynamic, Dynamic> res(n, n);
         res.setZero();
-        Matrix<T, Dynamic, Dynamic> Bin(2*n,n+1);
+        Matrix<T, Dynamic, Dynamic> Bin(2 * n + 2, n + 1);
         binomialCoef(Bin);
-        for(int i=0;i<n;i++){
-            for(int j=0;j<=i;j++){
-                T sum=0;
-                for(int k=0;k<=std::min(i,j);k++){
-                    sum+=(2*k+1)*Bin(p+k+1,p-i)*Bin(p-k,p-i)*Bin(p+k+1,p-j)*Bin(p-k,p-j);
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j <= i; j++) {
+                T sum = 0;
+                for (int k = 0; k <= std::min(i, j); k++) {
+                    sum += (2 * k + 1) * Bin(p + k + 1, p - i) * Bin(p - k, p - i) * Bin(p + k + 1, p - j) * Bin(p - k, p - j);
                 }
-                std::cout<<sum<<std::endl;
-                res(i,j)=sum*pow(-1,i+j)/Bin(p,i)/Bin(p,j);
+                res(i, j) = sum * pow(-1, i + j) / Bin(p, i) / Bin(p, j);
             }
         }
-        res=res.template selfadjointView<Eigen::Lower>();
+        res = res.template selfadjointView<Eigen::Lower>();
         return res;
     };
 
     template<typename T>
-    std::vector<T> AllBernstein(int p, T u){
-        std::vector<T> res(p+1);
-        res[0]=1;
-        T u1=1-u;
-        for(int j=1;j<=p;j++){
+    std::vector<T> AllBernstein(int p, T u) {
+        std::vector<T> res(p + 1);
+        res[0] = 1;
+        T u1 = 1 - u;
+        for (int j = 1; j <= p; j++) {
             T saved = 0;
-            for(int k=0;k<j;k++){
+            for (int k = 0; k < j; k++) {
                 T temp = res[k];
-                res[k]= saved +u1*temp;
-                saved = u* temp;
+                res[k] = saved + u1 * temp;
+                saved = u * temp;
             }
-            res[j]=saved;
+            res[j] = saved;
         }
         return res;
     }
+
 }
 
 template<typename T=double>
@@ -376,6 +385,18 @@ public:
         return res;
     }
 
+    vector InSpan(const T &u) const {
+        auto span = FindSpan(u);
+        vector res(2);
+        res << _basisKnot[span], _basisKnot[span + 1];
+        return res;
+    }
+
+    int SpanNum(const T &u) const{
+        auto span = FindSpan(u);
+        auto degree = _basisKnot.GetDegree();
+        return span - degree;
+    }
     T DomainStart() const { return _basisKnot[GetDegree()]; }
 
     T DomainEnd() const { return _basisKnot[GetDof()]; }
@@ -431,8 +452,29 @@ public:
 
     bool IsActive(const int i, const T u) const;
 
+    void BezierDualInitialize(){
+        int degree = _basisKnot.GetDegree();
+        _gramianInv = Accessory::GramianInverse<T>(degree);
+        _basisWeight = *BasisWeight();
+        _reconstruction = *Accessory::BezierReconstruction<T>(_basisKnot);
+    }
+
+    BasisFunValPac_ptr BezierDual(const T &u) const{
+        int spanNumber = SpanNum(u);
+        int degree = _basisKnot.GetDegree();
+        vector span = InSpan(u);
+        T uPara = (u-span(0))/(span(1)-span(0));
+        auto bernstein = Accessory::AllBernstein(degree,uPara);
+        Eigen::Map<vector> bernsteinVector(bernstein.data(),bernstein.size());
+        BasisFunValPac_ptr result(new BasisFunValPac);
+        return result;
+    }
+
 protected:
     KnotVector<T> _basisKnot;
+    std::vector<matrix> _reconstruction;
+    matrix _basisWeight;
+    matrix _gramianInv;
 };
 
 template<typename T>

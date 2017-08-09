@@ -6,7 +6,6 @@
 #define OO_IGA_TOPOLOGY_H
 
 #include "PhyTensorBsplineBasis.h"
-#include "QuadratureRule.h"
 #include <eigen3/Eigen/Sparse>
 #include "MmpMatrix.h"
 #include "Visitor.h"

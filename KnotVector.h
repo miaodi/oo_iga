@@ -70,6 +70,16 @@ public:
 
     std::vector<std::pair<T, T>> KnotSpans() const;
 
+    int SpanNum(const T &u) const{
+        uniContainer temp;
+        UniQue(temp);
+        knotContainer tmp;
+        for(auto &i:temp){
+            tmp.push_back(i.first);
+        }
+        return KnotVector(tmp).FindSpan(u);
+    };
+
     std::vector<std::pair<Eigen::Matrix<T, 1, 1>, Eigen::Matrix<T, 1, 1>>> KnotEigenSpans() const;
 
     void resize(int t) { _multiKnots.resize(t); };

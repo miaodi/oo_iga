@@ -18,23 +18,26 @@ using LoadFunctor = Element<double>::LoadFunctor;
 
 int main() {
     KnotVector<double> a;
-    a.InitClosed(2, 0, 1);
-    a.Insert(1.0/3);
-    a.Insert(1.0/3);
-    a.Insert(2.0/3);
+    a.InitClosed(3, 0, 1);
+    a.UniformRefine(2, 1);
+    a.Insert(.25);
     a.printKnotVector();
-    auto result = BezierExtraction(a,2);
-    for(auto i:*result){
-        cout<<i<<endl<<endl;
+    cout<<a.SpanNum(.3)<<" "<<a.FindSpan(.3)<<endl;
+    auto result = BezierReconstruction(a);
+    for (auto i:*result) {
+        cout << i << endl << endl;
     }
     BsplineBasis<double> c(a);
 
-    MatrixXd graminv = GramianInverse<double>(8);
-    MatrixXd gram = Gramian<double>(8);
-    cout<<gram*graminv<<endl;
-    auto res = AllBernstein<double>(3,-1);
-    for(auto i:res)
-        cout<<i<<" ";
+    MatrixXd graminv = GramianInverse<double>(9);
+    MatrixXd gram = Gramian<double>(9);
+    cout << gram*graminv << endl;
+    cout << graminv << endl;
+    auto res = AllBernstein<double>(3, -1);
+
+    cout << c.SpanNum(.77);
+    c.BezierDualInitialize();
+    auto kk = c.BezierDual(.74999999);
     /*
     auto interfaceStiffness = interface.DGInterface();
     SparseMatrix<double> stiffnessSol = *stiffness + *interfaceStiffness + *boundaryStiffness;
