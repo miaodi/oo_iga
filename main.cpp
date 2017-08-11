@@ -19,115 +19,53 @@ using Vector1d = Matrix<double, 1, 1>;
 
 int main() {
     KnotVector<double> a;
-
     a.InitClosed(1, 0, 1);
     Vector2d point1(0, 0);
-    Vector2d point2(0, 1);
+    Vector2d point2(0, 2);
     Vector2d point3(1, 0);
-    Vector2d point4(1, 1);
+    Vector2d point4(1, 2);
+    Vector2d point5(2, 0);
+    Vector2d point6(2, 2);
+
     vector<Vector2d> points1({point1, point2, point3, point4});
+    vector<Vector2d> points2({point3, point4, point5, point6});
+    vector<Vector2d> points3({point1, point2});
+
     auto domain1 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(a, a, points1);
+    auto domain2 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(a, a, points2);
     domain1->DegreeElevate(3);
-    domain1->UniformRefine(3);
-    array<shared_ptr<Cell<double>>, 1> cells;
+    domain2->DegreeElevate(3);
+
+    domain1->UniformRefine(4);
+    domain2->UniformRefine(5);
+
+    array<shared_ptr<Cell<double>>, 2> cells;
     cells[0] = make_shared<Cell<double>>(domain1);
-    domain1->BezierDualInitialize();
-
-    CoordinatePairList knot;
-    cells[0]->KnotSpansGetter(knot);
-    QuadratureRule<double> quadrature(7);
-    QuadList quad;
-    int dof = domain1->GetDof();
-    MatrixXd mass(dof, dof);
-    mass.setZero();
-    for (auto &i:knot) {
-        quadrature.MapToQuadrature(i, quad);
-        for (auto &j:quad) {
-            auto basis = domain1->EvalDerAllTensor(j.first, 0);
-            auto dual = domain1->EvalDualAllTensor(j.first);
-            VectorXd basisVector(dof), dualVector(dof);
-            basisVector.setZero(), dualVector.setZero();
-            for (auto &k:*basis) {
-                basisVector(k.first) = k.second[0];
-            }
-            for (auto &k:*dual) {
-                dualVector(k.first) = k.second[0];
-            }
-            mass += basisVector * dualVector.transpose() * j.second;
-        }
+    cells[1] = make_shared<Cell<double>>(domain2);
+    for (int i = 0; i < 1; i++) {
+        for (int j = i + 1; j < 2; j++)
+            cells[i]->Match(cells[j]);
     }
-    cout << mass;
-    /*
-    auto interfaceStiffness = interface.DGInterface();
-    SparseMatrix<double> stiffnessSol = *stiffness + *interfaceStiffness + *boundaryStiffness;
-    VectorXd loadSol = *load + *boundaryLoad;
-    SparseLU<SparseMatrix<double> > solver;
-    solver.compute(stiffnessSol);
-    VectorXd Solution =solver.solve(loadSol);
-    vector<KnotVector<double>> solutionDomain1, solutionDomain2, solutionDomain3, solutionDomain4, solutionDomain5;
-    solutionDomain1.push_back(domain1->KnotVectorGetter(0));
-    solutionDomain1.push_back(domain1->KnotVectorGetter(1));
-    solutionDomain2.push_back(domain2->KnotVectorGetter(0));
-    solutionDomain2.push_back(domain2->KnotVectorGetter(1));
-    solutionDomain3.push_back(domain3->KnotVectorGetter(0));
-    solutionDomain3.push_back(domain3->KnotVectorGetter(1));
-    solutionDomain4.push_back(domain4->KnotVectorGetter(0));
-    solutionDomain4.push_back(domain4->KnotVectorGetter(1));
-    solutionDomain5.push_back(domain5->KnotVectorGetter(0));
-    solutionDomain5.push_back(domain5->KnotVectorGetter(1));
-    VectorXd controlDomain1 = Solution.segment(s.StartingIndex(domain1), domain1->GetDof());
-    VectorXd controlDomain2 = Solution.segment(s.StartingIndex(domain2), domain2->GetDof());
-    VectorXd controlDomain3 = Solution.segment(s.StartingIndex(domain3), domain3->GetDof());
-    VectorXd controlDomain4 = Solution.segment(s.StartingIndex(domain4), domain4->GetDof());
-    VectorXd controlDomain5 = Solution.segment(s.StartingIndex(domain5), domain5->GetDof());
-    auto solution1 = PhyTensorBsplineBasis<2, 1, double>(solutionDomain1, controlDomain1);
-    auto solution2 = PhyTensorBsplineBasis<2, 1, double>(solutionDomain2, controlDomain2);
-    auto solution3 = PhyTensorBsplineBasis<2, 1, double>(solutionDomain3, controlDomain3);
-    auto solution4 = PhyTensorBsplineBasis<2, 1, double>(solutionDomain4, controlDomain4);
-    auto solution5 = PhyTensorBsplineBasis<2, 1, double>(solutionDomain5, controlDomain5);
-    double x, y;
-
-    ofstream file1, file2, file3, file4, file5;
-    file1.open("domain1.txt");
-    file2.open("domain2.txt");
-    file3.open("domain3.txt");
-    file4.open("domain4.txt");
-    file5.open("domain5.txt");
-    for (int i = 0; i <= 100; i++) {
-        for (int j = 0; j <= 100; j++) {
-            double xi = 1.0 * i / 100, eta = 1.0 * j / 100;
-            Vector2d u(xi, eta);
-
-            VectorXd position1 = domain1->AffineMap(u);
-            VectorXd position2 = domain2->AffineMap(u);
-            VectorXd position3 = domain3->AffineMap(u);
-            VectorXd position4 = domain4->AffineMap(u);
-            VectorXd position5 = domain5->AffineMap(u);
-            auto result1 = abs(solution1.AffineMap(u)(0) - Analytical(position1)[0]);
-            auto result2 = abs(solution2.AffineMap(u)(0) - Analytical(position2)[0]);
-            auto result3 = abs(solution3.AffineMap(u)(0) - Analytical(position3)[0]);
-            auto result4 = abs(solution4.AffineMap(u)(0) - Analytical(position4)[0]);
-            auto result5 = abs(solution5.AffineMap(u)(0) - Analytical(position5)[0]);
-            file1 << position1(0) << " " << position1(1) << " " << result1 << endl;
-            file2 << position2(0) << " " << position2(1) << " " << result2 << endl;
-            file3 << position3(0) << " " << position3(1) << " " << result3 << endl;
-            file4 << position4(0) << " " << position4(1) << " " << result4 << endl;
-            file5 << position5(0) << " " << position5(1) << " " << result5 << endl;
-        }
+    for (int i = 0; i < 2; i++) {
+        cells[i]->PrintEdgeInfo();
     }
 
-    return 0;
-    /*
+
+    DofMapper<double> s;
+    BiharmonicMapperInitiator<double> visit(s);
+    for (int i = 0; i < 2; i++) {
+        cells[i]->accept(visit);
+    }
+
     const double pi = 3.141592653589793238462643383279502884;
 
     BiharmonicVisitor<double> biharmonic(s, [&pi](Coordinate u) -> vector<double> {
         return vector<double>{4 * pow(pi, 4) * sin(pi * u(0)) * sin(pi * u(1))};
     });
 
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 2; i++) {
         cells[i]->accept(biharmonic);
     }
-
 
     function<vector<double>(const Coordinate &)> Analytical = [&pi](const Coordinate &u) {
         return vector<double>{sin(pi * u(0)) * sin(pi * u(1)), pi * cos(pi * u(0)) * sin(pi * u(1)),
@@ -135,15 +73,13 @@ int main() {
     };
     BiharmonicBoundaryVisitor<double> boundary(s, Analytical);
 
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 2; i++) {
         cells[i]->accept(boundary);
     }
 
-    s.PrintSlaveDofIn(domain2);
-    s.PrintDofIn(domain1);
     BiharmonicInterfaceVisitor<double> interface(s);
 
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 2; i++) {
         cells[i]->accept(interface);
     }
     unique_ptr<SparseMatrix<double>> coupling = interface.Coupling();
@@ -170,54 +106,26 @@ int main() {
     solutionDomain1.push_back(domain1->KnotVectorGetter(1));
     solutionDomain2.push_back(domain2->KnotVectorGetter(0));
     solutionDomain2.push_back(domain2->KnotVectorGetter(1));
-    solutionDomain3.push_back(domain3->KnotVectorGetter(0));
-    solutionDomain3.push_back(domain3->KnotVectorGetter(1));
-    solutionDomain4.push_back(domain4->KnotVectorGetter(0));
-    solutionDomain4.push_back(domain4->KnotVectorGetter(1));
-    solutionDomain5.push_back(domain5->KnotVectorGetter(0));
-    solutionDomain5.push_back(domain5->KnotVectorGetter(1));
     VectorXd controlDomain1 = solution.segment(s.StartingIndex(domain1), domain1->GetDof());
     VectorXd controlDomain2 = solution.segment(s.StartingIndex(domain2), domain2->GetDof());
-    VectorXd controlDomain3 = solution.segment(s.StartingIndex(domain3), domain3->GetDof());
-    VectorXd controlDomain4 = solution.segment(s.StartingIndex(domain4), domain4->GetDof());
-    VectorXd controlDomain5 = solution.segment(s.StartingIndex(domain5), domain5->GetDof());
     auto solution1 = PhyTensorBsplineBasis<2, 1, double>(solutionDomain1, controlDomain1);
     auto solution2 = PhyTensorBsplineBasis<2, 1, double>(solutionDomain2, controlDomain2);
-    auto solution3 = PhyTensorBsplineBasis<2, 1, double>(solutionDomain3, controlDomain3);
-    auto solution4 = PhyTensorBsplineBasis<2, 1, double>(solutionDomain4, controlDomain4);
-    auto solution5 = PhyTensorBsplineBasis<2, 1, double>(solutionDomain5, controlDomain5);
     double x, y;
 
-    ofstream file1, file2, file3, file4, file5;
+    ofstream file1, file2;
     file1.open("domain1.txt");
     file2.open("domain2.txt");
-    file3.open("domain3.txt");
-    file4.open("domain4.txt");
-    file5.open("domain5.txt");
-    for (int i = 0; i <= 300; i++) {
-        for (int j = 0; j <= 300; j++) {
-            double xi = 1.0 * i / 300, eta = 1.0 * j / 300;
+    for (int i = 0; i <= 100; i++) {
+        for (int j = 0; j <= 100; j++) {
+            double xi = 1.0 * i / 100, eta = 1.0 * j / 100;
             Vector2d u(xi, eta);
-
             VectorXd position1 = domain1->AffineMap(u);
             VectorXd position2 = domain2->AffineMap(u);
-            VectorXd position3 = domain3->AffineMap(u);
-            VectorXd position4 = domain4->AffineMap(u);
-            VectorXd position5 = domain5->AffineMap(u);
             auto result1 = abs(solution1.AffineMap(u)(0) - Analytical(position1)[0]);
             auto result2 = abs(solution2.AffineMap(u)(0) - Analytical(position2)[0]);
-            auto result3 = abs(solution3.AffineMap(u)(0) - Analytical(position3)[0]);
-            auto result4 = abs(solution4.AffineMap(u)(0) - Analytical(position4)[0]);
-            auto result5 = abs(solution5.AffineMap(u)(0) - Analytical(position5)[0]);
             file1 << position1(0) << " " << position1(1) << " " << result1 << endl;
             file2 << position2(0) << " " << position2(1) << " " << result2 << endl;
-            file3 << position3(0) << " " << position3(1) << " " << result3 << endl;
-            file4 << position4(0) << " " << position4(1) << " " << result4 << endl;
-            file5 << position5(0) << " " << position5(1) << " " << result5 << endl;
         }
     }
-    time(&end);
-    std::cout << difftime(end, start) << " seconds" << std::endl;
-    */
     return 0;
 }

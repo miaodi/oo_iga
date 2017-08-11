@@ -225,64 +225,6 @@ protected:
 };
 
 template<typename T>
-class DualTest : public PoissonVisitor<T> {
-public:
-    using DomainShared_ptr = typename PoissonVisitor<T>::DomainShared_ptr;
-    using IndexedValue = typename PoissonVisitor<T>::IndexedValue;
-    using IndexedValueList = typename PoissonVisitor<T>::IndexedValueList;
-    using LoadFunctor = typename PoissonVisitor<T>::LoadFunctor;
-    using CoordinatePairList = typename PoissonVisitor<T>::CoordinatePairList;
-    using Quadlist = typename PoissonVisitor<T>::Quadlist;
-    using CoordinatePair = typename PoissonVisitor<T>::CoordinatePair;
-public:
-    DualTest(const DofMapper<T> &dof, const LoadFunctor &load) : PoissonVisitor<T>(dof, load) {
-
-    }
-
-    void
-    LocalAssemble(Cell<T> *g, DomainShared_ptr const basis, const CoordinatePair &element, const LoadFunctor &load, std::mutex &pmutex) {
-        Quadlist quadratures;
-        this->_quadrature.MapToQuadrature(element, quadratures);
-        auto initialIndex = this->_dofmap.StartingIndex(basis);
-        auto index = basis->ActiveIndex(quadratures[0].first);
-        Eigen::Matrix<T, Eigen::Dynamic, 1> weights(quadratures.size());
-        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> basisFuns(quadratures.size(), index.size());
-        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> dualBasisFuns(quadratures.size(), index.size());
-        int it = 0;
-        for (const auto &i : quadratures) {
-            auto evals = basis->Eval1DerAllTensor(i.first);
-            auto dualEvals = basis->EvalDualAllTensor(i.first);
-            weights(it) = i.second * g->Jacobian(i.first);
-            int itit = 0;
-            for (const auto &j : *evals) {
-                basisFuns(it, itit) = j.second[0];
-                itit++;
-            }
-            itit = 0;
-            for (const auto &j : *dualEvals) {
-                dualBasisFuns(it, itit) = j.second[0];
-                itit++;
-            }
-            it++;
-        }
-
-        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tempStiffMatrix;
-        tempStiffMatrix =
-                basisFuns.transpose() * Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(weights.asDiagonal()) *
-                basisFuns;
-        for (int i = 0; i != tempStiffMatrix.rows(); ++i) {
-            for (int j = 0; j != tempStiffMatrix.cols(); ++j) {
-                if (i >= j) {
-                    std::lock_guard<std::mutex> lock(pmutex);
-                    this->_poissonStiffness.push_back(
-                            IndexedValue(index[i] + initialIndex, index[j] + initialIndex, tempStiffMatrix(i, j)));
-                }
-            }
-        }
-    }
-};
-
-template<typename T>
 class BiharmonicVisitor : public PoissonVisitor<T> {
 public:
     using DomainShared_ptr = typename PoissonVisitor<T>::DomainShared_ptr;
@@ -957,7 +899,7 @@ public:
         this->_quadrature.SetUpQuadrature(*std::max_element(degrees.begin(), degrees.end()) + 1);
     }
 
-    void Assemble(Edge<T> *g) {
+    virtual void Assemble(Edge<T> *g) {
         EdgeShared_Ptr lagrange = g->MakeEdge();
         EdgeShared_Ptr edgeDomain = g->Counterpart()->MakeEdge();
         auto multiplierKnots = lagrange->KnotVectorGetter(0);
@@ -985,7 +927,7 @@ public:
         this->_poissonInterface.shrink_to_fit();
     }
 
-    void
+    virtual void
     C0LocalAssemble(Edge<T> *g, DomainShared_ptr const basis, EdgeShared_Ptr const lagrange,
                     const Quadlist &quadratures, IndexedValueList &matrix) {
         auto initialIndex = _dofmap.StartingIndex(basis);
@@ -1033,7 +975,7 @@ public:
         }
     }
 
-    void
+    virtual void
     C1SlaveLocalAssemble(Edge<T> *g, DomainShared_ptr const basis, EdgeShared_Ptr const lagrange,
                          const Quadlist &quadratures, IndexedValueList &matrix) {
         auto initialIndex = _dofmap.StartingIndex(basis);
@@ -1090,7 +1032,7 @@ public:
     }
 
 
-    void
+    virtual void
     C1MasterLocalAssemble(Edge<T> *g, DomainShared_ptr const basis, DomainShared_ptr const basisSlave, EdgeShared_Ptr const lagrange,
                           const Quadlist &quadratures, IndexedValueList &matrix) {
         auto initialIndex = _dofmap.StartingIndex(basis);
@@ -1196,7 +1138,7 @@ public:
         Accessory::removeRow<T>(C0load, C0load.rows() - 1);
         Accessory::removeRow<T>(C0load, C0load.rows() - 1);
         Matrix C0temp = C0mass.partialPivLu().solve(C0load);
-        T tol = 1E-11;
+        T tol = 1E-12;
         for (int i = 0; i != C0temp.rows(); ++i) {
             for (int j = 0; j != C0temp.cols(); ++j) {
                 if (std::abs(C0temp(i, j)) > tol) {
@@ -1231,7 +1173,6 @@ public:
                 C1load.col(j) *= -1;
             }
         }
-
         for (auto i:C1slaveMaster) {
             auto position = std::find(C0slaveIndex.begin(), C0slaveIndex.end(), i);
             if (position != C0slaveIndex.end()) {
@@ -1287,10 +1228,230 @@ public:
         return result;
     }
 
-private:
+protected:
     IndexedValueList _poissonInterface;
     const DofMapper<T> &_dofmap;
     QuadratureRule<T> _quadrature;
+};
+
+template<typename T>
+class BiharmonicBezierInterfaceVisitor : public BiharmonicInterfaceVisitor<T> {
+public:
+    using EdgeShared_Ptr = typename Element<T>::EdgeShared_Ptr;
+    using DomainShared_ptr = typename Visitor<T>::DomainShared_ptr;
+    using IndexedValue = typename Visitor<T>::IndexedValue;
+    using IndexedValueList = typename Visitor<T>::IndexedValueList;
+    using Coordinate = typename Visitor<T>::Coordinate;
+    using CoordinatePairList = typename Visitor<T>::CoordinatePairList;
+    using Quadlist = typename Visitor<T>::Quadlist;
+    using Pts = typename PhyTensorBsplineBasis<1, 2, T>::Pts;
+public:
+    BiharmonicBezierInterfaceVisitor(const DofMapper<T> &dof) : BiharmonicInterfaceVisitor<T>(dof) {
+    }
+    virtual void Assemble(Edge<T> *g) {
+        EdgeShared_Ptr lagrange = g->MakeEdge();
+        lagrange->BezierDualInitialize();
+        EdgeShared_Ptr edgeDomain = g->Counterpart()->MakeEdge();
+        auto multiplierKnots = lagrange->KnotVectorGetter(0);
+        auto thisKnots = edgeDomain->KnotVectorGetter(0);
+        auto thisUniKnots = thisKnots.GetUnique();
+        Pts u, v;
+        for (const auto &i:thisUniKnots) {
+            u(0) = i;
+            lagrange->InversePts(edgeDomain->AffineMap(u), v);
+            multiplierKnots.Insert(v(0));
+        }
+        auto elements = multiplierKnots.KnotEigenSpans();
+        Quadlist quadratures;
+        auto domain = g->GetDomain();
+        IndexedValueList C0Container;
+        IndexedValueList C1Container;
+        for (const auto &i : elements) {
+            this->_quadrature.MapToQuadrature(i, quadratures);
+            C0LocalAssemble(g, domain, lagrange, quadratures, C0Container);
+            C0LocalAssemble(&*g->Counterpart(), g->Counterpart()->GetDomain(), lagrange, quadratures, C0Container);
+            C1SlaveLocalAssemble(g, domain, lagrange, quadratures, C1Container);
+            C1MasterLocalAssemble(&*g->Counterpart(), g->Counterpart()->GetDomain(), domain, lagrange, quadratures, C1Container);
+        }
+        this->SolveCouplingRelation(g, domain, C0Container, C1Container);
+        this->_poissonInterface.shrink_to_fit();
+    }
+
+    virtual void
+    C0LocalAssemble(Edge<T> *g, DomainShared_ptr const basis, EdgeShared_Ptr const lagrange,
+                    const Quadlist &quadratures, IndexedValueList &matrix) {
+        auto initialIndex = this->_dofmap.StartingIndex(basis);
+        Coordinate u;
+        basis->InversePts(lagrange->AffineMap(quadratures[0].first), u);
+        auto index = basis->ActiveIndex(u);
+        auto lagrangeIndex = lagrange->ActiveIndex(quadratures[0].first);
+        Eigen::Matrix<T, Eigen::Dynamic, 1> weights(quadratures.size());
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> basisFuns(quadratures.size(), index.size());
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> lagrangeBasisFuns(quadratures.size(), lagrangeIndex.size());
+        int it = 0;
+        for (const auto &i : quadratures) {
+            if (!basis->InversePts(lagrange->AffineMap(i.first), u)) {
+                std::cout << "InversePts fail" << std::endl;
+            }
+            if (!g->IsOn(u)) {
+                std::cout << "Gauss points is not on the edge" << std::endl;
+            };
+            auto evals = basis->EvalDerAllTensor(u);
+            auto lagrangeEvals = lagrange->EvalDualAllTensor(i.first);
+            weights(it) = i.second;
+            int itit = 0;
+            for (const auto &j : *evals) {
+                basisFuns(it, itit) = j.second[0];
+                itit++;
+            }
+            itit = 0;
+            for (const auto &j : *lagrangeEvals) {
+                lagrangeBasisFuns(it, itit) = j.second[0];
+                itit++;
+            }
+            it++;
+        }
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tempStiffMatrix;
+        tempStiffMatrix =
+                lagrangeBasisFuns.transpose() * Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(weights.asDiagonal()) *
+                basisFuns;
+        for (int i = 0; i != tempStiffMatrix.rows(); ++i) {
+            for (int j = 0; j != tempStiffMatrix.cols(); ++j) {
+                if (tempStiffMatrix(i, j) != 0) {
+                    matrix.push_back(
+                            IndexedValue(lagrangeIndex[i], index[j] + initialIndex, tempStiffMatrix(i, j)));
+                }
+            }
+        }
+    }
+
+    virtual void
+    C1SlaveLocalAssemble(Edge<T> *g, DomainShared_ptr const basis, EdgeShared_Ptr const lagrange,
+                         const Quadlist &quadratures, IndexedValueList &matrix) {
+        auto initialIndex = this->_dofmap.StartingIndex(basis);
+        Coordinate u;
+        basis->InversePts(lagrange->AffineMap(quadratures[0].first), u);
+        auto index = basis->ActiveIndex(u);
+        auto lagrangeIndex = lagrange->ActiveIndex(quadratures[0].first);
+        Eigen::Matrix<T, Eigen::Dynamic, 1> weights(quadratures.size());
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> basisFuns(quadratures.size(), index.size());
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> lagrangeBasisFuns(quadratures.size(), lagrangeIndex.size());
+        int it = 0;
+        for (const auto &i : quadratures) {
+            if (!basis->InversePts(lagrange->AffineMap(i.first), u)) {
+                std::cout << "InversePts fail" << std::endl;
+            }
+            if (!g->IsOn(u)) {
+                std::cout << "Gauss points is not on the edge" << std::endl;
+            };
+            auto evals = basis->EvalDerAllTensor(u, 1);
+            auto lagrangeEvals = lagrange->EvalDualAllTensor(i.first);
+
+            weights(it) = i.second;
+            int itit = 0;
+            if (g->GetOrient() == 0 || g->GetOrient() == 2) {
+                for (const auto &j : *evals) {
+                    basisFuns(it, itit) = j.second[2];
+                    itit++;
+                }
+            } else {
+                for (const auto &j : *evals) {
+                    basisFuns(it, itit) = j.second[1];
+                    itit++;
+                }
+            }
+            itit = 0;
+            for (const auto &j : *lagrangeEvals) {
+                lagrangeBasisFuns(it, itit) = j.second[0];
+                itit++;
+            }
+            it++;
+        }
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tempStiffMatrix;
+        tempStiffMatrix =
+                lagrangeBasisFuns.transpose() * Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(weights.asDiagonal()) *
+                basisFuns;
+        for (int i = 0; i != tempStiffMatrix.rows(); ++i) {
+            for (int j = 0; j != tempStiffMatrix.cols(); ++j) {
+                if (tempStiffMatrix(i, j) != 0) {
+                    matrix.push_back(
+                            IndexedValue(lagrangeIndex[i], index[j] + initialIndex, tempStiffMatrix(i, j)));
+                }
+            }
+        }
+    }
+
+    virtual void
+    C1MasterLocalAssemble(Edge<T> *g, DomainShared_ptr const basis, DomainShared_ptr const basisSlave, EdgeShared_Ptr const lagrange,
+                          const Quadlist &quadratures, IndexedValueList &matrix) {
+        auto initialIndex = this->_dofmap.StartingIndex(basis);
+        Coordinate u;
+        basis->InversePts(lagrange->AffineMap(quadratures[0].first), u);
+        auto index = basis->ActiveIndex(u);
+        auto lagrangeIndex = lagrange->ActiveIndex(quadratures[0].first);
+        Eigen::Matrix<T, Eigen::Dynamic, 1> weights(quadratures.size());
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> basisFuns(quadratures.size(), index.size());
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> lagrangeBasisFuns(quadratures.size(), lagrangeIndex.size());
+        int it = 0;
+        for (const auto &i : quadratures) {
+            if (!basis->InversePts(lagrange->AffineMap(i.first), u)) {
+                std::cout << "InversePts fail" << std::endl;
+            }
+            if (!g->IsOn(u)) {
+                std::cout << "Gauss points is not on the edge" << std::endl;
+            };
+            auto evals = basis->EvalDerAllTensor(u, 1);
+            auto lagrangeEvals = lagrange->EvalDualAllTensor(i.first);
+
+            Coordinate uSlave;
+            basisSlave->InversePts(lagrange->AffineMap(i.first), uSlave);
+            weights(it) = i.second;
+            int itit = 0;
+            T alpha, beta, gamma;
+            if (g->Counterpart()->GetOrient() == 0 || g->Counterpart()->GetOrient() == 2) {
+                auto geomDriXi = basis->AffineMap(u, {1, 0});
+                auto geomDriEta = basis->AffineMap(u, {0, 1});
+                auto geomDriEtaSlave = basisSlave->AffineMap(uSlave, {0, 1});
+                alpha = geomDriEtaSlave(0) * geomDriXi(1) - geomDriXi(0) * geomDriEtaSlave(1);
+                beta = geomDriEta(0) * geomDriEtaSlave(1) - geomDriEtaSlave(0) * geomDriEta(1);
+                gamma = geomDriEta(0) * geomDriXi(1) - geomDriXi(0) * geomDriEta(1);
+                for (const auto &j : *evals) {
+                    basisFuns(it, itit) = j.second[1] * beta / gamma + j.second[2] * alpha / gamma;
+                    itit++;
+                }
+            } else {
+                auto geomDriXi = basis->AffineMap(u, {1, 0});
+                auto geomDriEta = basis->AffineMap(u, {0, 1});
+                auto geomDriXiSlave = basisSlave->AffineMap(uSlave, {1, 0});
+                alpha = geomDriXiSlave(0) * geomDriXi(1) - geomDriXi(0) * geomDriXiSlave(1);
+                beta = geomDriEta(0) * geomDriXiSlave(1) - geomDriXiSlave(0) * geomDriEta(1);
+                gamma = geomDriEta(0) * geomDriXi(1) - geomDriXi(0) * geomDriEta(1);
+                for (const auto &j : *evals) {
+                    basisFuns(it, itit) = j.second[1] * beta / gamma + j.second[2] * alpha / gamma;
+                    itit++;
+                }
+            }
+            itit = 0;
+            for (const auto &j : *lagrangeEvals) {
+                lagrangeBasisFuns(it, itit) = j.second[0];
+                itit++;
+            }
+            it++;
+        }
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tempStiffMatrix;
+        tempStiffMatrix =
+                lagrangeBasisFuns.transpose() * Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(weights.asDiagonal()) *
+                basisFuns;
+
+        for (int i = 0; i != tempStiffMatrix.rows(); ++i) {
+            for (int j = 0; j != tempStiffMatrix.cols(); ++j) {
+                if (tempStiffMatrix(i, j) != 0) {
+                    matrix.push_back(
+                            IndexedValue(lagrangeIndex[i], index[j] + initialIndex, tempStiffMatrix(i, j)));
+                }
+            }
+        }
+    }
 };
 
 template<typename T>
@@ -1573,7 +1734,7 @@ public:
                 tempFlux1 + tempFlux1.transpose() + tempFlux2 + tempFlux2.transpose() + tempStablize1 + tempStablize2;
         for (int i = 0; i != stiffness.rows(); ++i) {
             for (int j = 0; j != stiffness.cols(); ++j) {
-                if (stiffness(i, j)!=0) {
+                if (stiffness(i, j) != 0) {
                     _poissonInterface.push_back(
                             IndexedValue(index[i], index[j], stiffness(i, j)));
                 }
