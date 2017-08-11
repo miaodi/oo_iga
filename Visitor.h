@@ -147,8 +147,6 @@ public:
         std::vector<std::thread> threads(n);
         const int grainsize = elements.size() / n;
         auto work_iter = elements.begin();
-
-
         auto lambda = [&](typename CoordinatePairList::iterator begin, typename CoordinatePairList::iterator end) -> void {
             for (auto i = begin; i != end; ++i) {
                 LocalAssemble(g, domain, *i, _bodyForceFunctor, pmutex);
@@ -224,6 +222,64 @@ protected:
     const DofMapper<T> &_dofmap;
     QuadratureRule<T> _quadrature;
     LoadFunctor _bodyForceFunctor;
+};
+
+template<typename T>
+class DualTest : public PoissonVisitor<T> {
+public:
+    using DomainShared_ptr = typename PoissonVisitor<T>::DomainShared_ptr;
+    using IndexedValue = typename PoissonVisitor<T>::IndexedValue;
+    using IndexedValueList = typename PoissonVisitor<T>::IndexedValueList;
+    using LoadFunctor = typename PoissonVisitor<T>::LoadFunctor;
+    using CoordinatePairList = typename PoissonVisitor<T>::CoordinatePairList;
+    using Quadlist = typename PoissonVisitor<T>::Quadlist;
+    using CoordinatePair = typename PoissonVisitor<T>::CoordinatePair;
+public:
+    DualTest(const DofMapper<T> &dof, const LoadFunctor &load) : PoissonVisitor<T>(dof, load) {
+
+    }
+
+    void
+    LocalAssemble(Cell<T> *g, DomainShared_ptr const basis, const CoordinatePair &element, const LoadFunctor &load, std::mutex &pmutex) {
+        Quadlist quadratures;
+        this->_quadrature.MapToQuadrature(element, quadratures);
+        auto initialIndex = this->_dofmap.StartingIndex(basis);
+        auto index = basis->ActiveIndex(quadratures[0].first);
+        Eigen::Matrix<T, Eigen::Dynamic, 1> weights(quadratures.size());
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> basisFuns(quadratures.size(), index.size());
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> dualBasisFuns(quadratures.size(), index.size());
+        int it = 0;
+        for (const auto &i : quadratures) {
+            auto evals = basis->Eval1DerAllTensor(i.first);
+            auto dualEvals = basis->EvalDualAllTensor(i.first);
+            weights(it) = i.second * g->Jacobian(i.first);
+            int itit = 0;
+            for (const auto &j : *evals) {
+                basisFuns(it, itit) = j.second[0];
+                itit++;
+            }
+            itit = 0;
+            for (const auto &j : *dualEvals) {
+                dualBasisFuns(it, itit) = j.second[0];
+                itit++;
+            }
+            it++;
+        }
+
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> tempStiffMatrix;
+        tempStiffMatrix =
+                basisFuns.transpose() * Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(weights.asDiagonal()) *
+                basisFuns;
+        for (int i = 0; i != tempStiffMatrix.rows(); ++i) {
+            for (int j = 0; j != tempStiffMatrix.cols(); ++j) {
+                if (i >= j) {
+                    std::lock_guard<std::mutex> lock(pmutex);
+                    this->_poissonStiffness.push_back(
+                            IndexedValue(index[i] + initialIndex, index[j] + initialIndex, tempStiffMatrix(i, j)));
+                }
+            }
+        }
+    }
 };
 
 template<typename T>

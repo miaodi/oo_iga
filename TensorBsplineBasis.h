@@ -343,6 +343,12 @@ public:
 
     int GetDof(const int i) const;
 
+    void BezierDualInitialize(){
+        for (int direction = 0; direction < d; ++direction) {
+            _basis[direction].BezierDualInitialize();
+        }
+    }
+
     std::vector<int> TensorIndex(const int &m) const {
         ASSERT(m < GetDof(), "Input index is invalid.");
         std::vector<int> ind(d);
@@ -405,6 +411,8 @@ public:
     BasisFunValPac_ptr EvalTensor(const vector &u, const DiffPattern &i = DiffPattern(d, 0)) const;
 
     BasisFunValDerAllList_ptr EvalDerAllTensor(const vector &u, const int i = 0) const;
+
+    BasisFunValDerAllList_ptr EvalDualAllTensor(const vector &u) const;
 
     std::vector<int> ActiveIndex(const vector &u) const {
         std::vector<int> temp;
@@ -569,6 +577,41 @@ void TensorBsplineBasis<d, T>::ChangeKnots(const KnotVector<T> &knots, int direc
 
 template<int d, typename T>
 typename TensorBsplineBasis<d, T>::BasisFunValDerAllList_ptr
+TensorBsplineBasis<d, T>::EvalDualAllTensor(const TensorBsplineBasis::vector &u) const {
+    ASSERT((u.size() == d), "Invalid input vector size.");
+    std::vector<int> indexes(d, 0);
+    std::vector<int> endPerIndex;
+    std::vector<int> MultiIndex(d);
+    std::vector<T> Value(d);
+    BasisFunValDerAllList_ptr Result(new BasisFunValDerAllList);
+    std::array<BasisFunValDerAllList_ptr, d> oneDResult;
+    for (int direction = 0; direction != d; ++direction) {
+        oneDResult[direction] = _basis[direction].BezierDual(static_cast<T>(u(direction)));
+        endPerIndex.push_back(oneDResult[direction]->size());
+    }
+    std::function<void(std::vector<int> &, const std::vector<int> &, int)> recursive;
+    recursive = [this, &oneDResult, &MultiIndex, &Value, &Result, &recursive](std::vector<int> &indexes,
+                                                                              const std::vector<int> &endPerIndex,
+                                                                              int direction) {
+        if (direction == indexes.size()) {
+            std::vector<T> result(1, 1);
+            for (int ii = 0; ii < d; ii++)
+                result[0] *= Value[ii];
+            Result->push_back(BasisFunValDerAll(Index(MultiIndex), result));
+        } else {
+            for (indexes[direction] = 0; indexes[direction] != endPerIndex[direction]; indexes[direction]++) {
+                Value[direction] = (*oneDResult[direction])[indexes[direction]].second[0];
+                MultiIndex[direction] = (*oneDResult[direction])[indexes[direction]].first;
+                recursive(indexes, endPerIndex, direction + 1);
+            }
+        }
+    };
+    recursive(indexes, endPerIndex, 0);
+    return Result;
+}
+
+template<int d, typename T>
+typename TensorBsplineBasis<d, T>::BasisFunValDerAllList_ptr
 TensorBsplineBasis<d, T>::EvalDerAllTensor(const TensorBsplineBasis::vector &u,
                                            const int i) const {
     ASSERT((u.size() == d), "Invalid input vector size.");
@@ -580,16 +623,13 @@ TensorBsplineBasis<d, T>::EvalDerAllTensor(const TensorBsplineBasis::vector &u,
         differentialPatternList.insert(differentialPatternList.end(), temp->begin(), temp->end());
     }
     int derivativeAmount = differentialPatternList.size();
-    auto numActived = NumActive();
     BasisFunValDerAllList_ptr Result(new BasisFunValDerAllList);
     std::array<BasisFunValDerAllList_ptr, d> oneDResult;
     for (int direction = 0; direction != d; ++direction) {
         oneDResult[direction] = _basis[direction].EvalDerAll(u(direction), i);
         endPerIndex.push_back(oneDResult[direction]->size());
     }
-
     std::function<void(std::vector<int> &, const std::vector<int> &, int)> recursive;
-
     std::vector<int> multiIndex(d);
     std::vector<std::vector<T>> Values(derivativeAmount, std::vector<T>(d, 0));
     recursive = [this, &derivativeAmount, &oneDResult, &multiIndex, &Values, &Result, &differentialPatternList, &recursive](

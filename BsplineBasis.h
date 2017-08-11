@@ -21,6 +21,7 @@
 #include <memory>
 #include "QuadratureRule.h"
 #include <boost/math/special_functions/binomial.hpp>
+
 namespace Accessory {
     using namespace Eigen;
     template<typename T>
@@ -113,7 +114,8 @@ namespace Accessory {
         res.setZero();
         for (int i = 0; i < n; i++) {
             for (int j = 0; j <= i; j++) {
-                res(i, j) = binomial_coefficient<double>(p, i) * binomial_coefficient<double>(p, j) / (2 * p + 1) / binomial_coefficient<double>(2 * p, i + j);
+                res(i, j) = binomial_coefficient<T>(p, i) * binomial_coefficient<T>(p, j) / (2 * p + 1) /
+                            binomial_coefficient<T>(2 * p, i + j);
             }
         }
         res = res.template selfadjointView<Eigen::Lower>();
@@ -122,18 +124,18 @@ namespace Accessory {
 
     template<typename T>
     Matrix<T, Dynamic, Dynamic> GramianInverse(int p) {
+        using namespace boost::math;
         int n = p + 1;
         Matrix<T, Dynamic, Dynamic> res(n, n);
         res.setZero();
-        Matrix<T, Dynamic, Dynamic> Bin(2 * n + 2, n + 1);
-        binomialCoef(Bin);
         for (int i = 0; i < n; i++) {
             for (int j = 0; j <= i; j++) {
                 T sum = 0;
                 for (int k = 0; k <= std::min(i, j); k++) {
-                    sum += (2 * k + 1) * Bin(p + k + 1, p - i) * Bin(p - k, p - i) * Bin(p + k + 1, p - j) * Bin(p - k, p - j);
+                    sum += (2 * k + 1) * binomial_coefficient<T>(p + k + 1, p - i) * binomial_coefficient<T>(p - k, p - i) *
+                           binomial_coefficient<T>(p + k + 1, p - j) * binomial_coefficient<T>(p - k, p - j);
                 }
-                res(i, j) = sum * pow(-1, i + j) / Bin(p, i) / Bin(p, j);
+                res(i, j) = sum * pow(-1, i + j) / binomial_coefficient<T>(p, i) / binomial_coefficient<T>(p, j);
             }
         }
         res = res.template selfadjointView<Eigen::Lower>();
@@ -392,11 +394,6 @@ public:
         return res;
     }
 
-    int SpanNum(const T &u) const{
-        auto span = FindSpan(u);
-        auto degree = _basisKnot.GetDegree();
-        return span - degree;
-    }
     T DomainStart() const { return _basisKnot[GetDegree()]; }
 
     T DomainEnd() const { return _basisKnot[GetDof()]; }
@@ -452,21 +449,31 @@ public:
 
     bool IsActive(const int i, const T u) const;
 
-    void BezierDualInitialize(){
+    void BezierDualInitialize() {
         int degree = _basisKnot.GetDegree();
         _gramianInv = Accessory::GramianInverse<T>(degree);
         _basisWeight = *BasisWeight();
         _reconstruction = *Accessory::BezierReconstruction<T>(_basisKnot);
     }
 
-    BasisFunValPac_ptr BezierDual(const T &u) const{
-        int spanNumber = SpanNum(u);
+    BasisFunValDerAllList_ptr BezierDual(const T &u) const {
         int degree = _basisKnot.GetDegree();
         vector span = InSpan(u);
-        T uPara = (u-span(0))/(span(1)-span(0));
-        auto bernstein = Accessory::AllBernstein(degree,uPara);
-        Eigen::Map<vector> bernsteinVector(bernstein.data(),bernstein.size());
-        BasisFunValPac_ptr result(new BasisFunValPac);
+        T uPara = (u - span(0)) / (span(1) - span(0));
+        auto bernstein = Accessory::AllBernstein(degree, uPara);
+        Eigen::Map<vector> bernsteinVector(bernstein.data(), bernstein.size());
+        int spanNum = _basisKnot.SpanNum(u);
+        int firstIndex = FirstActive(u);
+        vector weight = _basisWeight.block(spanNum, firstIndex, 1, degree + 1).transpose();
+        vector dual = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(weight.asDiagonal()) * _reconstruction[spanNum].transpose() * _gramianInv *
+                      bernsteinVector / (span(1) - span(0));
+        BasisFunValDerAll aaa{0, std::vector<T>(1, 0)};
+        BasisFunValDerAllList_ptr result(new BasisFunValDerAllList(degree + 1, aaa));
+        for (int ii = 0; ii != result->size(); ii++)
+            (*result)[ii].second[0] = dual(ii);
+        for (int ii = 0; ii != result->size(); ++ii) {
+            (*result)[ii].first = firstIndex + ii;
+        }
         return result;
     }
 

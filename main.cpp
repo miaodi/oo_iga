@@ -15,29 +15,48 @@ using CoordinatePairList=Element<double>::CoordinatePairList;
 using Quadrature = QuadratureRule<double>::Quadrature;
 using QuadList = QuadratureRule<double>::QuadList;
 using LoadFunctor = Element<double>::LoadFunctor;
+using Vector1d = Matrix<double, 1, 1>;
 
 int main() {
     KnotVector<double> a;
-    a.InitClosed(3, 0, 1);
-    a.UniformRefine(2, 1);
-    a.Insert(.25);
-    a.printKnotVector();
-    cout<<a.SpanNum(.3)<<" "<<a.FindSpan(.3)<<endl;
-    auto result = BezierReconstruction(a);
-    for (auto i:*result) {
-        cout << i << endl << endl;
+
+    a.InitClosed(1, 0, 1);
+    Vector2d point1(0, 0);
+    Vector2d point2(0, 1);
+    Vector2d point3(1, 0);
+    Vector2d point4(1, 1);
+    vector<Vector2d> points1({point1, point2, point3, point4});
+    auto domain1 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(a, a, points1);
+    domain1->DegreeElevate(3);
+    domain1->UniformRefine(3);
+    array<shared_ptr<Cell<double>>, 1> cells;
+    cells[0] = make_shared<Cell<double>>(domain1);
+    domain1->BezierDualInitialize();
+
+    CoordinatePairList knot;
+    cells[0]->KnotSpansGetter(knot);
+    QuadratureRule<double> quadrature(7);
+    QuadList quad;
+    int dof = domain1->GetDof();
+    MatrixXd mass(dof, dof);
+    mass.setZero();
+    for (auto &i:knot) {
+        quadrature.MapToQuadrature(i, quad);
+        for (auto &j:quad) {
+            auto basis = domain1->EvalDerAllTensor(j.first, 0);
+            auto dual = domain1->EvalDualAllTensor(j.first);
+            VectorXd basisVector(dof), dualVector(dof);
+            basisVector.setZero(), dualVector.setZero();
+            for (auto &k:*basis) {
+                basisVector(k.first) = k.second[0];
+            }
+            for (auto &k:*dual) {
+                dualVector(k.first) = k.second[0];
+            }
+            mass += basisVector * dualVector.transpose() * j.second;
+        }
     }
-    BsplineBasis<double> c(a);
-
-    MatrixXd graminv = GramianInverse<double>(9);
-    MatrixXd gram = Gramian<double>(9);
-    cout << gram*graminv << endl;
-    cout << graminv << endl;
-    auto res = AllBernstein<double>(3, -1);
-
-    cout << c.SpanNum(.77);
-    c.BezierDualInitialize();
-    auto kk = c.BezierDual(.74999999);
+    cout << mass;
     /*
     auto interfaceStiffness = interface.DGInterface();
     SparseMatrix<double> stiffnessSol = *stiffness + *interfaceStiffness + *boundaryStiffness;
