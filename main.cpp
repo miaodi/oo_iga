@@ -36,10 +36,10 @@ int main() {
     domain1->DegreeElevate(3);
     domain2->DegreeElevate(3);
 
-    domain1->UniformRefine(4);
-    domain2->UniformRefine(5);
+    domain1->UniformRefine(2);
+    domain2->UniformRefine(2);
 
-    array<shared_ptr<Cell<double>>, 2> cells;
+    vector<shared_ptr<Cell<double>>> cells(2);
     cells[0] = make_shared<Cell<double>>(domain1);
     cells[1] = make_shared<Cell<double>>(domain2);
     for (int i = 0; i < 1; i++) {
