@@ -339,8 +339,10 @@ public:
 
     int GetDegree(const int i) const;
 
+    //! Return the global d.o.f in this patch
     int GetDof() const;
 
+    //! Return the d.o.f in i direction.
     int GetDof(const int i) const;
 
     void BezierDualInitialize(){
@@ -349,6 +351,7 @@ public:
         }
     }
 
+    //! Return the index in each directions.
     std::vector<int> TensorIndex(const int &m) const {
         ASSERT(m < GetDof(), "Input index is invalid.");
         std::vector<int> ind(d);
@@ -372,7 +375,7 @@ public:
         return index;
     }
 
-
+    //! Return all index in given direction and given layer
     std::unique_ptr<std::vector<int>> AllActivatedDofsOnBoundary(const int &, const int &) const;
 
     matrix Support(const int &i) const {
@@ -410,7 +413,7 @@ public:
 
     BasisFunValPac_ptr EvalTensor(const vector &u, const DiffPattern &i = DiffPattern(d, 0)) const;
 
-    BasisFunValDerAllList_ptr EvalDerAllTensor(const vector &u, const int i = 0) const;
+    virtual BasisFunValDerAllList_ptr EvalDerAllTensor(const vector &u, const int i = 0) const;
 
     BasisFunValDerAllList_ptr EvalDualAllTensor(const vector &u) const;
 

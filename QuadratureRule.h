@@ -180,6 +180,50 @@ void QuadratureRule<T>::LookupReference(int num, QuadratureRule::QuadList &quadr
             quadrature[6].second = 0.129484966168869693270611432679;
             break;
         }
+
+        case 8 : {
+            quadrature[0].first(0) = -0.960289856497536231683560868569;
+            quadrature[1].first(0) = -0.796666477413626739591553936476;
+            quadrature[2].first(0) = -0.525532409916328985817739049189;
+            quadrature[3].first(0) = -0.183434642495649804939476142360;
+            quadrature[4].first(0) = 0.183434642495649804939476142360;
+            quadrature[5].first(0) = 0.525532409916328985817739049189;
+            quadrature[6].first(0) = 0.796666477413626739591553936476;
+            quadrature[7].first(0) = 0.960289856497536231683560868569;
+
+            quadrature[0].second = 0.101228536290376259152531354310;
+            quadrature[1].second = 0.222381034453374470544355994426;
+            quadrature[2].second = 0.313706645877887287337962201987;
+            quadrature[3].second = 0.362683783378361982965150449277;
+            quadrature[4].second = 0.362683783378361982965150449277;
+            quadrature[5].second = 0.313706645877887287337962201987;
+            quadrature[6].second = 0.222381034453374470544355994426;
+            quadrature[7].second = 0.101228536290376259152531354310;
+            break;
+        }
+
+        case 9 : {
+            quadrature[0].first(0) = -0.968160239507626089835576203;
+            quadrature[1].first(0) = -0.836031107326635794299429788;
+            quadrature[2].first(0) = -0.613371432700590397308702039;
+            quadrature[3].first(0) = -0.324253423403808929038538015;
+            quadrature[4].first(0) = 0.000000000000000000000000000;
+            quadrature[5].first(0) = 0.324253423403808929038538015;
+            quadrature[6].first(0) = 0.613371432700590397308702039;
+            quadrature[7].first(0) = 0.836031107326635794299429788;
+            quadrature[8].first(0) = 0.968160239507626089835576203;
+
+            quadrature[0].second = 0.081274388361574411971892158111;
+            quadrature[1].second = 0.18064816069485740405847203124;
+            quadrature[2].second = 0.26061069640293546231874286942;
+            quadrature[3].second = 0.31234707704000284006863040658;
+            quadrature[4].second = 0.33023935500125976316452506929;
+            quadrature[5].second = 0.31234707704000284006863040658;
+            quadrature[6].second = 0.26061069640293546231874286942;
+            quadrature[7].second = 0.18064816069485740405847203124;
+            quadrature[8].second = 0.081274388361574411971892158111;
+            break;
+        }
     }
 }
 

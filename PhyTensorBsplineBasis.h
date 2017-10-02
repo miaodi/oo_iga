@@ -41,6 +41,7 @@ public:
 
     Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> JacobianMatrix(const Pts &) const;
 
+
     Pts Middle() const {
         Pts u;
         for (int i = 0; i != d; i++)
@@ -48,6 +49,7 @@ public:
         return u;
     }
 
+    //! Return physical middle of the patch
     PhyPts PhyMiddle() const {
         return AffineMap(Middle());
     }
@@ -79,14 +81,14 @@ public:
 
     }
 
-    BasisFunValDerAllList_ptr Eval1DerAllTensor(const vector &u) const;
+    BasisFunValDerAllList_ptr Eval1PhyDerAllTensor(const vector &u) const;
 
-    BasisFunValDerAllList_ptr Eval2DerAllTensor(const vector &u) const;
+    BasisFunValDerAllList_ptr Eval2PhyDerAllTensor(const vector &u) const;
 
-    BasisFunValDerAllList_ptr Eval3DerAllTensor(const vector &u) const;
+    BasisFunValDerAllList_ptr Eval3PhyDerAllTensor(const vector &u) const;
 
 
-private:
+protected:
     GeometryVector _geometricInfo;
 };
 
@@ -204,6 +206,7 @@ void PhyTensorBsplineBasis<d, N, T>::DegreeElevate(int orientation, int r) {
 template<int d, int N, typename T>
 void PhyTensorBsplineBasis<d, N, T>::UniformRefine(int orientation, int r, int m) {
     ASSERT(orientation < d, "Invalid degree elevate orientation");
+    if(r==0) return ;
     std::vector<int> indexes(d, 0);
     std::vector<int> endPerIndex;
     for (int direction = 0; direction != d; ++direction) {
@@ -379,8 +382,8 @@ bool PhyTensorBsplineBasis<d, N, T>::InversePts(const PhyTensorBsplineBasis::Phy
 
 template<>
 typename PhyTensorBsplineBasis<2, 2, double>::BasisFunValDerAllList_ptr
-PhyTensorBsplineBasis<2, 2, double>::Eval1DerAllTensor(const vector &u) const {
-    auto parametric = TensorBsplineBasis<2, double>::EvalDerAllTensor(u, 1);
+PhyTensorBsplineBasis<2, 2, double>::Eval1PhyDerAllTensor(const vector &u) const {
+    auto parametric = this->EvalDerAllTensor(u, 1);
     Eigen::Vector2d Pxi, Peta;
     Pxi.setZero();
     Peta.setZero();
@@ -402,8 +405,8 @@ PhyTensorBsplineBasis<2, 2, double>::Eval1DerAllTensor(const vector &u) const {
 
 template<>
 typename PhyTensorBsplineBasis<2, 2, double>::BasisFunValDerAllList_ptr
-PhyTensorBsplineBasis<2, 2, double>::Eval2DerAllTensor(const PhyTensorBsplineBasis::vector &u) const {
-    auto parametric = TensorBsplineBasis<2, double>::EvalDerAllTensor(u, 2);
+PhyTensorBsplineBasis<2, 2, double>::Eval2PhyDerAllTensor(const PhyTensorBsplineBasis::vector &u) const {
+    auto parametric = this->EvalDerAllTensor(u, 2);
     Eigen::Vector2d Pxi, Peta, PxiPxi, PxiPeta, PetaPeta;
     Pxi.setZero();
     Peta.setZero();
@@ -437,8 +440,8 @@ PhyTensorBsplineBasis<2, 2, double>::Eval2DerAllTensor(const PhyTensorBsplineBas
 
 template<>
 typename PhyTensorBsplineBasis<2, 2, double>::BasisFunValDerAllList_ptr
-PhyTensorBsplineBasis<2, 2, double>::Eval3DerAllTensor(const PhyTensorBsplineBasis::vector &u) const {
-    auto parametric = TensorBsplineBasis<2, double>::EvalDerAllTensor(u, 3);
+PhyTensorBsplineBasis<2, 2, double>::Eval3PhyDerAllTensor(const PhyTensorBsplineBasis::vector &u) const {
+    auto parametric = this->EvalDerAllTensor(u, 3);
     Eigen::Vector2d Pxi, Peta, PxiPxi, PxiPeta, PetaPeta, PxiPxiPxi, PxiPxiPeta, PxiPetaPeta, PetaPetaPeta;
     Pxi.setZero();
     Peta.setZero();
