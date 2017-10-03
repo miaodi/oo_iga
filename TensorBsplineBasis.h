@@ -145,7 +145,8 @@ namespace Accessory {
                             if (j - tr <= kind - ph + oldr) {
                                 gam = (ub - U(j - tr)) / den;
                                 ebpts(kj) = gam * ebpts(kj) + (1.0 - gam) * ebpts(kj + 1);
-                            } else {
+                            }
+                            else {
                                 ebpts(kj) = bet * ebpts(kj) + (1.0 - bet) * ebpts(kj + 1);
                             }
                         }
@@ -174,7 +175,8 @@ namespace Accessory {
                 a = b;
                 b++;
                 ua = ub;
-            } else {
+            }
+            else {
                 for (i = 0; i <= ph; i++)
                     U(kind + i) = ub;
             }
@@ -276,7 +278,6 @@ namespace Accessory {
     }
 
 
-
     template<int N>
     DifferentialPatternList_ptr PartialDerPattern(int r) {
         std::vector<int> kk(r);
@@ -298,7 +299,8 @@ namespace Accessory {
                     it++;
                 }
                 a->push_back(m);
-            } else {
+            }
+            else {
                 for (int jj = start; jj < D + i - (i - n); ++jj) {
                     k[n] = jj;
                     recursive(D, i, k, n + 1, jj + 1, a);
@@ -345,7 +347,7 @@ public:
     //! Return the d.o.f in i direction.
     int GetDof(const int i) const;
 
-    void BezierDualInitialize(){
+    void BezierDualInitialize() {
         for (int direction = 0; direction < d; ++direction) {
             _basis[direction].BezierDualInitialize();
         }
@@ -411,7 +413,7 @@ public:
         return _basis[i].DomainEnd();
     }
 
-    BasisFunValPac_ptr EvalTensor(const vector &u, const DiffPattern &i = DiffPattern(d, 0)) const;
+    virtual BasisFunValPac_ptr EvalTensor(const vector &u, const DiffPattern &i = DiffPattern(d, 0)) const;
 
     virtual BasisFunValDerAllList_ptr EvalDerAllTensor(const vector &u, const int i = 0) const;
 
@@ -437,7 +439,8 @@ public:
             if (direction == indexes.size()) {
                 temp.push_back(Index(multiIndex));
 
-            } else {
+            }
+            else {
                 for (indexes[direction] = 0; indexes[direction] != endPerIndex[direction]; indexes[direction]++) {
                     multiIndex[direction] = startIndex[direction] + indexes[direction];
                     recursive(indexes, endPerIndex, direction + 1);
@@ -460,7 +463,7 @@ public:
 
 
 protected:
-    std::array<BsplineBasis<T>,d> _basis;
+    std::array<BsplineBasis<T>, d> _basis;
 
     TensorBsplineBasis(const TensorBsplineBasis<d, T> &) {};
 
@@ -561,7 +564,8 @@ TensorBsplineBasis<d, T>::EvalTensor(const TensorBsplineBasis::vector &u,
             for (int ii = 0; ii < d; ii++)
                 result *= Value[ii];
             Result->push_back(BasisFunVal(Index(MultiIndex), result));
-        } else {
+        }
+        else {
             for (indexes[direction] = 0; indexes[direction] != endPerIndex[direction]; indexes[direction]++) {
                 Value[direction] = (*OneDResult[direction])[indexes[direction]].second;
                 MultiIndex[direction] = (*OneDResult[direction])[indexes[direction]].first;
@@ -601,7 +605,8 @@ TensorBsplineBasis<d, T>::EvalDualAllTensor(const TensorBsplineBasis::vector &u)
             for (int ii = 0; ii < d; ii++)
                 result[0] *= Value[ii];
             Result->push_back(BasisFunValDerAll(Index(MultiIndex), result));
-        } else {
+        }
+        else {
             for (indexes[direction] = 0; indexes[direction] != endPerIndex[direction]; indexes[direction]++) {
                 Value[direction] = (*oneDResult[direction])[indexes[direction]].second[0];
                 MultiIndex[direction] = (*oneDResult[direction])[indexes[direction]].first;
@@ -647,7 +652,8 @@ TensorBsplineBasis<d, T>::EvalDerAllTensor(const TensorBsplineBasis::vector &u,
                 }
             }
             Result->push_back(BasisFunValDerAll(Index(multiIndex), result));
-        } else {
+        }
+        else {
             for (indexes[direction] = 0; indexes[direction] != endPerIndex[direction]; indexes[direction]++) {
                 for (auto it_diffPart = differentialPatternList.begin();
                      it_diffPart != differentialPatternList.end(); ++it_diffPart) {
@@ -674,7 +680,8 @@ TensorBsplineBasis<d, T>::AllActivatedDofsOnBoundary(const int &orientation, con
     for (int i = 0; i != d; ++i) {
         if (i == orientation) {
             endPerIndex[i] = 1;
-        } else {
+        }
+        else {
             endPerIndex[i] = GetDof(i);
         }
     }
@@ -687,11 +694,13 @@ TensorBsplineBasis<d, T>::AllActivatedDofsOnBoundary(const int &orientation, con
             int direction) {
         if (direction == d) {
             result->push_back(Index(temp));
-        } else {
+        }
+        else {
             if (direction == orientation) {
                 temp[direction] = layer;
                 recursive(indexes, endPerIndex, direction + 1);
-            } else {
+            }
+            else {
                 for (indexes[direction] = 0; indexes[direction] != endPerIndex[direction]; indexes[direction]++) {
                     temp[direction] = indexes[direction];
                     recursive(indexes, endPerIndex, direction + 1);
@@ -703,7 +712,51 @@ TensorBsplineBasis<d, T>::AllActivatedDofsOnBoundary(const int &orientation, con
     return result;
 }
 
+template<typename T>
+class TensorBsplineBasis<0, T> {
+public:
 
+    using vector=Eigen::Matrix<T, Eigen::Dynamic, 1>;
+    using matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
+    typedef std::vector<int> DiffPattern;
+
+    typedef typename BsplineBasis<T>::BasisFunVal BasisFunVal;
+    typedef typename BsplineBasis<T>::BasisFunValPac BasisFunValPac;
+    typedef typename BsplineBasis<T>::BasisFunValPac_ptr BasisFunValPac_ptr;
+    typedef typename BsplineBasis<T>::BasisFunValDerAll BasisFunValDerAll;
+    typedef typename BsplineBasis<T>::BasisFunValDerAllList BasisFunValDerAllList;
+    typedef typename BsplineBasis<T>::BasisFunValDerAllList_ptr BasisFunValDerAllList_ptr;
+
+    TensorBsplineBasis(T support) : _basis{support} {};
+
+    ~TensorBsplineBasis() {};
+
+    BasisFunValDerAllList_ptr EvalDualAllTensor(const vector &u) const {
+        BasisFunValDerAllList_ptr Result(new BasisFunValDerAllList);
+        std::vector<T> result(1, 0);
+        if (u(0) == _basis) {
+            result[0]=1;
+        }
+        Result->push_back(BasisFunValDerAll(0, result));
+        return Result;
+    }
+
+    BasisFunValDerAllList_ptr EvalDerAllTensor(const vector &u, const int i = 0) const {
+        BasisFunValDerAllList_ptr Result(new BasisFunValDerAllList);
+        std::vector<T> result(i+1, 0);
+        if (u(0) == _basis) {
+            for (int j = 0; j < result.size(); ++j) {
+                result[j] = 1;
+            }
+        }
+        Result->push_back(BasisFunValDerAll(0, result));
+        return Result;
+    }
+
+protected:
+    T _basis{0};
+
+};
 
 
 #endif //OO_IGA_TENSORBSPLINEBASIS_H

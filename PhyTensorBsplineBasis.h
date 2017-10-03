@@ -56,11 +56,11 @@ public:
 
     bool InversePts(const PhyPts &, Pts &, int = 1000, T = 1e-10) const;
 
-    void DegreeElevate(int, int);
+    virtual void DegreeElevate(int, int);
 
-    void UniformRefine(int, int, int m = 1);
+    virtual void UniformRefine(int, int, int m = 1);
 
-    void KnotInsertion(int, T, int = 1);
+    virtual void KnotInsertion(int, T, int = 1);
 
     void DegreeElevate(int p) {
         for (int i = 0; i != d; ++i)
@@ -74,6 +74,10 @@ public:
 
 
     void PrintCtrPts() const;
+
+    GeometryVector CtrPtsGetter() const{
+        return _geometricInfo;
+    }
 
     HyperPlaneSharedPts MakeHyperPlane(const int &orientation, const int &layer) const;
 

@@ -37,5 +37,10 @@ int main() {
         }
         cout<<endl;
     }
+    TensorBsplineBasis<0,double> node(.5);
+    Vector1d c(0.4);
+    cout<<c;
+    auto k=node.EvalDerAllTensor(c);
+    cout<<(*k)[0].second[0];
     return 0;
 }
