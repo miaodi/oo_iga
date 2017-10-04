@@ -325,9 +325,13 @@ public:
     }
 
 private:
+    //! container of domain smart ptr
     std::vector<DomainShared_ptr> _domains;
+    //! map domain smart ptr to d.o.f
     std::map<DomainShared_ptr, int> _patchDof;
+    //! map domain smart ptr to sorted freezed d.o.f (TODO make sure if freezed includes Dirichlet and slave)
     std::map<DomainShared_ptr, std::set<int>> _freezeDof;
+    //! map domain smart ptr to sorted slave d.o.f
     std::map<DomainShared_ptr, std::set<int>> _slaveDof;
 
 };
