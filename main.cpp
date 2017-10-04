@@ -1,11 +1,8 @@
 #include <iostream>
 #include <eigen3/Eigen/Dense>
-#include "PhyTensorBsplineBasis.h"
+#include "PhyTensorNURBSBasis.h"
 #include "Topology.h"
-#include "PostProcess.h"
-#include <fstream>
-#include <iomanip>
-#include <ctime>
+
 
 using namespace Eigen;
 using namespace std;
@@ -19,28 +16,24 @@ using Vector1d = Matrix<double, 1, 1>;
 
 int main() {
     KnotVector<double> a;
-    a.InitClosed(1, 0, 1);
-    auto domain = make_shared<TensorBsplineBasis<2>>(a,a);
-    Vector2d point(0,0);
-    auto val = domain->EvalDerAllTensor(point,3);
-    for(auto i:*val){
+    a.InitClosed(2, 0, 1);
+    Vector2d point1(0,0), point2(0,1), point3(1,1);
+    vector<Vector2d> point{point1,point2,point3};
+    Vector1d weight1(1), weight2(1.0/sqrt(2)), weight3(1);
+    vector<Vector1d> weight{weight1,weight2,weight3};
+    auto domain1 = make_shared<PhyTensorNURBSBasis<1,2,double>>(vector<KnotVector<double>>{a},point,weight,true);
+    Vector1d pt(.5);
+    auto eval = domain1->EvalDerAllTensor(pt,0);
+    Vector2d position;
+    position.setZero();
+    int k=0;
+    for(auto i:*eval){
         for(auto j:i.second){
-            cout<<j<<" ";
+            position+=j*point[k];
+
         }
-        cout<<endl;
+        k++;
     }
-    BsplineBasis<double> domain1(a);
-    auto val1 = domain1.EvalDerAll(0,3);
-    for(auto i:*val1){
-        for(auto j:i.second){
-            cout<<j<<" ";
-        }
-        cout<<endl;
-    }
-    TensorBsplineBasis<0,double> node(.5);
-    Vector1d c(0.4);
-    cout<<c;
-    auto k=node.EvalDerAllTensor(c);
-    cout<<(*k)[0].second[0];
+    cout<<position;
     return 0;
 }
