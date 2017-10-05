@@ -35,7 +35,7 @@ public:
 
     PhyTensorBsplineBasis(const std::vector<KnotVector<T>> &, const Eigen::Matrix<T, Eigen::Dynamic, 1> &);
 
-    PhyPts AffineMap(const Pts &, const DiffPattern &i = DiffPattern(d, 0)) const;
+    virtual PhyPts AffineMap(const Pts &, const DiffPattern &i = DiffPattern(d, 0)) const;
 
     T Jacobian(const Pts &) const;
 
@@ -106,7 +106,7 @@ typename PhyTensorBsplineBasis<d, N, T>::PhyPts
 PhyTensorBsplineBasis<d, N, T>::AffineMap(const PhyTensorBsplineBasis<d, N, T>::Pts &u, const DiffPattern &i) const {
     PhyTensorBsplineBasis<d, N, T>::PhyPts result;
     result.setZero();
-    auto p = this->TensorBsplineBasis<d, T>::EvalTensor(u, i);
+    auto p = this->EvalTensor(u, i);
     for (auto it = p->begin(); it != p->end(); ++it) {
         result += _geometricInfo[it->first] * it->second;
     }
