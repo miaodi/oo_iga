@@ -62,7 +62,7 @@ public:
 
     virtual void KnotInsertion(int, T, int = 1);
 
-    void DegreeElevate(int p) {
+    virtual void DegreeElevate(int p) {
         for (int i = 0; i != d; ++i)
             DegreeElevate(i, p);
     }
@@ -75,8 +75,8 @@ public:
 
     void PrintCtrPts() const;
 
-    GeometryVector CtrPtsGetter() const{
-        return _geometricInfo;
+    PhyPts CtrPtsGetter(const int &i) const{
+        return _geometricInfo[i];
     }
 
     HyperPlaneSharedPts MakeHyperPlane(const int &orientation, const int &layer) const;
@@ -109,7 +109,9 @@ PhyTensorBsplineBasis<d, N, T>::AffineMap(const PhyTensorBsplineBasis<d, N, T>::
     auto p = this->EvalTensor(u, i);
     for (auto it = p->begin(); it != p->end(); ++it) {
         result += _geometricInfo[it->first] * it->second;
+        std::cout<<std::setprecision(10)<<it->second<<" ";
     }
+    std::cout<<std::endl;
     return result;
 }
 

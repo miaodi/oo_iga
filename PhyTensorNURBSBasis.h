@@ -14,6 +14,7 @@ public:
     using Pts = typename PhyTensorBsplineBasis<d, N, T>::Pts;
     using PhyPts = typename PhyTensorBsplineBasis<d, N, T>::PhyPts;
     using GeometryVector = typename PhyTensorBsplineBasis<d, N, T>::GeometryVector;
+    using WtPts = typename PhyTensorBsplineBasis<d, 1, T>::PhyPts;
     using WeightVector = typename PhyTensorBsplineBasis<d, 1, T>::GeometryVector;
     using DiffPattern = typename PhyTensorBsplineBasis<d, N, T>::DiffPattern;
     typedef typename PhyTensorBsplineBasis<d, N, T>::BasisFunValDerAll BasisFunValDerAll;
@@ -24,6 +25,9 @@ public:
     typedef typename TensorBsplineBasis<d, T>::BasisFunValPac_ptr BasisFunValPac_ptr;
     using vector=Eigen::Matrix<T, Eigen::Dynamic, 1>;
 
+    using PhyTensorBsplineBasis<d, N, T>::DegreeElevate;
+    using PhyTensorBsplineBasis<d, N, T>::UniformRefine;
+
     PhyTensorNURBSBasis(const std::vector<KnotVector<T>> &, const GeometryVector &, const WeightVector &,
                         const bool swtch = false);
 
@@ -33,6 +37,19 @@ public:
 
     PhyPts AffineMap(const Pts &, const DiffPattern &i = DiffPattern(d, 0)) const;
 
+    void DegreeElevate(int, int);
+
+    void KnotInsertion(int, T, int = 1);
+
+    void UniformRefine(int, int, int m = 1);
+
+    WtPts WtPtsGetter(const int &i) const{
+        return _weightFunction.CtrPtsGetter(i);
+    }
+
+    void PrintWtCtrPts() const{
+        _weightFunction.PrintCtrPts();
+    }
 protected:
     PhyTensorBsplineBasis<d, 1, T> _weightFunction;
 
@@ -82,10 +99,9 @@ PhyTensorNURBSBasis<d, N, T>::EvalDerAllTensor(const PhyTensorNURBSBasis<d, N, T
         return TensorBsplineBasis<d, T>::EvalDerAllTensor(u, i);
     }
     auto bspline_result = TensorBsplineBasis<d, T>::EvalDerAllTensor(u, i);
-    auto weights_pts = _weightFunction.CtrPtsGetter();
     for (auto &it:*bspline_result) {
         for (auto &j:it.second) {
-            j *= weights_pts[it.first](0);
+            j *= _weightFunction.CtrPtsGetter(it.first)(0);
         }
     }
     switch (d) {
@@ -119,6 +135,7 @@ PhyTensorNURBSBasis<d, N, T>::EvalDerAllTensor(const PhyTensorNURBSBasis<d, N, T
             for (const auto &j:differentialPatternList) {
                 weight_ders(j[0], j[1]) = _weightFunction.AffineMap(u, j)(0);
             }
+            std::cout<<weight_ders<<std::endl<<std::endl;
             for (auto &it:*bspline_result) {
                 Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> temp(i + 1, i + 1);
                 temp.setZero();
@@ -163,6 +180,24 @@ PhyTensorNURBSBasis<d, N, T>::AffineMap(const PhyTensorNURBSBasis<d, N, T>::Pts 
     PhyPts res = PhyTensorBsplineBasis<d, N, T>::AffineMap(u, dff_pattern);
     _nurbsSwtch = temp_swtch;
     return res;
+}
+
+template<int d, int N, typename T>
+void PhyTensorNURBSBasis<d,N,T>::DegreeElevate(int orientation, int r)  {
+    PhyTensorBsplineBasis<d, N, T>::DegreeElevate(orientation, r);
+    _weightFunction.DegreeElevate(orientation,r);
+}
+
+template<int d, int N, typename T>
+void PhyTensorNURBSBasis<d, N, T>::KnotInsertion(int orientation, T knot, int m)  {
+    PhyTensorBsplineBasis<d, N, T>::KnotInsertion(orientation, knot, m);
+    _weightFunction.KnotInsertion(orientation, knot, m);
+}
+
+template<int d, int N, typename T>
+void PhyTensorNURBSBasis<d, N, T>::UniformRefine(int orientation, int r, int m) {
+    PhyTensorBsplineBasis<d, N, T>::UniformRefine(orientation, r, m);
+    _weightFunction.UniformRefine(orientation, r, m);
 }
 
 
