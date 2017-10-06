@@ -37,7 +37,6 @@ public:
 
     void Called() { _called = true; }
 
-
     virtual void accept(Visitor<T> &) = 0;
 
     virtual void KnotSpansGetter(CoordinatePairList &) = 0;

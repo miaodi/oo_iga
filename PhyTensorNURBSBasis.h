@@ -131,16 +131,12 @@ PhyTensorNURBSBasis<d, N, T>::EvalDerAllTensor(const PhyTensorNURBSBasis<d, N, T
             }
             int derivativeAmount = differentialPatternList.size();
             Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> weight_ders(i + 1, i + 1);
-            weight_ders.setZero();
             for (const auto &j:differentialPatternList) {
                 weight_ders(j[0], j[1]) = _weightFunction.AffineMap(u, j)(0);
             }
-            std::cout<<weight_ders<<std::endl<<std::endl;
             for (auto &it:*bspline_result) {
                 Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> temp(i + 1, i + 1);
-                temp.setZero();
                 Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> SKL(i + 1, i + 1);
-                SKL.setZero();
                 for (int j = 0; j < derivativeAmount; j++) {
                     temp(differentialPatternList[j][0], differentialPatternList[j][1]) = it.second[j];
                 }
@@ -184,20 +180,41 @@ PhyTensorNURBSBasis<d, N, T>::AffineMap(const PhyTensorNURBSBasis<d, N, T>::Pts 
 
 template<int d, int N, typename T>
 void PhyTensorNURBSBasis<d,N,T>::DegreeElevate(int orientation, int r)  {
+    auto dof=this->GetDof();
+    for(int i=0;i<dof;i++){
+        this->_geometricInfo[i]*=_weightFunction.CtrPtsGetter(i)(0);
+    }
     PhyTensorBsplineBasis<d, N, T>::DegreeElevate(orientation, r);
     _weightFunction.DegreeElevate(orientation,r);
+    for(int i=0;i<dof;i++){
+        this->_geometricInfo[i]/=_weightFunction.CtrPtsGetter(i)(0);
+    }
 }
 
 template<int d, int N, typename T>
 void PhyTensorNURBSBasis<d, N, T>::KnotInsertion(int orientation, T knot, int m)  {
+    auto dof=this->GetDof();
+    for(int i=0;i<dof;i++){
+        this->_geometricInfo[i]*=_weightFunction.CtrPtsGetter(i)(0);
+    }
     PhyTensorBsplineBasis<d, N, T>::KnotInsertion(orientation, knot, m);
     _weightFunction.KnotInsertion(orientation, knot, m);
+    for(int i=0;i<dof;i++){
+        this->_geometricInfo[i]/=_weightFunction.CtrPtsGetter(i)(0);
+    }
 }
 
 template<int d, int N, typename T>
 void PhyTensorNURBSBasis<d, N, T>::UniformRefine(int orientation, int r, int m) {
+    auto dof=this->GetDof();
+    for(int i=0;i<dof;i++){
+        this->_geometricInfo[i]*=_weightFunction.CtrPtsGetter(i)(0);
+    }
     PhyTensorBsplineBasis<d, N, T>::UniformRefine(orientation, r, m);
     _weightFunction.UniformRefine(orientation, r, m);
+    for(int i=0;i<dof;i++){
+        this->_geometricInfo[i]/=_weightFunction.CtrPtsGetter(i)(0);
+    }
 }
 
 

@@ -6,6 +6,8 @@
 
 #include "TensorBsplineBasis.h"
 
+template<int d, int N, typename T>
+struct ComputeJacobian;
 
 template<int d, int N, typename T=double>
 class PhyTensorBsplineBasis : public TensorBsplineBasis<d, T> {
@@ -37,7 +39,7 @@ public:
 
     virtual PhyPts AffineMap(const Pts &, const DiffPattern &i = DiffPattern(d, 0)) const;
 
-    T Jacobian(const Pts &) const;
+    virtual T Jacobian(const Pts &) const;
 
     Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> JacobianMatrix(const Pts &) const;
 
@@ -75,7 +77,11 @@ public:
 
     void PrintCtrPts() const;
 
-    PhyPts CtrPtsGetter(const int &i) const{
+    PhyPts CtrPtsGetter(const int &i) const {
+        return _geometricInfo[i];
+    }
+
+    PhyPts &CtrPtsSetter(const int &i) {
         return _geometricInfo[i];
     }
 
@@ -109,9 +115,7 @@ PhyTensorBsplineBasis<d, N, T>::AffineMap(const PhyTensorBsplineBasis<d, N, T>::
     auto p = this->EvalTensor(u, i);
     for (auto it = p->begin(); it != p->end(); ++it) {
         result += _geometricInfo[it->first] * it->second;
-        std::cout<<std::setprecision(10)<<it->second<<" ";
     }
-    std::cout<<std::endl;
     return result;
 }
 
@@ -212,7 +216,7 @@ void PhyTensorBsplineBasis<d, N, T>::DegreeElevate(int orientation, int r) {
 template<int d, int N, typename T>
 void PhyTensorBsplineBasis<d, N, T>::UniformRefine(int orientation, int r, int m) {
     ASSERT(orientation < d, "Invalid degree elevate orientation");
-    if(r==0) return ;
+    if (r == 0) return;
     std::vector<int> indexes(d, 0);
     std::vector<int> endPerIndex;
     for (int direction = 0; direction != d; ++direction) {
@@ -342,7 +346,8 @@ void PhyTensorBsplineBasis<d, N, T>::PrintCtrPts() const {
 
 template<int d, int N, typename T>
 T PhyTensorBsplineBasis<d, N, T>::Jacobian(const PhyTensorBsplineBasis::Pts &u) const {
-    return JacobianMatrix(u).determinant();
+    ComputeJacobian<d, N, T> temp;
+    return temp.compute(this,u);
 }
 
 template<int d, int N, typename T>
@@ -358,7 +363,8 @@ PhyTensorBsplineBasis<d, N, T>::JacobianMatrix(const PhyTensorBsplineBasis::Pts 
 };
 
 template<int d, int N, typename T>
-bool PhyTensorBsplineBasis<d, N, T>::InversePts(const PhyTensorBsplineBasis::PhyPts &phyu, PhyTensorBsplineBasis::Pts &result, int maxLoop,
+bool PhyTensorBsplineBasis<d, N, T>::InversePts(const PhyTensorBsplineBasis::PhyPts &phyu,
+                                                PhyTensorBsplineBasis::Pts &result, int maxLoop,
                                                 T error) const {
     result = Middle();
     Pts suppBegin, suppEnd;
@@ -473,34 +479,46 @@ PhyTensorBsplineBasis<2, 2, double>::Eval3PhyDerAllTensor(const PhyTensorBspline
     Hessian.setZero();
     Hessian(0, 0) = Pxi(0), Hessian(0, 1) = Pxi(1);
     Hessian(1, 0) = Peta(0), Hessian(1, 1) = Peta(1);
-    Hessian(2, 0) = PxiPxi(0), Hessian(2, 1) = PxiPxi(1), Hessian(2, 2) = Pxi(0) * Pxi(0), Hessian(2, 3) = 2 * Pxi(0) * Pxi(1), Hessian(2, 4) =
+    Hessian(2, 0) = PxiPxi(0), Hessian(2, 1) = PxiPxi(1), Hessian(2, 2) = Pxi(0) * Pxi(0), Hessian(2, 3) =
+            2 * Pxi(0) * Pxi(1), Hessian(2, 4) =
             Pxi(1) * Pxi(1);
     Hessian(3, 0) = PxiPeta(0), Hessian(3, 1) = PxiPeta(1), Hessian(3, 2) = Pxi(0) * Peta(0), Hessian(3, 3) =
             Pxi(0) * Peta(1) + Peta(0) * Pxi(1), Hessian(3, 4) = Pxi(1) * Peta(1);
-    Hessian(4, 0) = PetaPeta(0), Hessian(4, 1) = PetaPeta(1), Hessian(4, 2) = Peta(0) * Peta(0), Hessian(4, 3) = 2 * Peta(0) * Peta(1), Hessian(4,
-                                                                                                                                                4) =
+    Hessian(4, 0) = PetaPeta(0), Hessian(4, 1) = PetaPeta(1), Hessian(4, 2) = Peta(0) * Peta(0), Hessian(4, 3) =
+            2 * Peta(0) * Peta(1), Hessian(4,
+                                           4) =
             Peta(1) * Peta(1);
 
     Hessian(5, 0) = PxiPxiPxi(0), Hessian(5, 1) = PxiPxiPxi(1), Hessian(5, 2) = 3 * Pxi(0) * PxiPxi(0), Hessian(5, 3) =
-            3 * Pxi(1) * PxiPxi(0) + 3 * Pxi(0) * PxiPxi(1), Hessian(5, 4) = 3 * Pxi(1) * PxiPxi(1), Hessian(5, 5) = pow(Pxi(0), 3), Hessian(5, 6) =
+            3 * Pxi(1) * PxiPxi(0) + 3 * Pxi(0) * PxiPxi(1), Hessian(5, 4) = 3 * Pxi(1) * PxiPxi(1), Hessian(5,
+                                                                                                             5) = pow(
+            Pxi(0), 3), Hessian(5, 6) =
             3 * pow(Pxi(0), 2) * Pxi(1), Hessian(5, 7) = 3 * Pxi(0) * pow(Pxi(1), 2), Hessian(5, 8) = pow(Pxi(1), 3);
 
-    Hessian(6, 0) = PxiPxiPeta(0), Hessian(6, 1) = PxiPxiPeta(1), Hessian(6, 2) = 2 * Pxi(0) * PxiPeta(0) + Peta(0) * PxiPxi(0), Hessian(6, 3) =
-            2 * Pxi(1) * PxiPeta(0) + 2 * Pxi(0) * PxiPeta(1) + Peta(1) * PxiPxi(0) + Peta(0) * PxiPxi(1), Hessian(6, 4) =
+    Hessian(6, 0) = PxiPxiPeta(0), Hessian(6, 1) = PxiPxiPeta(1), Hessian(6, 2) =
+            2 * Pxi(0) * PxiPeta(0) + Peta(0) * PxiPxi(0), Hessian(6, 3) =
+            2 * Pxi(1) * PxiPeta(0) + 2 * Pxi(0) * PxiPeta(1) + Peta(1) * PxiPxi(0) + Peta(0) * PxiPxi(1), Hessian(6,
+                                                                                                                   4) =
             2 * Pxi(1) * PxiPeta(1) + Peta(1) * PxiPxi(1), Hessian(6, 5) = Peta(0) * pow(Pxi(0), 2), Hessian(6, 6) =
             Peta(1) * pow(Pxi(0), 2) + 2 * Peta(0) * Pxi(0) * Pxi(1), Hessian(6, 7) =
             2 * Peta(1) * Pxi(0) * Pxi(1) + Peta(0) * pow(Pxi(1), 2), Hessian(6, 8) = Peta(1) * pow(Pxi(1), 2);
 
-    Hessian(7, 0) = PxiPetaPeta(0), Hessian(7, 1) = PxiPetaPeta(1), Hessian(7, 2) = PetaPeta(0) * Pxi(0) + 2 * Peta(0) * PxiPeta(0), Hessian(7, 3) =
-            2 * Peta(1) * PxiPeta(0) + 2 * Peta(0) * PxiPeta(1) + Pxi(0) * PetaPeta(1) + Pxi(1) * PetaPeta(0), Hessian(7, 4) =
+    Hessian(7, 0) = PxiPetaPeta(0), Hessian(7, 1) = PxiPetaPeta(1), Hessian(7, 2) =
+            PetaPeta(0) * Pxi(0) + 2 * Peta(0) * PxiPeta(0), Hessian(7, 3) =
+            2 * Peta(1) * PxiPeta(0) + 2 * Peta(0) * PxiPeta(1) + Pxi(0) * PetaPeta(1) + Pxi(1) * PetaPeta(0), Hessian(
+            7, 4) =
             2 * Peta(1) * PxiPeta(1) + Pxi(1) * PetaPeta(1), Hessian(7, 5) = Pxi(0) * pow(Peta(0), 2), Hessian(7, 6) =
             Pxi(1) * pow(Peta(0), 2) + 2 * Peta(0) * Peta(1) * Pxi(0), Hessian(7, 7) =
             2 * Peta(0) * Peta(1) * Pxi(1) + Pxi(0) * pow(Peta(1), 2), Hessian(7, 8) = Pxi(1) * pow(Peta(1), 2);
 
-    Hessian(8, 0) = PetaPetaPeta(0), Hessian(8, 1) = PetaPetaPeta(1), Hessian(8, 2) = 3 * Peta(0) * PetaPeta(0), Hessian(8, 3) =
-            3 * Peta(1) * PetaPeta(0) + 3 * Peta(0) * PetaPeta(1), Hessian(8, 4) = 3 * Peta(1) * PetaPeta(1), Hessian(8, 5) = pow(Peta(0),
-                                                                                                                                  3), Hessian(8, 6) =
-            3 * pow(Peta(0), 2) * Peta(1), Hessian(8, 7) = 3 * Peta(0) * pow(Peta(1), 2), Hessian(8, 8) = pow(Peta(1), 3);
+    Hessian(8, 0) = PetaPetaPeta(0), Hessian(8, 1) = PetaPetaPeta(1), Hessian(8, 2) =
+            3 * Peta(0) * PetaPeta(0), Hessian(8, 3) =
+            3 * Peta(1) * PetaPeta(0) + 3 * Peta(0) * PetaPeta(1), Hessian(8, 4) = 3 * Peta(1) * PetaPeta(1), Hessian(8,
+                                                                                                                      5) = pow(
+            Peta(0),
+            3), Hessian(8, 6) =
+            3 * pow(Peta(0), 2) * Peta(1), Hessian(8, 7) = 3 * Peta(0) * pow(Peta(1), 2), Hessian(8, 8) = pow(Peta(1),
+                                                                                                              3);
     for (auto &i:*parametric) {
         Eigen::Map<Eigen::VectorXd> temp(i.second.data() + 1, i.second.size() - 1);
         Eigen::VectorXd solution = Hessian.partialPivLu().solve(temp);
@@ -536,13 +554,51 @@ PhyTensorBsplineBasis<d, N, T>::MakeHyperPlane(const int &orientation, const int
 
 template<>
 PhyTensorBsplineBasis<2, 1, double>::PhyTensorBsplineBasis(const std::vector<KnotVector<double>> &base,
-                                                           const Eigen::Matrix<double, Eigen::Dynamic, 1> &geometry):TensorBsplineBasis<2, double>(
+                                                           const Eigen::Matrix<double, Eigen::Dynamic, 1> &geometry)
+        :TensorBsplineBasis<2, double>(
         base) {
-    ASSERT(geometry.rows() == (this->TensorBsplineBasis<2, double>::GetDof()), "Invalid geometrical information input, check size bro.");
+    ASSERT(geometry.rows() == (this->TensorBsplineBasis<2, double>::GetDof()),
+           "Invalid geometrical information input, check size bro.");
     for (int i = 0; i != geometry.rows(); ++i) {
         _geometricInfo.push_back(Eigen::Matrix<double, 1, 1>(geometry(i)));
     }
 }
 
+template<int d, int N, typename T>
+struct ComputeJacobian {
+    using Pts=typename PhyTensorBsplineBasis<d, N, T>::Pts;
+    using PhyPts=typename PhyTensorBsplineBasis<d, N, T>::PhyPts;
+
+    T compute(const PhyTensorBsplineBasis<d, N, T> *domain_ptr, const Pts &u) {
+        std::cout<<"Called d N."<<std::endl;
+        return domain_ptr->JacobianMatrix(u).determinant();
+
+    }
+};
+
+template<typename T>
+struct ComputeJacobian<1, 2, T> {
+    using Pts=typename PhyTensorBsplineBasis<1, 2, T>::Pts;
+    using PhyPts=typename PhyTensorBsplineBasis<1, 2, T>::PhyPts;
+
+    T compute(const PhyTensorBsplineBasis<1, 2, T> *domain_ptr, const Pts &u) {
+        PhyPts normal = domain_ptr->JacobianMatrix(u);
+        T res = normal.transpose()*normal;
+        return sqrt(res);
+    }
+};
+
+template<typename T>
+struct ComputeJacobian<2, 3, T> {
+    using Pts=typename PhyTensorBsplineBasis<2, 3, T>::Pts;
+    using PhyPts=typename PhyTensorBsplineBasis<2, 3, T>::PhyPts;
+    T compute(const PhyTensorBsplineBasis<2, 3, T> *domain_ptr, const Pts &u) {
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Jacob = domain_ptr->JacobianMatrix(u);
+        PhyPts normal=Jacob.col(0).head(3).cross(Jacob.col(1).head(3));
+        T res = normal.transpose()*normal;
+        std::cout<<"Called 2 3."<<std::endl;
+        return sqrt(res);
+    }
+};
 
 #endif //OO_IGA_PHYTENSORBSPLINEBASIS_H
