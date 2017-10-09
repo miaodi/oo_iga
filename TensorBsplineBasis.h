@@ -743,7 +743,9 @@ public:
     typedef typename BsplineBasis<T>::BasisFunValDerAllList BasisFunValDerAllList;
     typedef typename BsplineBasis<T>::BasisFunValDerAllList_ptr BasisFunValDerAllList_ptr;
 
-    TensorBsplineBasis(T support) : _basis{support} {};
+    TensorBsplineBasis(){};
+
+    TensorBsplineBasis(const T &support) : _basis{support} {};
 
     ~TensorBsplineBasis() {};
 

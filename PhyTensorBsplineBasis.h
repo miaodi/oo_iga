@@ -347,7 +347,7 @@ void PhyTensorBsplineBasis<d, N, T>::PrintCtrPts() const {
 template<int d, int N, typename T>
 T PhyTensorBsplineBasis<d, N, T>::Jacobian(const PhyTensorBsplineBasis::Pts &u) const {
     ComputeJacobian<d, N, T> temp;
-    return temp.compute(this,u);
+    return temp.compute(this, u);
 }
 
 template<int d, int N, typename T>
@@ -570,7 +570,7 @@ struct ComputeJacobian {
     using PhyPts=typename PhyTensorBsplineBasis<d, N, T>::PhyPts;
 
     T compute(const PhyTensorBsplineBasis<d, N, T> *domain_ptr, const Pts &u) {
-        std::cout<<"Called d N."<<std::endl;
+        std::cout << "Called d N." << std::endl;
         return domain_ptr->JacobianMatrix(u).determinant();
 
     }
@@ -583,7 +583,7 @@ struct ComputeJacobian<1, 2, T> {
 
     T compute(const PhyTensorBsplineBasis<1, 2, T> *domain_ptr, const Pts &u) {
         PhyPts normal = domain_ptr->JacobianMatrix(u);
-        T res = normal.transpose()*normal;
+        T res = normal.transpose() * normal;
         return sqrt(res);
     }
 };
@@ -592,13 +592,43 @@ template<typename T>
 struct ComputeJacobian<2, 3, T> {
     using Pts=typename PhyTensorBsplineBasis<2, 3, T>::Pts;
     using PhyPts=typename PhyTensorBsplineBasis<2, 3, T>::PhyPts;
+
     T compute(const PhyTensorBsplineBasis<2, 3, T> *domain_ptr, const Pts &u) {
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Jacob = domain_ptr->JacobianMatrix(u);
-        PhyPts normal=Jacob.col(0).head(3).cross(Jacob.col(1).head(3));
-        T res = normal.transpose()*normal;
-        std::cout<<"Called 2 3."<<std::endl;
+        PhyPts normal = Jacob.col(0).head(3).cross(Jacob.col(1).head(3));
+        T res = normal.transpose() * normal;
+        std::cout << "Called 2 3." << std::endl;
         return sqrt(res);
     }
+};
+
+template<int N, typename T>
+class PhyTensorBsplineBasis<0, N, T> : public TensorBsplineBasis<0, T> {
+public:
+
+    using PhyPts=Eigen::Matrix<T, N, 1>;
+    typedef std::vector<int> DiffPattern;
+
+    typedef typename BsplineBasis<T>::BasisFunVal BasisFunVal;
+    typedef typename BsplineBasis<T>::BasisFunValPac BasisFunValPac;
+    typedef typename BsplineBasis<T>::BasisFunValPac_ptr BasisFunValPac_ptr;
+    typedef typename BsplineBasis<T>::BasisFunValDerAll BasisFunValDerAll;
+    typedef typename BsplineBasis<T>::BasisFunValDerAllList BasisFunValDerAllList;
+    typedef typename BsplineBasis<T>::BasisFunValDerAllList_ptr BasisFunValDerAllList_ptr;
+
+    PhyTensorBsplineBasis(const T &knot, const PhyPts &point ):TensorBsplineBasis<0,T>(knot), _point(point){
+
+    }
+
+    PhyTensorBsplineBasis(const PhyPts &point ):TensorBsplineBasis<0,T>(), _point(point){
+
+    }
+
+    ~PhyTensorBsplineBasis() {};
+
+protected:
+    PhyPts _point;
+
 };
 
 #endif //OO_IGA_PHYTENSORBSPLINEBASIS_H
