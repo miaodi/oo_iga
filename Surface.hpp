@@ -9,6 +9,9 @@
 #include "Edge.hpp"
 #include "Visitor.hpp"
 
+template<int d, int N, typename T>
+class Visitor;
+
 template<int N, typename T>
 class Edge;
 
@@ -55,7 +58,8 @@ public:
         }
     };
 
-    T Size() const {
+//TODO: Finish the calculation of area;
+    T Measure() const {
         return 0;
     }
 

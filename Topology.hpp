@@ -27,6 +27,11 @@ public:
 
     Element(const DomainShared_ptr &m);
 
+    //! Area for surface, length for Edge, 0 for Vertex
+    virtual T Measure() const = 0;
+
+    virtual void Accept(Visitor<d, N, T> &) = 0;
+
     /*
     bool BeCalled() const {
         return _called;
@@ -38,13 +43,13 @@ public:
 
     void Called() { _called = true; }
 
-    virtual void Accept(Visitor<d, N, T> &) = 0;
+
 
     //! Return the element coordinates in parametric domain. (Each element in the vector is composed with two points,
     //! i.e. Southeast and Northwest.)
     virtual void KnotSpansGetter(CoordinatePairList &) = 0;
 
-    virtual T Size() const = 0;
+
 
     virtual T Jacobian(const Coordinate &) const = 0;
 

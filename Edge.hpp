@@ -9,6 +9,8 @@
 #include "Surface.hpp"
 #include "Visitor.hpp"
 
+template<int d, int N, typename T>
+class Visitor;
 
 template<int N, typename T>
 class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N, T>> {
@@ -33,6 +35,12 @@ public:
         }
         std::cout << ")";
     }
+
+    T Measure() const{
+        return 0;
+    }
+
+    void Accept(Visitor<1, N, T> &) {};
 /*
     void PrintOrient() const {
         std::cout << _position << std::endl;
