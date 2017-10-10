@@ -4,7 +4,7 @@ project(oo_iga)
 
 
 set(CMAKE_CXX_COMPILER /usr/local/bin/g++-7)
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_FLAGS "-O2 -Wno-switch -fopenmp")
 find_package(OpenMP)
 if (OPENMP_FOUND)

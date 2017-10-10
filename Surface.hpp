@@ -27,7 +27,7 @@ public:
     Surface(DomainShared_ptr m) : Element<2, N, T>(m) {
         for (int i = south; i <= west; ++i) {
             const Orientation orient = static_cast<Orientation>(i);
-            _edges[i] = std::make_shared<Edge<N, T>>(orient);
+            _edges[i] = std::make_shared<Edge<N, T>>(MakeEdge(orient), orient);
         }
     }
 
@@ -42,7 +42,12 @@ public:
         }
     };
 
+    auto EdgePointerGetter(const int &i){
+        return _edges[i];
+    }
 
+    //! Return the element coordinates in parametric domain. (Each element in the vector is composed with two points,
+    //! i.e. Southeast and Northwest.)
     void KnotSpansGetter(CoordinatePairList &knotspanslist) {
         auto knotspan_x = this->_domain->KnotVectorGetter(0).KnotSpans();
         auto knotspan_y = this->_domain->KnotVectorGetter(1).KnotSpans();
@@ -94,6 +99,23 @@ public:
 
 protected:
     std::array<std::shared_ptr<Edge<N, T>>, 4> _edges;
+
+    std::shared_ptr<PhyTensorBsplineBasis<1, N, T>> MakeEdge(const Orientation &orient) const {
+        switch (orient) {
+            case west: {
+                return this->_domain->MakeHyperPlane(0, 0);
+            }
+            case east: {
+                return this->_domain->MakeHyperPlane(0, this->_domain->GetDof(0) - 1);
+            }
+            case south: {
+                return this->_domain->MakeHyperPlane(1, 0);
+            }
+            case north: {
+                return this->_domain->MakeHyperPlane(1, this->_domain->GetDof(1) - 1);
+            }
+        }
+    }
 };
 
 #endif //OO_IGA_SURFACE_H

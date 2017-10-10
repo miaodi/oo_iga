@@ -13,90 +13,61 @@ template<int d, int N, typename T>
 class Visitor;
 
 template<int N, typename T>
+class Vertex;
+
+template<int N, typename T>
 class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N, T>> {
 public:
     typedef typename Element<1, N, T>::DomainShared_ptr DomainShared_ptr;
     typedef typename Element<1, N, T>::Coordinate Coordinate;
     typedef typename Element<1, N, T>::CoordinatePairList CoordinatePairList;
-    using PhyPts = typename PhyTensorBsplineBasis<2, 2, T>::PhyPts;
+    using PhyPts = typename PhyTensorBsplineBasis<2, N, T>::PhyPts;
     using EdgeShared_Ptr = typename std::shared_ptr<Edge<N, T>>;
 
     Edge(const Orientation &orient = west)
             : Element<1, N, T>(), _position(orient), _matched(false) {};
 
     Edge(DomainShared_ptr m, const Orientation &orient = west) : Element<1, N, T>(m), _position(orient),
-                                                                 _matched(false) {};
+                                                                 _matched(false) { VerticesSetter(); };
 
-    //!TODO have not finished.
+
     void PrintInfo() const {
-        std::cout << "Starting Point: " << "(";
-        for (int i = 0; i < N; i++) {
-
-        }
-        std::cout << ")";
-    }
-
-    T Measure() const{
-        return 0;
-    }
-
-    void Accept(Visitor<1, N, T> &) {};
-/*
-    void PrintOrient() const {
-        std::cout << _position << std::endl;
-    }
-
-    void PrintStartCoordinate() const {
-        std::cout << _begin.transpose() << std::endl;
-    }
-
-    void PrintEndCoordinate() const {
-        std::cout << _end.transpose() << std::endl;
-    }
-
-    Orientation GetOrient() const {
-        return _position;
-    }
-
-    Coordinate GetStartCoordinate() const {
-        return _begin;
-    }
-
-    Coordinate GetEndCoordinate() const {
-        return _end;
-    }
-
-    T Size() const {
-        return sqrt(pow(_begin(0) - _end(0), 2) + pow(_begin(1) - _end(1), 2));
-    }
-
-    T Jacobian(const Coordinate &u) const {
-        Coordinate derivative;
         switch (_position) {
             case west: {
-                derivative = -this->_domain->AffineMap(u, {0, 1});
+                std::cout << "West edge:" << std::endl;
                 break;
             }
             case east: {
-                derivative = this->_domain->AffineMap(u, {0, 1});
+                std::cout << "East edge:" << std::endl;
                 break;
             }
             case north: {
-                derivative = -this->_domain->AffineMap(u, {1, 0});
+                std::cout << "North edge:" << std::endl;
                 break;
             }
             case south: {
-                derivative = this->_domain->AffineMap(u, {1, 0});
+                std::cout << "South edge:" << std::endl;
                 break;
             }
         }
-        return sqrt(pow(derivative(0), 2) + pow(derivative(1), 2));
-    } //need specific define.
-
-    bool GetMatchInfo() const {
-        return _matched;
+        auto begin = _vertices[0]->GetDomain();
+        auto end = _vertices[1]->GetDomain();
+        PhyPts beginPts = begin->Position();
+        PhyPts endPts = end->Position();
+        std::cout << "Starting Point: " << "(";
+        for (int i = 0; i < N - 1; i++) {
+            std::cout << beginPts(i) << ", ";
+        }
+        std::cout << beginPts(N - 1) << ")" << std::endl;
+        std::cout << "Ending Point: " << "(";
+        for (int i = 0; i < N - 1; i++) {
+            std::cout << endPts(i) << ", ";
+        }
+        std::cout << endPts(N - 1) << ")" << std::endl << std::endl;
     }
 
+    //! Return the element coordinates in parametric domain. (Each element in the vector is composed with two points,
+    //! i.e. Southeast and Northwest.)
     void KnotSpansGetter(CoordinatePairList &knotspanslist) {
         switch (_position) {
             case west: {
@@ -158,6 +129,93 @@ public:
         }
     }
 
+    T Measure() const {
+        return 0;
+    }
+
+    void Accept(Visitor<1, N, T> &) {};
+
+    void PrintOrient() const {
+        std::cout << _position << std::endl;
+    }
+
+    Orientation GetOrient() const {
+        return _position;
+    }
+
+    Coordinate GetStartCoordinate() const {
+        return _vertices[0]->GetDomain()->GetPosition;
+    }
+
+    Coordinate GetEndCoordinate() const {
+        return _vertices[1]->GetDomain()->GetPosition;
+    }
+
+    bool GetMatchInfo() const {
+        return _matched;
+    }
+
+    bool Slave() const {
+        return _slave;
+    }
+
+    auto Counterpart() const {
+        return _pair;
+    }
+
+    bool Match(std::shared_ptr<Edge<N, T>> counterpart) {
+        if (_matched == true || counterpart->_matched == true) {
+            return true;
+        }
+        if (((GetStartCoordinate() == counterpart->GetStartCoordinate()) &&
+             (GetEndCoordinate() == counterpart->GetEndCoordinate())) ||
+            ((GetStartCoordinate() == counterpart->GetEndCoordinate()) &&
+             (GetEndCoordinate() == counterpart->GetStartCoordinate()))) {
+            _pair = counterpart;
+            _matched = true;
+            counterpart->_pair = this->shared_from_this();
+            counterpart->_matched = true;
+            auto pair_shared_ptr = _pair.lock();
+            if (this->GetDomain()->GetDof(0) > pair_shared_ptr->GetDomain()->GetDof(0)) {
+                _slave = true;
+            } else {
+                pair_shared_ptr->_slave = true;
+            }
+            return true;
+        }
+        return false;
+    }
+/*
+
+
+
+    T Jacobian(const Coordinate &u) const {
+        Coordinate derivative;
+        switch (_position) {
+            case west: {
+                derivative = -this->_domain->AffineMap(u, {0, 1});
+                break;
+            }
+            case east: {
+                derivative = this->_domain->AffineMap(u, {0, 1});
+                break;
+            }
+            case north: {
+                derivative = -this->_domain->AffineMap(u, {1, 0});
+                break;
+            }
+            case south: {
+                derivative = this->_domain->AffineMap(u, {1, 0});
+                break;
+            }
+        }
+        return sqrt(pow(derivative(0), 2) + pow(derivative(1), 2));
+    } //need specific define.
+
+
+
+
+
     Coordinate NormalDirection(const Coordinate &u) const {
         Coordinate derivative;
         switch (_position) {
@@ -191,29 +249,9 @@ public:
         }
     }
 
-    bool Match(std::shared_ptr<Edge<T>> counterpart) {
-        if (_matched == true || counterpart->_matched == true) {
-            return true;
-        }
-        if (((_begin == counterpart->_begin) && (_end == counterpart->_end)) ||
-            ((_begin == counterpart->_end) && (_end == counterpart->_begin))) {
-            _pair = counterpart;
-            _matched = true;
-            counterpart->_pair = this->shared_from_this();
-            counterpart->_matched = true;
-            if (this->GetDof() > _pair->GetDof()) {
-                _slave = true;
-            } else {
-                _pair->_slave = true;
-            }
-            return true;
-        }
-        return false;
-    }
 
-    bool Slave() const {
-        return _slave;
-    }
+
+
 
     bool IsOn(Coordinate &u) const {
         T tol = 1e-10;
@@ -258,29 +296,8 @@ public:
         }
     }
 
-    void accept(Visitor<T> &a) {
-        a.visit(this);
-    };
-
     int GetDof() const {
         return MakeEdge()->GetDof();
-    }
-
-    EdgeShared_Ptr MakeEdge() const {
-        switch (_position) {
-            case west: {
-                return this->_domain->MakeHyperPlane(0, 0);
-            }
-            case east: {
-                return this->_domain->MakeHyperPlane(0, this->_domain->GetDof(0) - 1);
-            }
-            case south: {
-                return this->_domain->MakeHyperPlane(1, 0);
-            }
-            case north: {
-                return this->_domain->MakeHyperPlane(1, this->_domain->GetDof(1) - 1);
-            }
-        }
     }
 
     bool InversePts(const PhyPts &point, T &knotCoordinate) const {
@@ -309,9 +326,7 @@ public:
         return false;
     }
 
-    std::shared_ptr<Edge<T>> Counterpart() const {
-        return _pair;
-    }
+
 
     std::unique_ptr<std::vector<int>> AllActivatedDofsOfLayersExcept(const int &layerNum, const int &exceptNum) {
         std::unique_ptr<std::vector<int>> res(new std::vector<int>);
@@ -366,48 +381,17 @@ protected:
     Orientation _position;
     bool _matched;
     bool _slave = false;
-    Coordinate _begin;
-    Coordinate _end;
+    std::array<std::shared_ptr<Vertex<N, T>>, 2> _vertices;
     std::weak_ptr<Edge<N, T>> _pair;
 
-    /*
-    void VertexSetter() {
-        switch (_position) {
-            case west: {
-                Coordinate m, n;
-                m << this->_domain->DomainStart(0), this->_domain->DomainEnd(1);
-                n << this->_domain->DomainStart(0), this->_domain->DomainStart(1);
-                _begin = this->_domain->AffineMap(m);
-                _end = this->_domain->AffineMap(n);
-                break;
-            }
-            case east: {
-                Coordinate m, n;
-                m << this->_domain->DomainEnd(0), this->_domain->DomainStart(1);
-                n << this->_domain->DomainEnd(0), this->_domain->DomainEnd(1);
-                _begin = this->_domain->AffineMap(m);
-                _end = this->_domain->AffineMap(n);
-                break;
-            }
-            case north: {
-                Coordinate m, n;
-                m << this->_domain->DomainEnd(0), this->_domain->DomainEnd(1);
-                n << this->_domain->DomainStart(0), this->_domain->DomainEnd(1);
-                _begin = this->_domain->AffineMap(m);
-                _end = this->_domain->AffineMap(n);
-                break;
-            }
-            case south: {
-                Coordinate m, n;
-                m << this->_domain->DomainStart(0), this->_domain->DomainStart(1);
-                n << this->_domain->DomainEnd(0), this->_domain->DomainStart(1);
-                _begin = this->_domain->AffineMap(m);
-                _end = this->_domain->AffineMap(n);
-                break;
-            }
-        }
+    void VerticesSetter() {
+
+        _vertices[0] = std::make_shared<Vertex<N, T>>(
+                this->_domain->AffineMap(Coordinate(this->_domain->DomainStart(0))));
+        _vertices[1] = std::make_shared<Vertex<N, T>>(
+                this->_domain->AffineMap(Coordinate(this->_domain->DomainEnd(0))));
+
     }
-     */
 };
 
 #endif //OO_IGA_EDGE_H

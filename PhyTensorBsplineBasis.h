@@ -4,6 +4,7 @@
 #ifndef OO_IGA_PHYTENSORBSPLINEBASIS_H
 #define OO_IGA_PHYTENSORBSPLINEBASIS_H
 
+#include <unordered_map>
 #include "TensorBsplineBasis.h"
 
 template<int d, int N, typename T>
@@ -183,7 +184,8 @@ void PhyTensorBsplineBasis<d, N, T>::DegreeElevate(int orientation, int r) {
                 for (int i = 0; i != d; ++i) {
                     if (i == orientation) {
                         tmp1.ChangeKnots(tmp, i);
-                    } else {
+                    }
+                    else {
                         tmp1.ChangeKnots(this->_basis[i].Knots(), i);
                     }
                 }
@@ -195,12 +197,14 @@ void PhyTensorBsplineBasis<d, N, T>::DegreeElevate(int orientation, int r) {
                 auto index = tmp1.Index(MultiIndex);
                 temp1[index] = ElevateList[i];
             }
-        } else {
+        }
+        else {
             for (indexes[direction] = 0; indexes[direction] != endPerIndex[direction]; indexes[direction]++) {
                 MultiIndex[direction] = indexes[direction];
                 if (direction == orientation && called == false) {
                     called = true;
-                } else if (direction == orientation && called == true) {
+                }
+                else if (direction == orientation && called == true) {
                     break;
                 }
                 called = false;
@@ -246,7 +250,8 @@ void PhyTensorBsplineBasis<d, N, T>::UniformRefine(int orientation, int r, int m
                 for (int i = 0; i != d; ++i) {
                     if (i == orientation) {
                         tmp1.ChangeKnots(tmp, i);
-                    } else {
+                    }
+                    else {
                         tmp1.ChangeKnots(this->_basis[i].Knots(), i);
                     }
                 }
@@ -258,12 +263,14 @@ void PhyTensorBsplineBasis<d, N, T>::UniformRefine(int orientation, int r, int m
                 auto index = tmp1.Index(MultiIndex);
                 temp1[index] = RefineList[i];
             }
-        } else {
+        }
+        else {
             for (indexes[direction] = 0; indexes[direction] != endPerIndex[direction]; indexes[direction]++) {
                 MultiIndex[direction] = indexes[direction];
                 if (direction == orientation && called == false) {
                     called = true;
-                } else if (direction == orientation && called == true) {
+                }
+                else if (direction == orientation && called == true) {
                     break;
                 }
                 called = false;
@@ -308,7 +315,8 @@ void PhyTensorBsplineBasis<d, N, T>::KnotInsertion(int orientation, T knot, int 
                 for (int i = 0; i != d; ++i) {
                     if (i == orientation) {
                         tmp1.ChangeKnots(tmp, i);
-                    } else {
+                    }
+                    else {
                         tmp1.ChangeKnots(this->_basis[i].Knots(), i);
                     }
                 }
@@ -320,12 +328,14 @@ void PhyTensorBsplineBasis<d, N, T>::KnotInsertion(int orientation, T knot, int 
                 auto index = tmp1.Index(MultiIndex);
                 temp1[index] = ElevateList[i];
             }
-        } else {
+        }
+        else {
             for (indexes[direction] = 0; indexes[direction] != endPerIndex[direction]; indexes[direction]++) {
                 MultiIndex[direction] = indexes[direction];
                 if (direction == orientation && called == false) {
                     called = true;
-                } else if (direction == orientation && called == true) {
+                }
+                else if (direction == orientation && called == true) {
                     break;
                 }
                 called = false;
@@ -383,7 +393,8 @@ bool PhyTensorBsplineBasis<d, N, T>::InversePts(const PhyTensorBsplineBasis::Phy
 
         if (jacobianMatrix.cols() == jacobianMatrix.rows()) {
             residual = jacobianMatrix.partialPivLu().solve(residual);
-        } else {
+        }
+        else {
             residual = jacobianMatrix.colPivHouseholderQr().solve(
                     Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>::Identity(N, N)) * residual;
         }
@@ -564,6 +575,8 @@ PhyTensorBsplineBasis<2, 1, double>::PhyTensorBsplineBasis(const std::vector<Kno
     }
 }
 
+
+
 template<int d, int N, typename T>
 struct ComputeJacobian {
     using Pts=typename PhyTensorBsplineBasis<d, N, T>::Pts;
@@ -625,6 +638,10 @@ public:
     }
 
     ~PhyTensorBsplineBasis() {};
+
+    PhyPts Position() const{
+        return _point;
+    }
 
 protected:
     PhyPts _point;

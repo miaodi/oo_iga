@@ -20,6 +20,7 @@ public:
 
     //! Coordinate in the parametric domain.
     using Coordinate = Eigen::Matrix<T, d, 1>;
+    using PhyPts = Eigen::Matrix<T, N, 1>;
     using LoadFunctor = std::function<std::vector<T>(const Coordinate &)>;
     using CoordinatePairList = typename std::vector<std::pair<Coordinate, Coordinate>>;
 
@@ -32,7 +33,9 @@ public:
 
     virtual void Accept(Visitor<d, N, T> &) = 0;
 
-    /*
+
+
+
     bool BeCalled() const {
         return _called;
     }
@@ -43,24 +46,6 @@ public:
 
     void Called() { _called = true; }
 
-
-
-    //! Return the element coordinates in parametric domain. (Each element in the vector is composed with two points,
-    //! i.e. Southeast and Northwest.)
-    virtual void KnotSpansGetter(CoordinatePairList &) = 0;
-
-
-
-    virtual T Jacobian(const Coordinate &) const = 0;
-
-    virtual int GetDof() const {
-        return _domain->GetDof();
-    }
-
-    int GetDegree(const int i) const {
-        return _domain->GetDegree(i);
-    }
-     */
 protected:
     DomainShared_ptr _domain;
     bool _called;
