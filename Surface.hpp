@@ -16,19 +16,27 @@ template<int N, typename T>
 class Edge;
 
 template<int N, typename T>
+class Vertex;
+
+template<int N, typename T>
 class Surface : public Element<2, N, T> {
 public:
+    typedef typename Element<2, N, T>::PhyPts PhyPts;
     typedef typename Element<2, N, T>::DomainShared_ptr DomainShared_ptr;
     typedef typename Element<2, N, T>::Coordinate Coordinate;
     typedef typename Element<2, N, T>::CoordinatePairList CoordinatePairList;
 
     Surface() : Element<2, N, T>() {};
 
-    Surface(DomainShared_ptr m) : Element<2, N, T>(m) {
-        for (int i = south; i <= west; ++i) {
-            const Orientation orient = static_cast<Orientation>(i);
-            _edges[i] = std::make_shared<Edge<N, T>>(MakeEdge(orient), orient);
+    Surface(DomainShared_ptr m, const std::array<bool, 4> &boundary) : Element<2, N, T>(m), _Dirichlet(boundary) {
+        for (int i = 0; i < 4; i++) {
+            _vertices[i] = std::make_shared<Vertex<N, T>>(MakeVertex(i),
+                                                          _Dirichlet[(i - 1 >= 0) ? (i - 1) : 3] || _Dirichlet[i]);
         }
+        _edges[0] = std::make_shared<Edge<N, T>>(MakeEdge(south), south, _vertices[0], _vertices[1]);
+        _edges[1] = std::make_shared<Edge<N, T>>(MakeEdge(east), east, _vertices[1], _vertices[2]);
+        _edges[2] = std::make_shared<Edge<N, T>>(MakeEdge(north), north, _vertices[2], _vertices[3]);
+        _edges[3] = std::make_shared<Edge<N, T>>(MakeEdge(west), west, _vertices[3], _vertices[0]);
     }
 
 
@@ -42,7 +50,7 @@ public:
         }
     };
 
-    auto EdgePointerGetter(const int &i){
+    auto EdgePointerGetter(const int &i) {
         return _edges[i];
     }
 
@@ -73,7 +81,11 @@ public:
             for (auto &j:counterpart->_edges) {
                 i->Match(j);
             }
-
+        }
+        for (auto &i:_vertices) {
+            for (auto &j:counterpart->_vertices) {
+                i->Match(j);
+            }
         }
     }
 
@@ -81,15 +93,13 @@ public:
         for (const auto &i:_edges) {
             i->PrintInfo();
         }
-        /*
-        for (const auto &i:_edges) {
-            std::cout << "Starting Point: " << "(" << i->GetStartCoordinate()(0) << "," << i->GetStartCoordinate()(1)
-                      << ")" << "   ";
-            std::cout << "Ending Point: " << "(" << i->GetEndCoordinate()(0) << "," << i->GetEndCoordinate()(1)
-                      << ")" << "   ";
-            std::cout << "Matched?: " << i->GetMatchInfo() << std::endl;
+        std::cout << std::endl;
+    }
+
+    void PrintVertexInfo() const {
+        for (const auto &i:_vertices) {
+            i->PrintInfo();
         }
-         */
         std::cout << std::endl;
     }
 
@@ -99,6 +109,9 @@ public:
 
 protected:
     std::array<std::shared_ptr<Edge<N, T>>, 4> _edges;
+    std::array<std::shared_ptr<Vertex<N, T>>, 4> _vertices;
+    std::array<bool, 4> _Dirichlet;
+
 
     std::shared_ptr<PhyTensorBsplineBasis<1, N, T>> MakeEdge(const Orientation &orient) const {
         switch (orient) {
@@ -113,6 +126,27 @@ protected:
             }
             case north: {
                 return this->_domain->MakeHyperPlane(1, this->_domain->GetDof(1) - 1);
+            }
+        }
+    }
+
+    std::shared_ptr<PhyTensorBsplineBasis<0, N, T>> MakeVertex(const int &index) const {
+        switch (index) {
+            case 0: {
+                return std::make_shared<PhyTensorBsplineBasis<0, N, T>>(this->_domain->AffineMap(
+                        Coordinate(this->_domain->DomainStart(0), this->_domain->DomainStart(1))));
+            }
+            case 1: {
+                return std::make_shared<PhyTensorBsplineBasis<0, N, T>>(this->_domain->AffineMap(
+                        Coordinate(this->_domain->DomainEnd(0), this->_domain->DomainStart(1))));
+            }
+            case 2: {
+                return std::make_shared<PhyTensorBsplineBasis<0, N, T>>(this->_domain->AffineMap(
+                        Coordinate(this->_domain->DomainEnd(0), this->_domain->DomainEnd(1))));
+            }
+            case 3: {
+                return std::make_shared<PhyTensorBsplineBasis<0, N, T>>(this->_domain->AffineMap(
+                        Coordinate(this->_domain->DomainStart(0), this->_domain->DomainEnd(1))));
             }
         }
     }

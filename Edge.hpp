@@ -27,8 +27,14 @@ public:
     Edge(const Orientation &orient = west)
             : Element<1, N, T>(), _position(orient), _matched(false) {};
 
-    Edge(DomainShared_ptr m, const Orientation &orient = west) : Element<1, N, T>(m), _position(orient),
-                                                                 _matched(false) { VerticesSetter(); };
+    Edge(DomainShared_ptr m, const Orientation &orient, std::shared_ptr<Vertex<N, T>> &begin,
+         std::shared_ptr<Vertex<N, T>> &end) : Element<1, N, T>(m), _position(orient), _matched(false) {
+        _vertices[0] = begin;
+        _vertices[1] = end;
+        if (_vertices[0]->IsDirichlet() && _vertices[1]->IsDirichlet()) {
+            _Dirichlet = true;
+        }
+    };
 
 
     void PrintInfo() const {
@@ -143,12 +149,12 @@ public:
         return _position;
     }
 
-    Coordinate GetStartCoordinate() const {
-        return _vertices[0]->GetDomain()->GetPosition;
+    PhyPts GetStartCoordinate() const {
+        return _vertices[0]->GetDomain()->Position();
     }
 
-    Coordinate GetEndCoordinate() const {
-        return _vertices[1]->GetDomain()->GetPosition;
+    PhyPts GetEndCoordinate() const {
+        return _vertices[1]->GetDomain()->Position();
     }
 
     bool GetMatchInfo() const {
@@ -163,7 +169,9 @@ public:
         return _pair;
     }
 
-    bool Match(std::shared_ptr<Edge<N, T>> counterpart) {
+//
+    bool Match(std::shared_ptr<Edge<N, T>> &counterpart) {
+
         if (_matched == true || counterpart->_matched == true) {
             return true;
         }
@@ -175,11 +183,10 @@ public:
             _matched = true;
             counterpart->_pair = this->shared_from_this();
             counterpart->_matched = true;
-            auto pair_shared_ptr = _pair.lock();
-            if (this->GetDomain()->GetDof(0) > pair_shared_ptr->GetDomain()->GetDof(0)) {
+            if (this->GetDomain()->GetDof(0) > counterpart->GetDomain()->GetDof(0)) {
                 _slave = true;
             } else {
-                pair_shared_ptr->_slave = true;
+                counterpart->_slave = true;
             }
             return true;
         }
@@ -380,18 +387,10 @@ public:
 protected:
     Orientation _position;
     bool _matched;
-    bool _slave = false;
+    bool _slave{false};
     std::array<std::shared_ptr<Vertex<N, T>>, 2> _vertices;
     std::weak_ptr<Edge<N, T>> _pair;
-
-    void VerticesSetter() {
-
-        _vertices[0] = std::make_shared<Vertex<N, T>>(
-                this->_domain->AffineMap(Coordinate(this->_domain->DomainStart(0))));
-        _vertices[1] = std::make_shared<Vertex<N, T>>(
-                this->_domain->AffineMap(Coordinate(this->_domain->DomainEnd(0))));
-
-    }
+    bool _Dirichlet{false};
 };
 
 #endif //OO_IGA_EDGE_H

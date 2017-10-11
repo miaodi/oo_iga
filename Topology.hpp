@@ -33,9 +33,6 @@ public:
 
     virtual void Accept(Visitor<d, N, T> &) = 0;
 
-
-
-
     bool BeCalled() const {
         return _called;
     }
