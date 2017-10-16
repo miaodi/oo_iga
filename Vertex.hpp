@@ -29,12 +29,27 @@ public:
         return 0;
     }
 
+    std::unique_ptr<std::vector<int>> Indices(const int &layer) const {
+        auto res = _parents[0].lock()->Indices(layer);
+        for (int i = 1; i < _parents.size(); ++i) {
+            auto temp = _parents[i].lock()->Indices(layer);
+            std::vector<int> intersection;
+            std::set_intersection(res->begin(), res->end(), temp->begin(), temp->end(), std::back_inserter(intersection));
+            *res = intersection;
+        }
+        return res;
+    };
+
     void MasterSetter(const bool &master) {
         _master = master;
     }
 
-    bool IsMaster() const{
+    bool IsMaster() const {
         return _master;
+    }
+
+    bool IsSlave() const {
+        return !_master;
     }
 
     void Accept(Visitor<0, N, T> &) {};
@@ -43,32 +58,46 @@ public:
         return _Dirichlet;
     }
 
-    void PrintInfo() const{
-        std::cout<<this->_domain->Position()<<std::endl;
-        if(_master){
-            std::cout<<"Master vertex."<<std::endl;
-        }else{
-            std::cout<<"Slave vertex."<<std::endl;
+    void PrintIndices(const int &layerNum) const {
+        std::cout << "Activated Dofs on this vertex are:";
+        Element<0, N, T>::PrintIndices(layerNum);
+    }
+
+    void PrintInfo() const {
+        std::cout << this->_domain->Position() << std::endl;
+        if (_master) {
+            std::cout << "Master vertex." << std::endl;
+        } else {
+            std::cout << "Slave vertex." << std::endl;
         }
     }
 
+    void ParentSetter(const std::shared_ptr<Edge<N, T>> &parent) {
+        _parents.push_back(std::weak_ptr<Edge<N, T>>(parent));
+    }
+
     bool Match(std::shared_ptr<Vertex<N, T>> &counterpart) {
-        if(!_master){
+        if (!_master) {
             return false;
         }
-        if(this->_domain->Position()==counterpart->_domain->Position()){
+        if (this->_domain->Position() == counterpart->_domain->Position()) {
             _pairList.push_back(counterpart);
             counterpart->MasterSetter(false);
             counterpart->_pairList.push_back(this->shared_from_this());
             return true;
         }
     }
+
 protected:
     std::vector<std::weak_ptr<Vertex<N, T>>> _pairList;
     bool _Dirichlet{false};
+
     //All Vertices are defined as master and the match algorithm will sort such that
     //only one vertex is master for each physical vertex.
     bool _master{true};
+
+    std::vector<std::weak_ptr<Edge<N, T>>> _parents;
+
 };
 
 #endif //OO_IGA_VERTEX_HPP

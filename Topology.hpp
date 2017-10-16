@@ -24,6 +24,7 @@ public:
     using LoadFunctor = std::function<std::vector<T>(const Coordinate &)>;
     using CoordinatePairList = typename std::vector<std::pair<Coordinate, Coordinate>>;
 
+
     Element();
 
     Element(const DomainShared_ptr &m);
@@ -32,6 +33,18 @@ public:
     virtual T Measure() const = 0;
 
     virtual void Accept(Visitor<d, N, T> &) = 0;
+
+    virtual std::unique_ptr<std::vector<int>> Indices(const int &) const = 0;
+
+    virtual std::unique_ptr<std::vector<int>> ExclusiveIndices(const int &) const = 0;
+
+    virtual void PrintIndices(const int &layerNum) const {
+        auto res = Indices(layerNum);
+        for (const auto &i:*res) {
+            std::cout << i << " ";
+        }
+        std::cout << std::endl;
+    }
 
     bool BeCalled() const {
         return _called;

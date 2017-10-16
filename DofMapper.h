@@ -142,6 +142,8 @@ namespace Accessory {
         matrix.conservativeResize(numRows, numCols);
     }
 }
+
+
 template<typename T>
 class DofMapper {
 public:

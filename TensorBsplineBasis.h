@@ -374,8 +374,10 @@ public:
         return index;
     }
 
+    std::unique_ptr<std::vector<int>> Indices() const;
+
     //! Return all index in given direction and given layer
-    std::unique_ptr<std::vector<int>> AllActivatedDofsOnBoundary(const int &, const int &) const;
+    std::unique_ptr<std::vector<int>> HyperPlaneIndices(const int &, const int &) const;
 
     matrix Support(const int &i) const {
         matrix res(static_cast<int>(d), 2);
@@ -670,7 +672,7 @@ TensorBsplineBasis<d, T>::EvalDerAllTensor(const TensorBsplineBasis::vector &u,
 //orientation is the normal direction,
 template<int d, typename T>
 std::unique_ptr<std::vector<int>>
-TensorBsplineBasis<d, T>::AllActivatedDofsOnBoundary(const int &orientation, const int &layer) const {
+TensorBsplineBasis<d, T>::HyperPlaneIndices(const int &orientation, const int &layer) const {
     ASSERT(orientation < d, "Invalid input vector size.");
     std::vector<int> indexes(d, 0);
     std::vector<int> endPerIndex(d, 0);
@@ -684,10 +686,9 @@ TensorBsplineBasis<d, T>::AllActivatedDofsOnBoundary(const int &orientation, con
     std::unique_ptr<std::vector<int>> result(new std::vector<int>);
     std::function<void(std::vector<int> &, const std::vector<int> &, int)> recursive;
     std::vector<int> temp(d, 0);
-    recursive = [this, &orientation, &layer, &result, &temp, &recursive](
-            std::vector<int> &indexes,
-            const std::vector<int> &endPerIndex,
-            int direction) {
+    recursive = [this, &orientation, &layer, &result, &temp, &recursive](std::vector<int> &indexes,
+                                                                         const std::vector<int> &endPerIndex,
+                                                                         int direction) {
         if (direction == d) {
             result->push_back(Index(temp));
         } else {
@@ -727,6 +728,16 @@ void TensorBsplineBasis<d, T>::PrintEvalTensor(const TensorBsplineBasis::vector 
     }
 }
 
+template<int d, typename T>
+std::unique_ptr<std::vector<int>> TensorBsplineBasis<d, T>::Indices() const {
+    auto dof = this->GetDof();
+    auto res = std::make_unique<std::vector<int>>();
+    for(int i=0;i<dof;++i){
+        res->push_back(i);
+    }
+    return res;
+}
+
 
 template<typename T>
 class TensorBsplineBasis<0, T> {
@@ -743,7 +754,7 @@ public:
     typedef typename BsplineBasis<T>::BasisFunValDerAllList BasisFunValDerAllList;
     typedef typename BsplineBasis<T>::BasisFunValDerAllList_ptr BasisFunValDerAllList_ptr;
 
-    TensorBsplineBasis(){};
+    TensorBsplineBasis() {};
 
     TensorBsplineBasis(const T &support) : _basis{support} {};
 

@@ -16,6 +16,9 @@ template<int N, typename T>
 class Vertex;
 
 template<int N, typename T>
+class Surface;
+
+template<int N, typename T>
 class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N, T>> {
 public:
     typedef typename Element<1, N, T>::DomainShared_ptr DomainShared_ptr;
@@ -36,6 +39,43 @@ public:
         }
     };
 
+    std::unique_ptr<std::vector<int>> Indices(const int &layer) const {
+        std::unique_ptr<std::vector<int>> res(new std::vector<int>);
+        auto parent = _parents[0].lock();
+        auto domain = parent->GetDomain();
+        switch (_position) {
+            case west: {
+                for (int i = 0; i <= layer; ++i) {
+                    auto tmp = domain->HyperPlaneIndices(0, i);
+                    res->insert(res->end(), tmp->begin(), tmp->end());
+                }
+                break;
+            }
+            case east: {
+                for (int i = 0; i <= layer; ++i) {
+                    auto tmp = domain->HyperPlaneIndices(0, domain->GetDof(0) - 1 - i);
+                    res->insert(res->end(), tmp->begin(), tmp->end());
+                }
+                break;
+            }
+            case north: {
+                for (int i = 0; i <= layer; ++i) {
+                    auto tmp = domain->HyperPlaneIndices(1, domain->GetDof(1) - 1 - i);
+                    res->insert(res->end(), tmp->begin(), tmp->end());
+                }
+                break;
+            }
+            case south: {
+                for (int i = 0; i <= layer; ++i) {
+                    auto tmp = domain->HyperPlaneIndices(1, i);
+                    res->insert(res->end(), tmp->begin(), tmp->end());
+                }
+                break;
+            }
+        }
+        std::sort(res->begin(), res->end());
+        return res;
+    };
 
     void PrintInfo() const {
         switch (_position) {
@@ -149,6 +189,7 @@ public:
         return _position;
     }
 
+
     PhyPts GetStartCoordinate() const {
         return _vertices[0]->GetDomain()->Position();
     }
@@ -167,6 +208,15 @@ public:
 
     auto Counterpart() const {
         return _pair;
+    }
+
+    void ParentSetter(const std::shared_ptr<Surface<N, T>> &parent) {
+        _parents.push_back(std::weak_ptr<Surface<N, T>>(parent));
+    }
+
+    void PrintIndices(const int &layerNum) const {
+        std::cout << "Activated Dofs on this edge are:";
+        Element<1, N, T>::PrintIndices(layerNum);
     }
 
 //
@@ -334,47 +384,6 @@ public:
     }
 
 
-
-    std::unique_ptr<std::vector<int>> AllActivatedDofsOfLayersExcept(const int &layerNum, const int &exceptNum) {
-        std::unique_ptr<std::vector<int>> res(new std::vector<int>);
-        switch (_position) {
-            case west: {
-                for (int i = 0; i <= layerNum; ++i) {
-                    auto tmp = this->_domain->AllActivatedDofsOnBoundary(0, i);
-                    res->insert(res->end(), tmp->begin() + exceptNum, tmp->end() - exceptNum);
-                }
-                break;
-            }
-            case east: {
-                for (int i = 0; i <= layerNum; ++i) {
-                    auto tmp = this->_domain->AllActivatedDofsOnBoundary(0, this->_domain->GetDof(0) - 1 - i);
-                    res->insert(res->end(), tmp->begin() + exceptNum, tmp->end() - exceptNum);
-                }
-                break;
-            }
-            case north: {
-                for (int i = 0; i <= layerNum; ++i) {
-                    auto tmp = this->_domain->AllActivatedDofsOnBoundary(1, this->_domain->GetDof(1) - 1 - i);
-                    res->insert(res->end(), tmp->begin() + exceptNum, tmp->end() - exceptNum);
-                }
-                break;
-            }
-            case south: {
-                for (int i = 0; i <= layerNum; ++i) {
-                    auto tmp = this->_domain->AllActivatedDofsOnBoundary(1, i);
-                    res->insert(res->end(), tmp->begin() + exceptNum, tmp->end() - exceptNum);
-                }
-                break;
-            }
-        }
-        return res;
-    }
-
-    //Given the layer number, it returns a pointer to a vector that contains all control points index of that layer.
-    std::unique_ptr<std::vector<int>> AllActivatedDofsOfLayers(const int &layerNum) {
-        return AllActivatedDofsOfLayersExcept(layerNum, 0);
-    }
-
     void PrintActivatedDofsOfLayers(const int &layerNum) {
         auto res = AllActivatedDofsOfLayers(layerNum);
         std::cout << "Activated Dofs on this edge are:";
@@ -391,6 +400,7 @@ protected:
     std::array<std::shared_ptr<Vertex<N, T>>, 2> _vertices;
     std::weak_ptr<Edge<N, T>> _pair;
     bool _Dirichlet{false};
+    std::vector<std::weak_ptr<Surface<N, T>>> _parents;
 };
 
 #endif //OO_IGA_EDGE_H

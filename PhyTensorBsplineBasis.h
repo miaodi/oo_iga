@@ -555,7 +555,7 @@ PhyTensorBsplineBasis<d, N, T>::MakeHyperPlane(const int &orientation, const int
     for (int i = 0; i != d; ++i) {
         if (i != orientation) hpknotvector.push_back(this->KnotVectorGetter(i));
     }
-    auto indexList = this->AllActivatedDofsOnBoundary(orientation, layer);
+    auto indexList = this->HyperPlaneIndices(orientation, layer);
     GeometryVector tempGeometry;
     for (const auto &i:*indexList) {
         tempGeometry.push_back(_geometricInfo[i]);
