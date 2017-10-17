@@ -309,6 +309,7 @@ namespace Accessory {
     }
 }
 
+
 template<int d, typename T=double>
 class TensorBsplineBasis {
 public:
@@ -344,6 +345,7 @@ public:
     //! Return the d.o.f in i direction.
     int GetDof(const int i) const;
 
+    // (TODO) there is a bug when p=1
     void BezierDualInitialize() {
         for (int direction = 0; direction < d; ++direction) {
             _basis[direction].BezierDualInitialize();
