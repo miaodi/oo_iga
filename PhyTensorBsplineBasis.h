@@ -61,11 +61,13 @@ public:
     void KnotInsertion(int, T, int = 1);
 
     void DegreeElevate(int p) {
+        if(p==0) return;
         for (int i = 0; i != d; ++i)
             DegreeElevate(i, p);
     }
 
     void UniformRefine(int r) {
+        if(r==0) return;
         for (int i = 0; i != d; ++i)
             UniformRefine(i, r);
     }

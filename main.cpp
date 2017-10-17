@@ -21,14 +21,14 @@ int main() {
 
     int degreeElevate, refine;
     for (degreeElevate = 1; degreeElevate < 6; degreeElevate++) {
-        for (refine = 1; refine < 6; refine++) {
+        for (refine = 0; refine < 6; refine++) {
 
             KnotVector<double> a;
             a.InitClosed(1, 0, 1);
             Vector2d point1(0, 0);
             Vector2d point2(0, 2);
-            Vector2d point3(2, -.5);
-            Vector2d point4(2, 2.5);
+            Vector2d point3(2, 0);
+            Vector2d point4(2, 2);
             Vector2d point5(4, 0);
             Vector2d point6(4, 2);
 
@@ -54,15 +54,15 @@ int main() {
             }
 
             DofMapper<double> s;
-            BiharmonicMapperInitiator<double> visit(s);
+            PoissonMapperInitiator<double> visit(s);
             for (int i = 0; i < 2; i++) {
                 cells[i]->accept(visit);
             }
 
             const double pi = 3.141592653589793238462643383279502884;
 
-            BiharmonicVisitor<double> biharmonic(s, [&pi](Coordinate u) -> vector<double> {
-                return vector<double>{4 * pow(pi, 4) * sin(pi * u(0)) * sin(pi * u(1))};
+            PoissonVisitor<double> biharmonic(s, [&pi](Coordinate u) -> vector<double> {
+                return vector<double>{0};
             });
 
             for (int i = 0; i < 2; i++) {
@@ -70,20 +70,20 @@ int main() {
             }
 
             function<vector<double>(const Coordinate &)> Analytical = [&pi](const Coordinate &u) {
-                return vector<double>{sin(pi * u(0)) * sin(pi * u(1)), pi * cos(pi * u(0)) * sin(pi * u(1)),
-                                      pi * sin(pi * u(0)) * cos(pi * u(1))};
+                return vector<double>{sin(pi * u(0)) * sinh(pi * u(1))};
             };
-            BiharmonicBoundaryVisitor<double> boundary(s, Analytical);
+            PoissonBoundaryVisitor<double> boundary(s, Analytical);
 
             for (int i = 0; i < 2; i++) {
                 cells[i]->accept(boundary);
             }
 
-            BiharmonicBezierInterfaceVisitor<double> interface(s);
+            PoissonInterfaceVisitor<double> interface(s);
 
             for (int i = 0; i < 2; i++) {
                 cells[i]->accept(interface);
             }
+
             unique_ptr<SparseMatrix<double>> coupling = interface.Coupling();
 
             unique_ptr<SparseMatrix<double>> stiffness, load, boundaryValue;
@@ -106,7 +106,6 @@ int main() {
             VectorXd solution =
                     coupling->transpose() *
                     (SparseTransform<double>(freedof, s.Dof())->transpose() * Solution + boundaryDense);
-
             vector<KnotVector<double>> solutionDomain1, solutionDomain2, solutionDomain3, solutionDomain4, solutionDomain5;
             solutionDomain1.push_back(domain1->KnotVectorGetter(0));
             solutionDomain1.push_back(domain1->KnotVectorGetter(1));
@@ -122,5 +121,6 @@ int main() {
         }
         std::cout << std::endl;
     }
+
     return 0;
 }

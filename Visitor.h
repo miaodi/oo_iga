@@ -736,6 +736,8 @@ public:
 
     void Assemble(Edge<T> *g) {
         EdgeShared_Ptr lagrange = g->MakeEdge();
+        lagrange->BezierDualInitialize();
+
         EdgeShared_Ptr edgeDomain = g->Counterpart()->MakeEdge();
         auto multiplierKnots = lagrange->KnotVectorGetter(0);
         auto thisKnots = edgeDomain->KnotVectorGetter(0);
@@ -779,7 +781,7 @@ public:
                 std::cout << "Gauss points is not on the edge" << std::endl;
             };
             auto evals = basis->EvalDerAllTensor(u);
-            auto lagrangeEvals = lagrange->EvalDerAllTensor(i.first);
+            auto lagrangeEvals = lagrange->EvalDualAllTensor(i.first);
             weights(it) = i.second;
             int itit = 0;
             for (const auto &j : *evals) {
