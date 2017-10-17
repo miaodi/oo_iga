@@ -117,6 +117,7 @@ class Vertex : public Element<0, N, T>, public std::enable_shared_from_this<Vert
     }
 
     // Match two vertex from two different patch
+    // (TODO) need to consider the case one of the vertices is Dirichlet
     bool Match(std::shared_ptr<Vertex<N, T>> &counterpart)
     {
         if (!_master || _Dirichlet)
