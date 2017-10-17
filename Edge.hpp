@@ -19,8 +19,7 @@ template<int N, typename T>
 class Surface;
 
 template<int N, typename T>
-class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N, T>>
-{
+class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N, T>> {
 public:
     typedef typename Element<1, N, T>::DomainShared_ptr DomainShared_ptr;
     typedef typename Element<1, N, T>::Coordinate Coordinate;
@@ -29,11 +28,10 @@ public:
     using EdgeShared_Ptr = typename std::shared_ptr<Edge<N, T>>;
 
     Edge(const Orientation &orient = west)
-        : Element<1, N, T>(), _position(orient), _matched(false) {};
+            : Element<1, N, T>(), _position(orient), _matched(false) {};
 
     Edge(DomainShared_ptr m, const Orientation &orient, std::shared_ptr<Vertex<N, T>> &begin,
-         std::shared_ptr<Vertex<N, T>> &end) : Element<1, N, T>(m), _position(orient), _matched(false)
-    {
+         std::shared_ptr<Vertex<N, T>> &end) : Element<1, N, T>(m), _position(orient), _matched(false) {
         _vertices[0] = begin;
         _vertices[1] = end;
         if (_vertices[0]->IsDirichlet() && _vertices[1]->IsDirichlet())
@@ -43,8 +41,7 @@ public:
     };
 
     std::unique_ptr<std::vector<int>>
-    Indices(const int &layer) const
-    {
+    Indices(const int &layer) const {
         std::unique_ptr<std::vector<int>> res(new std::vector<int>);
         auto parent = _parents[0].lock();
         auto domain = parent->GetDomain();
@@ -92,8 +89,7 @@ public:
     };
 
     std::unique_ptr<std::vector<int>>
-    ExclusiveIndices(const int &layer) const
-    {
+    ExclusiveIndices(const int &layer) const {
         auto res = this->Indices(layer);
         std::unique_ptr<std::vector<int>> temp;
         for (int i = 0; i < _vertices.size(); ++i)
@@ -106,13 +102,12 @@ public:
         return res;
     }
 
-    bool IsDirichlet() const{
+    bool IsDirichlet() const {
         return _Dirichlet;
     }
 
     void
-    PrintInfo() const
-    {
+    PrintInfo() const {
         switch (_position)
         {
             case west:
@@ -157,8 +152,7 @@ public:
     //! Return the element coordinates in parametric domain. (Each element in the vector is composed with two points,
     //! i.e. Southeast and Northwest.)
     void
-    KnotSpansGetter(CoordinatePairList &knotspanslist)
-    {
+    KnotSpansGetter(CoordinatePairList &knotspanslist) {
         switch (_position)
         {
             case west:
@@ -229,8 +223,7 @@ public:
     }
 
     T
-    Measure() const
-    {
+    Measure() const {
         return 0;
     }
 
@@ -240,84 +233,74 @@ public:
     };
 
     void
-    PrintOrient() const
-    {
+    PrintOrient() const {
         std::cout << _position << std::endl;
     }
 
     Orientation
-    GetOrient() const
-    {
+    GetOrient() const {
         return _position;
     }
 
     PhyPts
-    GetStartCoordinate() const
-    {
+    GetStartCoordinate() const {
         return _vertices[0]->GetDomain()->Position();
     }
 
     PhyPts
-    GetEndCoordinate() const
-    {
+    GetEndCoordinate() const {
         return _vertices[1]->GetDomain()->Position();
     }
 
     bool
-    GetMatchInfo() const
-    {
+    GetMatchInfo() const {
         return _matched;
     }
 
     bool
-    Slave() const
-    {
+    Slave() const {
         return _slave;
     }
 
     auto
-    Counterpart() const
-    {
+    Counterpart() const {
         return _pair;
     }
 
     void
-    ParentSetter(const std::shared_ptr<Surface<N, T>> &parent)
-    {
+    ParentSetter(const std::shared_ptr<Surface<N, T>> &parent) {
         _parents.push_back(std::weak_ptr<Surface<N, T>>(parent));
     }
 
     auto
-    Parent(const int &i) const{
+    Parent(const int &i) const {
         return _parents[i];
     }
 
     void
-    PrintIndices(const int &layerNum) const
-    {
+    PrintIndices(const int &layerNum) const {
         std::cout << "Activated Dofs on this edge are: ";
         Element<1, N, T>::PrintIndices(layerNum);
     }
 
     void
-    PrintExclusiveIndices(const int &layerNum) const
-    {
+    PrintExclusiveIndices(const int &layerNum) const {
         std::cout << "Activated exclusive Dofs on this edge are: ";
         Element<1, N, T>::PrintExclusiveIndices(layerNum);
     }
+
 //
     bool
-    Match(std::shared_ptr<Edge<N, T>> &counterpart)
-    {
+    Match(std::shared_ptr<Edge<N, T>> &counterpart) {
 
         if (_matched == true || counterpart->_matched == true)
         {
             return true;
         }
         if (((GetStartCoordinate() == counterpart->GetStartCoordinate()) &&
-            (GetEndCoordinate() == counterpart->GetEndCoordinate())) ||
+             (GetEndCoordinate() == counterpart->GetEndCoordinate())) ||
             ((GetStartCoordinate() == counterpart->GetEndCoordinate()) &&
-                (GetEndCoordinate() == counterpart->GetStartCoordinate())))
+             (GetEndCoordinate() == counterpart->GetStartCoordinate())))
         {
             _pair = counterpart;
             _matched = true;
@@ -476,15 +459,6 @@ public:
         return false;
     }
 
-
-    void PrintActivatedDofsOfLayers(const int &layerNum) {
-        auto res = AllActivatedDofsOfLayers(layerNum);
-        std::cout << "Activated Dofs on this edge are:";
-        for (const auto &i:*res) {
-            std::cout << i << " ";
-        }
-        std::cout << std::endl;
-    }
 */
 protected:
     Orientation _position;
