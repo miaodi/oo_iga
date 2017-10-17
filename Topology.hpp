@@ -36,10 +36,19 @@ public:
 
     virtual std::unique_ptr<std::vector<int>> Indices(const int &) const = 0;
 
-    virtual std::unique_ptr<std::vector<int>> ExclusiveIndices(const int &) const = 0;
+    // Return all indices that belong to this domain but not belong to the rest.
+    virtual std::unique_ptr<std::vector<int>> ExclusiveIndices(const int &) const =0;
 
     virtual void PrintIndices(const int &layerNum) const {
         auto res = Indices(layerNum);
+        for (const auto &i:*res) {
+            std::cout << i << " ";
+        }
+        std::cout << std::endl;
+    }
+
+    virtual void PrintExclusiveIndices(const int &layerNum) const {
+        auto res = ExclusiveIndices(layerNum);
         for (const auto &i:*res) {
             std::cout << i << " ";
         }
@@ -58,6 +67,7 @@ public:
 
 protected:
     DomainShared_ptr _domain;
+
     bool _called;
 };
 
@@ -73,6 +83,10 @@ Element<d, N, T>::Element(const Element::DomainShared_ptr &m):_domain{m}, _calle
 
 enum Orientation {
     south = 0, east, north, west
+};
+
+enum VertexIndex {
+    first = 0, second, third, fourth
 };
 
 /*

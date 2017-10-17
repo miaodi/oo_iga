@@ -34,11 +34,16 @@ public:
         for (int i = 1; i < _parents.size(); ++i) {
             auto temp = _parents[i].lock()->Indices(layer);
             std::vector<int> intersection;
-            std::set_intersection(res->begin(), res->end(), temp->begin(), temp->end(), std::back_inserter(intersection));
+            std::set_intersection(res->begin(), res->end(), temp->begin(), temp->end(),
+                                  std::back_inserter(intersection));
             *res = intersection;
         }
         return res;
     };
+
+    std::unique_ptr<std::vector<int>> ExclusiveIndices(const int &layer) const {
+        return Indices(layer);
+    }
 
     void MasterSetter(const bool &master) {
         _master = master;
@@ -59,8 +64,13 @@ public:
     }
 
     void PrintIndices(const int &layerNum) const {
-        std::cout << "Activated Dofs on this vertex are:";
+        std::cout << "Activated Dofs on this vertex are: ";
         Element<0, N, T>::PrintIndices(layerNum);
+    }
+
+    void PrintExclusiveIndices(const int &layerNum) const {
+        std::cout << "Activated exclusive Dofs on this vertex are: ";
+        Element<0, N, T>::PrintExclusiveIndices(layerNum);
     }
 
     void PrintInfo() const {
@@ -73,7 +83,7 @@ public:
     }
 
     void ParentSetter(const std::shared_ptr<Edge<N, T>> &parent) {
-        _parents.push_back(std::weak_ptr<Edge<N, T>>(parent));
+        _parents.push_back(std::weak_ptr<Edge<N, T>>{parent});
     }
 
     bool Match(std::shared_ptr<Vertex<N, T>> &counterpart) {
@@ -85,6 +95,8 @@ public:
             counterpart->MasterSetter(false);
             counterpart->_pairList.push_back(this->shared_from_this());
             return true;
+        } else {
+            return false;
         }
     }
 

@@ -19,7 +19,7 @@ template<int N, typename T>
 class Vertex;
 
 template<int N, typename T>
-class Surface : public Element<2, N, T>,  public std::enable_shared_from_this<Surface<N, T>> {
+class Surface : public Element<2, N, T>, public std::enable_shared_from_this<Surface<N, T>> {
 public:
     typedef typename Element<2, N, T>::PhyPts PhyPts;
     typedef typename Element<2, N, T>::DomainShared_ptr DomainShared_ptr;
@@ -35,9 +35,9 @@ public:
     }
 
 // shared_from_this requires that there be at least one shared_ptr instance that owns *this
-    void SurfaceInitialize(){
+    void SurfaceInitialize() {
         for (int i = 0; i < 4; i++) {
-            _vertices[i] = std::make_shared<Vertex<N, T>>(MakeVertex(i),
+            _vertices[i] = std::make_shared<Vertex<N, T>>(MakeVertex(static_cast<VertexIndex>(i)),
                                                           _Dirichlet[(i - 1 >= 0) ? (i - 1) : 3] || _Dirichlet[i]);
         }
         _edges[0] = std::make_shared<Edge<N, T>>(MakeEdge(south), south, _vertices[0], _vertices[1]);
@@ -71,10 +71,19 @@ public:
         return this->_domain->Indices();
     }
 
-    std::unique_ptr<std::vector<int>> ExclusiveIndices(const int &layer) const{
-        auto indices = this->_domain->Indices();
-
+    // Return all indices that belong to this domain but not belong to the rest.
+    std::unique_ptr<std::vector<int>> ExclusiveIndices(const int &layer) const {
+        auto res = this->Indices(layer);
+        std::unique_ptr<std::vector<int>> temp;
+        for (int i = 0; i < _edges.size(); ++i) {
+            temp = _edges[i]->Indices(layer);
+            std::vector<int> diff;
+            std::set_difference(res->begin(), res->end(), temp->begin(), temp->end(), std::back_inserter(diff));
+            *res = diff;
+        }
+        return res;
     }
+
 
     void Accept(Visitor<2, N, T> &a) {
         a.Visit(this);
@@ -94,9 +103,14 @@ public:
         return _vertices[i];
     }
 
-    void PrintIndices(const int &layerNum) const{
-        std::cout << "Activated Dofs on this surface are:";
+    void PrintIndices(const int &layerNum) const {
+        std::cout << "Activated Dofs on this surface are: ";
         Element<2, N, T>::PrintIndices(layerNum);
+    }
+
+    void PrintExclusiveIndices(const int &layerNum) const {
+        std::cout << "Activated exclusive Dofs on this surface are: ";
+        Element<2, N, T>::PrintExclusiveIndices(layerNum);
     }
 
     //! Return the element coordinates in parametric domain. (Each element in the vector is composed with two points,
@@ -176,21 +190,21 @@ protected:
         }
     }
 
-    std::shared_ptr<PhyTensorBsplineBasis<0, N, T>> MakeVertex(const int &index) const {
+    std::shared_ptr<PhyTensorBsplineBasis<0, N, T>> MakeVertex(const VertexIndex &index) const {
         switch (index) {
-            case 0: {
+            case first: {
                 return std::make_shared<PhyTensorBsplineBasis<0, N, T>>(this->_domain->AffineMap(
                         Coordinate(this->_domain->DomainStart(0), this->_domain->DomainStart(1))));
             }
-            case 1: {
+            case second: {
                 return std::make_shared<PhyTensorBsplineBasis<0, N, T>>(this->_domain->AffineMap(
                         Coordinate(this->_domain->DomainEnd(0), this->_domain->DomainStart(1))));
             }
-            case 2: {
+            case third: {
                 return std::make_shared<PhyTensorBsplineBasis<0, N, T>>(this->_domain->AffineMap(
                         Coordinate(this->_domain->DomainEnd(0), this->_domain->DomainEnd(1))));
             }
-            case 3: {
+            case fourth: {
                 return std::make_shared<PhyTensorBsplineBasis<0, N, T>>(this->_domain->AffineMap(
                         Coordinate(this->_domain->DomainStart(0), this->_domain->DomainEnd(1))));
             }

@@ -19,7 +19,8 @@ template<int N, typename T>
 class Surface;
 
 template<int N, typename T>
-class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N, T>> {
+class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N, T>>
+{
 public:
     typedef typename Element<1, N, T>::DomainShared_ptr DomainShared_ptr;
     typedef typename Element<1, N, T>::Coordinate Coordinate;
@@ -28,45 +29,58 @@ public:
     using EdgeShared_Ptr = typename std::shared_ptr<Edge<N, T>>;
 
     Edge(const Orientation &orient = west)
-            : Element<1, N, T>(), _position(orient), _matched(false) {};
+        : Element<1, N, T>(), _position(orient), _matched(false) {};
 
     Edge(DomainShared_ptr m, const Orientation &orient, std::shared_ptr<Vertex<N, T>> &begin,
-         std::shared_ptr<Vertex<N, T>> &end) : Element<1, N, T>(m), _position(orient), _matched(false) {
+         std::shared_ptr<Vertex<N, T>> &end) : Element<1, N, T>(m), _position(orient), _matched(false)
+    {
         _vertices[0] = begin;
         _vertices[1] = end;
-        if (_vertices[0]->IsDirichlet() && _vertices[1]->IsDirichlet()) {
+        if (_vertices[0]->IsDirichlet() && _vertices[1]->IsDirichlet())
+        {
             _Dirichlet = true;
         }
     };
 
-    std::unique_ptr<std::vector<int>> Indices(const int &layer) const {
+    std::unique_ptr<std::vector<int>>
+    Indices(const int &layer) const
+    {
         std::unique_ptr<std::vector<int>> res(new std::vector<int>);
         auto parent = _parents[0].lock();
         auto domain = parent->GetDomain();
-        switch (_position) {
-            case west: {
-                for (int i = 0; i <= layer; ++i) {
+        switch (_position)
+        {
+            case west:
+            {
+                for (int i = 0; i <= layer; ++i)
+                {
                     auto tmp = domain->HyperPlaneIndices(0, i);
                     res->insert(res->end(), tmp->begin(), tmp->end());
                 }
                 break;
             }
-            case east: {
-                for (int i = 0; i <= layer; ++i) {
+            case east:
+            {
+                for (int i = 0; i <= layer; ++i)
+                {
                     auto tmp = domain->HyperPlaneIndices(0, domain->GetDof(0) - 1 - i);
                     res->insert(res->end(), tmp->begin(), tmp->end());
                 }
                 break;
             }
-            case north: {
-                for (int i = 0; i <= layer; ++i) {
+            case north:
+            {
+                for (int i = 0; i <= layer; ++i)
+                {
                     auto tmp = domain->HyperPlaneIndices(1, domain->GetDof(1) - 1 - i);
                     res->insert(res->end(), tmp->begin(), tmp->end());
                 }
                 break;
             }
-            case south: {
-                for (int i = 0; i <= layer; ++i) {
+            case south:
+            {
+                for (int i = 0; i <= layer; ++i)
+                {
                     auto tmp = domain->HyperPlaneIndices(1, i);
                     res->insert(res->end(), tmp->begin(), tmp->end());
                 }
@@ -77,21 +91,47 @@ public:
         return res;
     };
 
-    void PrintInfo() const {
-        switch (_position) {
-            case west: {
+    std::unique_ptr<std::vector<int>>
+    ExclusiveIndices(const int &layer) const
+    {
+        auto res = this->Indices(layer);
+        std::unique_ptr<std::vector<int>> temp;
+        for (int i = 0; i < _vertices.size(); ++i)
+        {
+            temp = _vertices[i]->Indices(layer);
+            std::vector<int> diff;
+            std::set_difference(res->begin(), res->end(), temp->begin(), temp->end(), std::back_inserter(diff));
+            *res = diff;
+        }
+        return res;
+    }
+
+    bool IsDirichlet() const{
+        return _Dirichlet;
+    }
+
+    void
+    PrintInfo() const
+    {
+        switch (_position)
+        {
+            case west:
+            {
                 std::cout << "West edge:" << std::endl;
                 break;
             }
-            case east: {
+            case east:
+            {
                 std::cout << "East edge:" << std::endl;
                 break;
             }
-            case north: {
+            case north:
+            {
                 std::cout << "North edge:" << std::endl;
                 break;
             }
-            case south: {
+            case south:
+            {
                 std::cout << "South edge:" << std::endl;
                 break;
             }
@@ -101,12 +141,14 @@ public:
         PhyPts beginPts = begin->Position();
         PhyPts endPts = end->Position();
         std::cout << "Starting Point: " << "(";
-        for (int i = 0; i < N - 1; i++) {
+        for (int i = 0; i < N - 1; i++)
+        {
             std::cout << beginPts(i) << ", ";
         }
         std::cout << beginPts(N - 1) << ")" << std::endl;
         std::cout << "Ending Point: " << "(";
-        for (int i = 0; i < N - 1; i++) {
+        for (int i = 0; i < N - 1; i++)
+        {
             std::cout << endPts(i) << ", ";
         }
         std::cout << endPts(N - 1) << ")" << std::endl << std::endl;
@@ -114,14 +156,19 @@ public:
 
     //! Return the element coordinates in parametric domain. (Each element in the vector is composed with two points,
     //! i.e. Southeast and Northwest.)
-    void KnotSpansGetter(CoordinatePairList &knotspanslist) {
-        switch (_position) {
-            case west: {
+    void
+    KnotSpansGetter(CoordinatePairList &knotspanslist)
+    {
+        switch (_position)
+        {
+            case west:
+            {
                 auto knot_y = this->_domain->KnotVectorGetter(1);
                 auto knot_x = this->_domain->DomainStart(0);
                 auto knotspan_y = knot_y.KnotSpans();
                 knotspanslist.reserve(knotspan_y.size());
-                for (const auto &i:knotspan_y) {
+                for (const auto &i:knotspan_y)
+                {
                     Coordinate _begin;
                     _begin << knot_x, i.first;
                     Coordinate _end;
@@ -130,12 +177,14 @@ public:
                 }
                 break;
             }
-            case east: {
+            case east:
+            {
                 auto knot_y = this->_domain->KnotVectorGetter(1);
                 auto knot_x = this->_domain->DomainEnd(0);
                 auto knotspan_y = knot_y.KnotSpans();
                 knotspanslist.reserve(knotspan_y.size());
-                for (const auto &i:knotspan_y) {
+                for (const auto &i:knotspan_y)
+                {
                     Coordinate _begin;
                     _begin << knot_x, i.first;
                     Coordinate _end;
@@ -144,12 +193,14 @@ public:
                 }
                 break;
             }
-            case south: {
+            case south:
+            {
                 auto knot_y = this->_domain->DomainStart(1);
                 auto knot_x = this->_domain->KnotVectorGetter(0);
                 auto knotspan_x = knot_x.KnotSpans();
                 knotspanslist.reserve(knotspan_x.size());
-                for (const auto &i:knotspan_x) {
+                for (const auto &i:knotspan_x)
+                {
                     Coordinate _begin;
                     _begin << i.first, knot_y;
                     Coordinate _end;
@@ -158,12 +209,14 @@ public:
                 }
                 break;
             }
-            case north: {
+            case north:
+            {
                 auto knot_y = this->_domain->DomainEnd(1);
                 auto knot_x = this->_domain->KnotVectorGetter(0);
                 auto knotspan_x = knot_x.KnotSpans();
                 knotspanslist.reserve(knotspan_x.size());
-                for (const auto &i:knotspan_x) {
+                for (const auto &i:knotspan_x)
+                {
                     Coordinate _begin;
                     _begin << i.first, knot_y;
                     Coordinate _end;
@@ -175,67 +228,107 @@ public:
         }
     }
 
-    T Measure() const {
+    T
+    Measure() const
+    {
         return 0;
     }
 
-    void Accept(Visitor<1, N, T> &) {};
+    void
+    Accept(Visitor<1, N, T> &visitor) {
+        visitor.Visit(this);
+    };
 
-    void PrintOrient() const {
+    void
+    PrintOrient() const
+    {
         std::cout << _position << std::endl;
     }
 
-    Orientation GetOrient() const {
+    Orientation
+    GetOrient() const
+    {
         return _position;
     }
 
-
-    PhyPts GetStartCoordinate() const {
+    PhyPts
+    GetStartCoordinate() const
+    {
         return _vertices[0]->GetDomain()->Position();
     }
 
-    PhyPts GetEndCoordinate() const {
+    PhyPts
+    GetEndCoordinate() const
+    {
         return _vertices[1]->GetDomain()->Position();
     }
 
-    bool GetMatchInfo() const {
+    bool
+    GetMatchInfo() const
+    {
         return _matched;
     }
 
-    bool Slave() const {
+    bool
+    Slave() const
+    {
         return _slave;
     }
 
-    auto Counterpart() const {
+    auto
+    Counterpart() const
+    {
         return _pair;
     }
 
-    void ParentSetter(const std::shared_ptr<Surface<N, T>> &parent) {
+    void
+    ParentSetter(const std::shared_ptr<Surface<N, T>> &parent)
+    {
         _parents.push_back(std::weak_ptr<Surface<N, T>>(parent));
     }
 
-    void PrintIndices(const int &layerNum) const {
-        std::cout << "Activated Dofs on this edge are:";
+    auto
+    Parent(const int &i) const{
+        return _parents[i];
+    }
+
+    void
+    PrintIndices(const int &layerNum) const
+    {
+        std::cout << "Activated Dofs on this edge are: ";
         Element<1, N, T>::PrintIndices(layerNum);
     }
 
+    void
+    PrintExclusiveIndices(const int &layerNum) const
+    {
+        std::cout << "Activated exclusive Dofs on this edge are: ";
+        Element<1, N, T>::PrintExclusiveIndices(layerNum);
+    }
 //
-    bool Match(std::shared_ptr<Edge<N, T>> &counterpart) {
+    bool
+    Match(std::shared_ptr<Edge<N, T>> &counterpart)
+    {
 
-        if (_matched == true || counterpart->_matched == true) {
+        if (_matched == true || counterpart->_matched == true)
+        {
             return true;
         }
         if (((GetStartCoordinate() == counterpart->GetStartCoordinate()) &&
-             (GetEndCoordinate() == counterpart->GetEndCoordinate())) ||
+            (GetEndCoordinate() == counterpart->GetEndCoordinate())) ||
             ((GetStartCoordinate() == counterpart->GetEndCoordinate()) &&
-             (GetEndCoordinate() == counterpart->GetStartCoordinate()))) {
+                (GetEndCoordinate() == counterpart->GetStartCoordinate())))
+        {
             _pair = counterpart;
             _matched = true;
             counterpart->_pair = this->shared_from_this();
             counterpart->_matched = true;
-            if (this->GetDomain()->GetDof(0) > counterpart->GetDomain()->GetDof(0)) {
+            if (this->GetDomain()->GetDof(0) > counterpart->GetDomain()->GetDof(0))
+            {
                 _slave = true;
-            } else {
+            }
+            else
+            {
                 counterpart->_slave = true;
             }
             return true;
