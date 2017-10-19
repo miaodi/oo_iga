@@ -5,10 +5,6 @@
 #ifndef OO_IGA_VISITOR_H
 #define OO_IGA_VISITOR_H
 
-#include "Topology.hpp"
-#include <thread>
-#include <mutex>
-#include <iomanip>
 
 template<int d, int N, typename T>
 class Element;

@@ -10,7 +10,8 @@
 #include<iostream>
 
 template<typename T>
-class QuadratureRule {
+class QuadratureRule
+{
 public:
     using Coordinate = Eigen::Matrix<T, Eigen::Dynamic, 1>;
     using Quadrature=std::pair<Coordinate, T>;
@@ -22,32 +23,42 @@ public:
 
     ~QuadratureRule() = default;
 
-    QuadratureRule(int num) : _size(num) {
+    QuadratureRule(int num) : _size(num)
+    {
         LookupReference(_size, _quadrature);
     }
 
-    void SetUpQuadrature(int num) {
+    void
+    SetUpQuadrature(int num)
+    {
         _size = num;
         LookupReference(_size, _quadrature);
     }
 
-    static void LookupReference(int num, QuadList &quadrature);
+    static void
+    LookupReference(int num, QuadList &quadrature);
 
-    void MapToQuadrature(const CoordinatePair &range, QuadList &quadrature) {
+    void
+    MapToQuadrature(const CoordinatePair &range, QuadList &quadrature) const
+    {
         quadrature.resize(0);
         int d = range.first.size();
         std::vector<int> indexes(d, 0);
         std::vector<int> endPerIndex(d);
         int space = 1;
-        std::pair<Coordinate, Coordinate > temp;
+        std::pair<Coordinate, Coordinate> temp;
         temp.first.resize(d);
         temp.second.resize(d);
-        for (int i = 0; i != d; ++i) {
-            if (range.first(i) == range.second(i)) {
+        for (int i = 0; i != d; ++i)
+        {
+            if (range.first(i) == range.second(i))
+            {
                 endPerIndex[i] = 0;
                 temp.first(i) = range.first(i);
                 space *= 1;
-            } else {
+            }
+            else
+            {
                 endPerIndex[i] = _size;
                 space *= endPerIndex[i];
             }
@@ -56,16 +67,24 @@ public:
         quadrature.reserve(space);
         std::function<void(std::vector<int> &, const std::vector<int> &, int)> recursive;
         recursive = [this, &quadrature, &temp, &range, &recursive](std::vector<int> &indexes,
-                                                                   const std::vector<int> &endPerIndex, int direction) {
-            if (direction == indexes.size()) {
+                                                                   const std::vector<int> &endPerIndex, int direction)
+        {
+            if (direction == indexes.size())
+            {
                 Quadrature tmp{temp.first, temp.second.prod()};
                 quadrature.push_back(std::move(tmp));
-            } else {
-                if (endPerIndex[direction] == 0) {
+            }
+            else
+            {
+                if (endPerIndex[direction] == 0)
+                {
                     temp.second(direction) = 1;   ///need verify
                     recursive(indexes, endPerIndex, direction + 1);
-                } else {
-                    for (indexes[direction] = 0; indexes[direction] != endPerIndex[direction]; indexes[direction]++) {
+                }
+                else
+                {
+                    for (indexes[direction] = 0; indexes[direction] != endPerIndex[direction]; indexes[direction]++)
+                    {
                         T length = std::abs(range.first(direction) - range.second(direction)) / 2;
                         T middle = (range.first(direction) + range.second(direction)) / 2;
                         temp.first(direction) = _quadrature[indexes[direction]].first(0) * length + middle;
@@ -78,7 +97,9 @@ public:
         recursive(indexes, endPerIndex, 0);
     }
 
-    int NumOfQuadrature() const{
+    int
+    NumOfQuadrature() const
+    {
         return _size;
     }
 
@@ -87,21 +108,26 @@ private:
     int _size;
 };
 
-
 template<typename T>
-void QuadratureRule<T>::LookupReference(int num, QuadratureRule::QuadList &quadrature) {
+void
+QuadratureRule<T>::LookupReference(int num, QuadratureRule::QuadList &quadrature)
+{
     quadrature.resize(num);
-    for (auto &i:quadrature) {
+    for (auto &i:quadrature)
+    {
         i.first.resize(1);
     }
 
-    switch (num) {
-        case 1 : {
+    switch (num)
+    {
+        case 1 :
+        {
             quadrature[0].first(0) = 0.000000000000000000000000000000;
             quadrature[0].second = 2.000000000000000000000000000000;
             break;
         }
-        case 2 : {
+        case 2 :
+        {
             quadrature[0].first(0) = -0.577350269189625764509148780502;
             quadrature[1].first(0) = 0.577350269189625764509148780502;
 
@@ -110,7 +136,8 @@ void QuadratureRule<T>::LookupReference(int num, QuadratureRule::QuadList &quadr
             break;
         }
 
-        case 3 : {
+        case 3 :
+        {
             quadrature[0].first(0) = -0.774596669241483377035853079956;
             quadrature[1].first(0) = 0.000000000000000000000000000000;
             quadrature[2].first(0) = 0.774596669241483377035853079956;
@@ -120,7 +147,8 @@ void QuadratureRule<T>::LookupReference(int num, QuadratureRule::QuadList &quadr
             quadrature[2].second = 0.555555555555555555555555555556;
             break;
         }
-        case 4 : {
+        case 4 :
+        {
             quadrature[0].first(0) = -0.861136311594052575223946488893;
             quadrature[1].first(0) = -0.339981043584856264802665759103;
             quadrature[2].first(0) = 0.339981043584856264802665759103;
@@ -132,7 +160,8 @@ void QuadratureRule<T>::LookupReference(int num, QuadratureRule::QuadList &quadr
             quadrature[3].second = 0.347854845137453857373063949222;
             break;
         }
-        case 5 : {
+        case 5 :
+        {
             quadrature[0].first(0) = -0.906179845938663992797626878299;
             quadrature[1].first(0) = -0.538469310105683091036314420700;
             quadrature[2].first(0) = 0.000000000000000000000000000000;
@@ -146,7 +175,8 @@ void QuadratureRule<T>::LookupReference(int num, QuadratureRule::QuadList &quadr
             quadrature[4].second = 0.236926885056189087514264040720;
             break;
         }
-        case 6 : {
+        case 6 :
+        {
             quadrature[0].first(0) = -0.932469514203152027812301554494;
             quadrature[1].first(0) = -0.661209386466264513661399595020;
             quadrature[2].first(0) = -0.238619186083196908630501721681;
@@ -162,7 +192,8 @@ void QuadratureRule<T>::LookupReference(int num, QuadratureRule::QuadList &quadr
             quadrature[5].second = 0.171324492379170345040296142173;
             break;
         }
-        case 7 : {
+        case 7 :
+        {
             quadrature[0].first(0) = -0.949107912342758524526189684048;
             quadrature[1].first(0) = -0.741531185599394439863864773281;
             quadrature[2].first(0) = -0.405845151377397166906606412077;
@@ -181,7 +212,8 @@ void QuadratureRule<T>::LookupReference(int num, QuadratureRule::QuadList &quadr
             break;
         }
 
-        case 8 : {
+        case 8 :
+        {
             quadrature[0].first(0) = -0.960289856497536231683560868569;
             quadrature[1].first(0) = -0.796666477413626739591553936476;
             quadrature[2].first(0) = -0.525532409916328985817739049189;
@@ -202,7 +234,8 @@ void QuadratureRule<T>::LookupReference(int num, QuadratureRule::QuadList &quadr
             break;
         }
 
-        case 9 : {
+        case 9 :
+        {
             quadrature[0].first(0) = -0.968160239507626089835576203;
             quadrature[1].first(0) = -0.836031107326635794299429788;
             quadrature[2].first(0) = -0.613371432700590397308702039;

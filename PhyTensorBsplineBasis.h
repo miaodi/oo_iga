@@ -583,7 +583,6 @@ struct ComputeJacobian {
     using PhyPts=typename PhyTensorBsplineBasis<d, N, T>::PhyPts;
 
     T compute(const PhyTensorBsplineBasis<d, N, T> *domain_ptr, const Pts &u) {
-        std::cout << "Called d N." << std::endl;
         return domain_ptr->JacobianMatrix(u).determinant();
 
     }
