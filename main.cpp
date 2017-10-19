@@ -7,6 +7,8 @@
 #include "DofMapper.hpp"
 #include "PoissonMapper.hpp"
 #include "PoissonStiffnessVisitor.hpp"
+#include <ctime>
+
 
 using namespace Eigen;
 using namespace std;
@@ -18,6 +20,7 @@ using Vector1d = Matrix<double, 1, 1>;
 int
 main()
 {
+    clock_t time_a = clock();
     KnotVector<double> a;
     a.InitClosed(1, 0, 1);
     Vector2d point1(0, 0), point2(0, 2), point3(1, 1), point4(1, 2), point5(2, 0), point6(2, 1), point7(2, 2);
@@ -29,16 +32,12 @@ main()
     auto domain1 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(vector<KnotVector<double>>{a, a}, point);
     auto domain2 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(vector<KnotVector<double>>{a, a}, pointt);
     auto domain3 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(vector<KnotVector<double>>{a, a}, pointtt);
-    domain1->UniformRefine(1);
-
-    KnotSpanList knots;
-
-    domain1->KnotSpanGetter(knots);
-
-    for (auto &i:knots)
-    {
-        cout << i.first.transpose() << ", " << i.second.transpose() << endl;
-    }
+    domain1->DegreeElevate(4);
+    domain2->DegreeElevate(4);
+    domain3->DegreeElevate(4);
+    domain1->UniformRefine(5);
+    domain2->UniformRefine(5);
+    domain3->UniformRefine(5);
 
     auto surface1 = make_shared<Surface<2, double>>(domain1, array<bool, 4>{false, false, true, true});
     surface1->SurfaceInitialize();
@@ -74,5 +73,12 @@ main()
 
     PoissonStiffnessVisitor<2, double> poisson_stiffness(dof_map, body_force);
     surface1->Accept(poisson_stiffness);
+    surface2->Accept(poisson_stiffness);
+    surface3->Accept(poisson_stiffness);
+    SparseMatrix<double> stiffness,load;
+    poisson_stiffness.StiffnessAssembler(stiffness);
+    poisson_stiffness.LoadAssembler(load);
+    clock_t time_b = clock();
+    cout<<time_b - time_a;
     return 0;
 }
