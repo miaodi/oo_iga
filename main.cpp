@@ -63,22 +63,26 @@ main()
     surface1->Accept(mapper);
     surface2->Accept(mapper);
     surface3->Accept(mapper);
-    dof_map.PrintDirichletGlobalIndicesIn(domain1);
-    dof_map.PrintDirichletGlobalIndicesIn(domain2);
-    dof_map.PrintDirichletGlobalIndicesIn(domain3);
-
-    dof_map.PrintSlaveGlobalIndicesIn(domain1);
-    dof_map.PrintSlaveGlobalIndicesIn(domain2);
-    dof_map.PrintSlaveGlobalIndicesIn(domain3);
-
-    PoissonStiffnessVisitor<2, double> poisson_stiffness(dof_map, body_force);
-    surface1->Accept(poisson_stiffness);
-    surface2->Accept(poisson_stiffness);
-    surface3->Accept(poisson_stiffness);
-    SparseMatrix<double> stiffness,load;
-    poisson_stiffness.StiffnessAssembler(stiffness);
-    poisson_stiffness.LoadAssembler(load);
-    clock_t time_b = clock();
-    cout<<time_b - time_a;
+//    dof_map.PrintDirichletGlobalIndicesIn(domain1);
+//    dof_map.PrintDirichletGlobalIndicesIn(domain2);
+//    dof_map.PrintDirichletGlobalIndicesIn(domain3);
+//
+//    dof_map.PrintSlaveGlobalIndicesIn(domain1);
+//    dof_map.PrintSlaveGlobalIndicesIn(domain2);
+//    dof_map.PrintSlaveGlobalIndicesIn(domain3);
+//
+//    PoissonStiffnessVisitor<2, double> poisson_stiffness(dof_map, body_force);
+//    surface1->Accept(poisson_stiffness);
+//    surface2->Accept(poisson_stiffness);
+//    surface3->Accept(poisson_stiffness);
+//    SparseMatrix<double> stiffness,load;
+//    poisson_stiffness.StiffnessAssembler(stiffness);
+//    poisson_stiffness.LoadAssembler(load);
+//    clock_t time_b = clock();
+//    cout<<time_b - time_a;
+    auto index_map=dof_map.GlobalDirichletCondensedMap();
+    for(auto &i:index_map){
+        cout<<i.first<<" "<<i.second<<endl;
+    }
     return 0;
 }

@@ -176,8 +176,11 @@ public:
         {
             for (int j = i; j<matrix._colIndices->size(); ++j)
             {
-                triplet.emplace_back(
-                        Eigen::Triplet<T>((*matrix._rowIndices)[i], (*matrix._colIndices)[j], (*matrix._matrix)(i, j)));
+                T tmp{(*matrix._matrix)(i, j)};
+                if (tmp!=0)
+                {
+                    triplet.emplace_back(Eigen::Triplet<T>((*matrix._rowIndices)[i], (*matrix._colIndices)[j], tmp));
+                }
             }
         }
     }
@@ -188,8 +191,11 @@ public:
         {
             for (int j = 0; j<matrix._colIndices->size(); ++j)
             {
-                triplet.emplace_back(
-                        Eigen::Triplet<T>((*matrix._rowIndices)[i], (*matrix._colIndices)[j], (*matrix._matrix)(i, j)));
+                T tmp{(*matrix._matrix)(i, j)};
+                if (tmp!=0)
+                {
+                    triplet.emplace_back(Eigen::Triplet<T>((*matrix._rowIndices)[i], (*matrix._colIndices)[j], tmp));
+                }
             }
         }
     }
@@ -198,7 +204,66 @@ public:
     {
         for (int i = 0; i<vector._rowIndices->size(); ++i)
         {
-            triplet.emplace_back(Eigen::Triplet<T>((*vector._rowIndices)[i], 0, (*vector._vector)(i)));
+            T tmp{(*vector._vector)(i)};
+            if (tmp!=0)
+            {
+                triplet.emplace_back(Eigen::Triplet<T>((*vector._rowIndices)[i], 0, tmp));
+            }
+        }
+    }
+
+    bool IndexModifier(const std::map<int, int>& index_map, int& index) const
+    {
+        auto it = index_map.find(index);
+        if (it!=index_map.end())
+        {
+            index = it->second;
+            return true;
+        }
+        return false;
+    }
+
+    void MatrixDataIndexModifier(const std::map<int, int>& index_map, MatrixData<T>& matrix_data)
+    {
+//        Row operation
+        for (auto it = matrix_data._rowIndices->begin(); it!=matrix_data._rowIndices->end();)
+        {
+            if (!IndexModifier(index_map, *it))
+            {
+                it = matrix_data._rowIndices->erase(it);
+                int row_num = it-matrix_data._rowIndices->begin();
+                Accessory::removeRow(*matrix_data._matrix,row_num);
+            }else{
+                ++it;
+            }
+        }
+//        Column operation
+        for (auto it = matrix_data._colIndices->begin(); it!=matrix_data._colIndices->end();)
+        {
+            if (!IndexModifier(index_map, *it))
+            {
+                it = matrix_data._colIndices->erase(it);
+                int col_num = it-matrix_data._colIndices->begin();
+                Accessory::removeColumn(*matrix_data._matrix,col_num);
+            }else{
+                ++it;
+            }
+        }
+    }
+
+    void VectorDataIndexModifier(const std::map<int, int>& index_map, VectorData<T>& vector_data)
+    {
+//        Row operation
+        for (auto it = vector_data._rowIndices->begin(); it!=vector_data._rowIndices->end();)
+        {
+            if (!IndexModifier(index_map, *it))
+            {
+                it = vector_data._rowIndices->erase(it);
+                int row_num = it-vector_data._rowIndices->begin();
+                Accessory::removeRow(*vector_data._vector,row_num);
+            }else{
+                ++it;
+            }
         }
     }
 

@@ -48,6 +48,7 @@ PoissonStiffnessVisitor<N, T>::LocalAssemble(Element<2, N, T>* g,
     QuadList quadrature_points;
     quadrature_rule.MapToQuadrature(knot_span, quadrature_points);
     auto index = domain->ActiveIndex(quadrature_points[0].first);
+    this->_dofMapper.IndicesToGlobal(domain, index);
     auto num_of_basis = index.size();
     auto num_of_quadrature = quadrature_points.size();
     std::vector<int> poisson_weight_indices{index}, poisson_basis_indices{index}, load_weight_indices{index};
@@ -74,8 +75,6 @@ PoissonStiffnessVisitor<N, T>::LocalAssemble(Element<2, N, T>* g,
     auto stiff = this->LocalStiffness(poisson_weight, poisson_weight_indices, poisson_basis, poisson_basis_indices,
             weights);
     auto load = this->LocalRhs(load_weight, load_weight_indices, load_value, weights);
-    this->LocalToGlobal(g, stiff);
-    this->LocalToGlobal(g, load);
     std::lock_guard<std::mutex> lock(pmutex);
     _stiffnees.push_back(std::move(stiff));
     _rhs.push_back(std::move(load));
@@ -88,9 +87,9 @@ void PoissonStiffnessVisitor<N, T>::StiffnessAssembler(Eigen::SparseMatrix<T>& s
     std::vector<Eigen::Triplet<T>> triplet;
     for (const auto& i:_stiffnees)
     {
-        this->SymmetricTriplet(i,triplet);
+        this->SymmetricTriplet(i, triplet);
     }
-    sparse_matrix.setFromTriplets(triplet.cbegin(),triplet.cend());
+    sparse_matrix.setFromTriplets(triplet.cbegin(), triplet.cend());
 }
 
 template<int N, typename T>
@@ -100,7 +99,7 @@ void PoissonStiffnessVisitor<N, T>::LoadAssembler(Eigen::SparseMatrix<T>& sparse
     std::vector<Eigen::Triplet<T>> triplet;
     for (const auto& i:_rhs)
     {
-        this->Triplet(i,triplet);
+        this->Triplet(i, triplet);
     }
-    sparse_matrix.setFromTriplets(triplet.cbegin(),triplet.cend());
+    sparse_matrix.setFromTriplets(triplet.cbegin(), triplet.cend());
 }
