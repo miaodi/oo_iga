@@ -8,7 +8,8 @@
 #include "DomainVisitor.hpp"
 
 template<int N, typename T>
-class PoissonStiffnessVisitor : public DomainVisitor<2, N, T> {
+class PoissonStiffnessVisitor : public DomainVisitor<2, N, T>
+{
 public:
     using Knot = typename DomainVisitor<2, N, T>::Knot;
     using Quadrature = typename DomainVisitor<2, N, T>::Quadrature;
@@ -19,30 +20,34 @@ public:
     using Matrix =  typename DomainVisitor<2, N, T>::Matrix;
     using Vector = typename DomainVisitor<2, N, T>::Vector;
 public:
-    PoissonStiffnessVisitor(const DofMapper<N, T>& dof_mapper, const LoadFunctor& body_force)
-            :DomainVisitor<2, N, T>(dof_mapper), _bodyForceFunctor(body_force) { }
+    PoissonStiffnessVisitor(const DofMapper<N, T> &dof_mapper, const LoadFunctor &body_force)
+        : DomainVisitor<2, N, T>(dof_mapper), _bodyForceFunctor(body_force) {}
 
 //    Assemble stiffness matrix and rhs
     void
-    LocalAssemble(Element<2, N, T>*, const QuadratureRule<T>&, const KnotSpan&, std::mutex&);
+    LocalAssemble(Element<2, N, T> *, const QuadratureRule<T> &, const KnotSpan &, std::mutex &);
 
-    void StiffnessAssembler(Eigen::SparseMatrix<T>&) const;
+    void
+    StiffnessAssembler(Eigen::SparseMatrix<T> &) const;
 
-    void LoadAssembler(Eigen::SparseMatrix<T>&) const;
+    void
+    LoadAssembler(Eigen::SparseMatrix<T> &) const;
+
+    virtual void Assember()
 
 protected:
 
-    std::vector<MatrixData<T>> _stiffnees;
-    std::vector<VectorData<T>> _rhs;
-    const LoadFunctor& _bodyForceFunctor;
+    std::vector<Eigen::Triplet<T>> _stiffnees;
+    std::vector<Eigen::Triplet<T>> _rhs;
+    const LoadFunctor &_bodyForceFunctor;
 };
 
 template<int N, typename T>
 void
-PoissonStiffnessVisitor<N, T>::LocalAssemble(Element<2, N, T>* g,
-        const QuadratureRule<T>& quadrature_rule,
-        const PoissonStiffnessVisitor<N, T>::KnotSpan& knot_span,
-        std::mutex& pmutex)
+PoissonStiffnessVisitor<N, T>::LocalAssemble(Element<2, N, T> *g,
+                                             const QuadratureRule<T> &quadrature_rule,
+                                             const PoissonStiffnessVisitor<N, T>::KnotSpan &knot_span,
+                                             std::mutex &pmutex)
 {
     auto domain = g->GetDomain();
     QuadList quadrature_points;
@@ -53,17 +58,20 @@ PoissonStiffnessVisitor<N, T>::LocalAssemble(Element<2, N, T>* g,
     auto num_of_quadrature = quadrature_points.size();
     std::vector<int> poisson_weight_indices{index}, poisson_basis_indices{index}, load_weight_indices{index};
     std::vector<Matrix> poisson_weight(num_of_quadrature), poisson_basis(num_of_quadrature),
-            load_weight(num_of_quadrature), load_value(num_of_quadrature);
+        load_weight(num_of_quadrature), load_value(num_of_quadrature);
     std::vector<T> weights;
-    for (int i = 0; i<quadrature_points.size(); ++i)
+    for (int i = 0; i < quadrature_points.size(); ++i){
+        weights.push_back(quadrature_points[i].second * domain->Jacobian(quadrature_points[i].first));
+    }
+
+    for (int i = 0; i < quadrature_points.size(); ++i)
     {
-        weights.push_back(quadrature_points[i].second*domain->Jacobian(quadrature_points[i].first));
         auto evals = domain->Eval1PhyDerAllTensor(quadrature_points[i].first);
         load_value[i].resize(1, 1);
         load_value[i](0, 0) = _bodyForceFunctor(domain->AffineMap(quadrature_points[i].first))[0];
         load_weight[i].resize(1, num_of_basis);
         poisson_basis[i].resize(2, num_of_basis);
-        for (int j = 0; j<num_of_basis; ++j)
+        for (int j = 0; j < num_of_basis; ++j)
         {
             load_weight[i](0, j) = (*evals)[j].second[0];
             poisson_basis[i](0, j) = (*evals)[j].second[1];
@@ -73,33 +81,23 @@ PoissonStiffnessVisitor<N, T>::LocalAssemble(Element<2, N, T>* g,
     poisson_weight = poisson_basis;
 
     auto stiff = this->LocalStiffness(poisson_weight, poisson_weight_indices, poisson_basis, poisson_basis_indices,
-            weights);
+                                      weights);
     auto load = this->LocalRhs(load_weight, load_weight_indices, load_value, weights);
     std::lock_guard<std::mutex> lock(pmutex);
-    _stiffnees.push_back(std::move(stiff));
-    _rhs.push_back(std::move(load));
+    this->SymmetricTriplet(stiff, _stiffnees);
+    this->Triplet(load, _rhs);
 }
 
 template<int N, typename T>
-void PoissonStiffnessVisitor<N, T>::StiffnessAssembler(Eigen::SparseMatrix<T>& sparse_matrix) const
+void
+PoissonStiffnessVisitor<N, T>::StiffnessAssembler(Eigen::SparseMatrix<T> &sparse_matrix) const
 {
-    sparse_matrix.resize(this->_dofMapper.Dof(), this->_dofMapper.Dof());
-    std::vector<Eigen::Triplet<T>> triplet;
-    for (const auto& i:_stiffnees)
-    {
-        this->SymmetricTriplet(i, triplet);
-    }
-    sparse_matrix.setFromTriplets(triplet.cbegin(), triplet.cend());
+    this->MatrixAssembler(this->_dofMapper.Dof(), this->_dofMapper.Dof(), _stiffnees, sparse_matrix);
 }
 
 template<int N, typename T>
-void PoissonStiffnessVisitor<N, T>::LoadAssembler(Eigen::SparseMatrix<T>& sparse_matrix) const
+void
+PoissonStiffnessVisitor<N, T>::LoadAssembler(Eigen::SparseMatrix<T> &sparse_matrix) const
 {
-    sparse_matrix.resize(this->_dofMapper.Dof(), 1);
-    std::vector<Eigen::Triplet<T>> triplet;
-    for (const auto& i:_rhs)
-    {
-        this->Triplet(i, triplet);
-    }
-    sparse_matrix.setFromTriplets(triplet.cbegin(), triplet.cend());
+    this->VectorAssembler(this->_dofMapper.Dof(), _rhs, sparse_matrix);
 }
