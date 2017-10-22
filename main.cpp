@@ -7,6 +7,7 @@
 #include "DofMapper.hpp"
 #include "PoissonMapper.hpp"
 #include "PoissonStiffnessVisitor.hpp"
+#include "BiharmonicStiffnessVisitor.hpp"
 #include <ctime>
 
 using namespace Eigen;
@@ -31,12 +32,9 @@ main()
     auto domain1 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(vector<KnotVector<double>>{a, a}, point);
     auto domain2 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(vector<KnotVector<double>>{a, a}, pointt);
     auto domain3 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(vector<KnotVector<double>>{a, a}, pointtt);
-    domain1->DegreeElevate(4);
-    domain2->DegreeElevate(4);
-    domain3->DegreeElevate(4);
-    domain1->UniformRefine(5);
-    domain2->UniformRefine(5);
-    domain3->UniformRefine(5);
+    domain1->DegreeElevate(1);
+    domain2->DegreeElevate(1);
+    domain3->DegreeElevate(1);
 
     auto surface1 = make_shared<Surface<2, double>>(domain1, array<bool, 4>{false, false, true, true});
     surface1->SurfaceInitialize();
@@ -52,9 +50,9 @@ main()
     surface2->PrintVertexInfo();
     surface3->PrintVertexInfo();
 
-    function<vector<double>(const VectorXd &)> body_force = [](const VectorXd &u)
+    function<vector<double>(const VectorXd&)> body_force = [](const VectorXd& u)
     {
-        return vector<double>{sin(u(0)) * sin(u(1))};
+        return vector<double>{sin(u(0))*sin(u(1))};
     };
 
     DofMapper<2, double> dof_map;
@@ -69,19 +67,17 @@ main()
     dof_map.PrintSlaveGlobalIndicesIn(domain1);
     dof_map.PrintSlaveGlobalIndicesIn(domain2);
     dof_map.PrintSlaveGlobalIndicesIn(domain3);
-    for (int i = 0; i < 10; i++)
-    {
-        PoissonStiffnessVisitor<2, double> poisson_stiffness(dof_map, body_force);
-        surface1->Accept(poisson_stiffness);
-        surface2->Accept(poisson_stiffness);
-        surface3->Accept(poisson_stiffness);
-        SparseMatrix<double> stiffness, load;
 
-        poisson_stiffness.StiffnessAssembler(stiffness);
-        poisson_stiffness.LoadAssembler(load);
-        clock_t time_b = clock();
-        cout << time_b - time_a << endl;
-    }
+    BiharmonicStiffnessVisitor<2, double> poisson_stiffness(dof_map, body_force);
+    surface1->Accept(poisson_stiffness);
+    surface2->Accept(poisson_stiffness);
+    surface3->Accept(poisson_stiffness);
+    SparseMatrix<double> stiffness, load;
+
+    poisson_stiffness.StiffnessAssembler(stiffness);
+    poisson_stiffness.LoadAssembler(load);
+    SparseMatrix<double> temp = stiffness.selfadjointView<Eigen::Upper>();
+    cout<<MatrixXd(temp)<<endl;
 
     return 0;
 }

@@ -181,7 +181,7 @@ public:
                             IndexedValue(index[i] + initialIndex, index[j] + initialIndex, tempStiffMatrix(i, j)));
                 }
             }
-            std::lock_guard<std::mutex> lock(pmutex);
+            std::lock_guard<std::mutex> lock(pmutex); 
             this->_poissonBodyForce.push_back(IndexedValue(index[i] + initialIndex, 0, tempLoadVector(i)));
         }
     }
