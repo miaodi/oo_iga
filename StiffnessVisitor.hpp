@@ -23,15 +23,16 @@ public:
     StiffnessVisitor(const DofMapper<N, T>& dof_mapper, const LoadFunctor& body_force)
             :DomainVisitor<2, N, T>(dof_mapper), _bodyForceFunctor(body_force) { }
 
-//    Assemble stiffness matrix and rhs
-    void
-    LocalAssemble(Element<2, N, T>*, const QuadratureRule<T>&, const KnotSpan&, std::mutex&);
-
     void
     StiffnessAssembler(Eigen::SparseMatrix<T>&) const;
 
     void
     LoadAssembler(Eigen::SparseMatrix<T>&) const;
+
+protected:
+    //    Assemble stiffness matrix and rhs
+    void
+    LocalAssemble(Element<2, N, T>*, const QuadratureRule<T>&, const KnotSpan&, std::mutex&);
 
     virtual void
     IntegralElementAssembler(Matrix& bilinear_form_trail, Matrix& bilinear_form_test, Matrix& linear_form_value,
@@ -66,8 +67,8 @@ StiffnessVisitor<N, T>::LocalAssemble(Element<2, N, T>* g,
     for (int i = 0; i<quadrature_points.size(); ++i)
     {
         weights.push_back(quadrature_points[i].second*domain->Jacobian(quadrature_points[i].first));
-        IntegralElementAssembler(bilinear_form_test[i], bilinear_form_trial[i], linear_form_test[i],
-                linear_form_value[i], domain, quadrature_points[i].first);
+        IntegralElementAssembler(bilinear_form_trial[i], bilinear_form_test[i], linear_form_value[i],
+                linear_form_test[i], domain, quadrature_points[i].first);
     }
 
     auto stiff = this->LocalStiffness(bilinear_form_test, bilinear_form_test_indices, bilinear_form_trial,

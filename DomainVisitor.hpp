@@ -10,7 +10,7 @@
 #include <thread>
 #include <mutex>
 
-template<typename T>
+template <typename T>
 struct MatrixData
 {
     std::unique_ptr<std::vector<int>> _rowIndices;
@@ -23,7 +23,7 @@ struct MatrixData
           _matrix{std::make_unique<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>>()} {}
 };
 
-template<typename T>
+template <typename T>
 struct VectorData
 {
     std::unique_ptr<std::vector<int>> _rowIndices;
@@ -34,23 +34,23 @@ struct VectorData
           _vector{std::make_unique<Eigen::Matrix<T, Eigen::Dynamic, 1>>()} {}
 };
 
-template<int d, int N, typename T>
+template <int d, int N, typename T>
 class DomainVisitor : public Visitor<d, N, T>
 {
-public:
+  public:
     using Knot = typename QuadratureRule<T>::Coordinate;
     using Quadrature = typename QuadratureRule<T>::Quadrature;
     using QuadList = typename QuadratureRule<T>::QuadList;
     using KnotSpan = std::pair<Knot, Knot>;
-    using KnotSpanlist  = std::vector<KnotSpan>;
+    using KnotSpanlist = std::vector<KnotSpan>;
     using LoadFunctor = std::function<std::vector<T>(const Knot &)>;
     using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
     using Vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
 
     DomainVisitor(const DofMapper<N, T> &dof_mapper)
-        : _dofMapper(dof_mapper) {};
+        : _dofMapper(dof_mapper){};
 
-//    Multi thread domain visitor
+    //    Multi thread domain visitor
     void
     Visit(Element<d, N, T> *g)
     {
@@ -64,8 +64,7 @@ public:
         const int grainsize = knot_spans.size() / n;
         auto work_iter = knot_spans.begin();
         auto
-            lambda = [&](typename KnotSpanlist::iterator begin, typename KnotSpanlist::iterator end) -> void
-        {
+            lambda = [&](typename KnotSpanlist::iterator begin, typename KnotSpanlist::iterator end) -> void {
             for (auto i = begin; i != end; ++i)
             {
                 LocalAssemble(g, quad_rule, *i, pmutex);
@@ -77,13 +76,14 @@ public:
             work_iter += grainsize;
         }
         threads.back() = std::thread(lambda, work_iter, knot_spans.end());
-        for (auto &i:threads)
+        for (auto &i : threads)
         {
             i.join();
         }
     }
 
-//    Initialize quadrature rule
+protected:
+    //    Initialize quadrature rule
     virtual void
     InitializeQuadratureRule(Element<d, N, T> *g, QuadratureRule<T> &quad_rule)
     {
@@ -103,14 +103,14 @@ public:
         }
     }
 
-//    Initialize knot spans
+    //    Initialize knot spans
     virtual void
     InitializeKnotSpans(Element<d, N, T> *g, KnotSpanlist &knot_spans)
     {
         g->GetDomain()->KnotSpanGetter(knot_spans);
     }
 
-//    Pure virtual method local assemble algorithm is needed to be implemented here
+    //    Pure virtual method local assemble algorithm is needed to be implemented here
     virtual void
     LocalAssemble(Element<d, N, T> *, const QuadratureRule<T> &, const KnotSpan &, std::mutex &) = 0;
 
@@ -121,7 +121,7 @@ public:
                    std::vector<int> &basis_indices,
                    const std::vector<T> &quadrature_wegiht)
     {
-        Matrix tmp(weight_basis.size(), basis.size());
+        Matrix tmp(weight_basis[0].cols(), basis[0].cols());
         tmp.setZero();
         for (int i = 0; i < quadrature_wegiht.size(); ++i)
         {
@@ -140,7 +140,7 @@ public:
              const std::vector<Matrix> &function_value,
              const std::vector<T> &quadrature_wegiht)
     {
-        Vector tmp(weight_basis.size());
+        Vector tmp(weight_basis[0].cols());
         tmp.setZero();
         for (int i = 0; i < quadrature_wegiht.size(); ++i)
         {
@@ -159,7 +159,7 @@ public:
                         std::vector<Eigen::Triplet<T>> &mapped_triplet) const
     {
         mapped_triplet.clear();
-        for (const auto &i:original_triplet)
+        for (const auto &i : original_triplet)
         {
             auto it_row = row_map.find(i.row());
             auto it_col = col_map.find(i.col());
@@ -176,7 +176,7 @@ public:
                         std::vector<Eigen::Triplet<T>> &mapped_triplet) const
     {
         mapped_triplet.clear();
-        for (const auto &i:original_triplet)
+        for (const auto &i : original_triplet)
         {
             auto it_row = row_map.find(i.row());
             if (it_row != row_map.end())
@@ -204,9 +204,9 @@ public:
                        indexed_matrix._rowIndices->begin(), [&start_index](const int &i) { return i + start_index; });
     }
 
-//    Convert non-zero Symmetric MatrixData elements to Triplet
+    //    Convert non-zero Symmetric MatrixData elements to Triplet
     void
-    SymmetricTriplet(const MatrixData<T> &matrix, std::vector<Eigen::Triplet<T>> &triplet) const
+    SymmetricTriplet(const MatrixData<T> &matrix, std::vector<Eigen::Triplet<T>> &triplet, const T &tol = 1e-11) const
     {
         ASSERT(matrix._rowIndices->size() == matrix._colIndices->size(),
                "Given matrix data does not fit to symmetric assembler.");
@@ -215,7 +215,7 @@ public:
             for (int j = i; j < matrix._colIndices->size(); ++j)
             {
                 T tmp{(*matrix._matrix)(i, j)};
-                if (tmp != 0)
+                if (std::abs(tmp) > tol)
                 {
                     triplet.emplace_back(Eigen::Triplet<T>((*matrix._rowIndices)[i], (*matrix._colIndices)[j], tmp));
                 }
@@ -225,28 +225,28 @@ public:
 
     //    Convert non-zero MatrixData elements to Triplet
     void
-    Triplet(const MatrixData<T> &matrix, std::vector<Eigen::Triplet<T>> &triplet) const
+    Triplet(const MatrixData<T> &matrix, std::vector<Eigen::Triplet<T>> &triplet, const T &tol = 1e-11) const
     {
         for (int i = 0; i < matrix._rowIndices->size(); ++i)
         {
             for (int j = 0; j < matrix._colIndices->size(); ++j)
             {
                 T tmp{(*matrix._matrix)(i, j)};
-                if (tmp != 0)
+                if (std::abs(tmp) > tol)
                 {
                     triplet.emplace_back(Eigen::Triplet<T>((*matrix._rowIndices)[i], (*matrix._colIndices)[j], tmp));
                 }
             }
         }
     }
-//    Convert non-zero VectorData elements to Triplet
+    //    Convert non-zero VectorData elements to Triplet
     void
-    Triplet(const VectorData<T> &vector, std::vector<Eigen::Triplet<T>> &triplet) const
+    Triplet(const VectorData<T> &vector, std::vector<Eigen::Triplet<T>> &triplet, const T &tol = 1e-11) const
     {
         for (int i = 0; i < vector._rowIndices->size(); ++i)
         {
             T tmp{(*vector._vector)(i)};
-            if (tmp != 0)
+            if (std::abs(tmp) > tol)
             {
                 triplet.emplace_back(Eigen::Triplet<T>((*vector._rowIndices)[i], 0, tmp));
             }
@@ -268,7 +268,7 @@ public:
     void
     MatrixDataIndexModifier(const std::map<int, int> &index_map, MatrixData<T> &matrix_data)
     {
-//        Row operation
+        //        Row operation
         for (auto it = matrix_data._rowIndices->begin(); it != matrix_data._rowIndices->end();)
         {
             if (!IndexModifier(index_map, *it))
@@ -282,7 +282,7 @@ public:
                 ++it;
             }
         }
-//        Column operation
+        //        Column operation
         for (auto it = matrix_data._colIndices->begin(); it != matrix_data._colIndices->end();)
         {
             if (!IndexModifier(index_map, *it))
@@ -301,7 +301,7 @@ public:
     void
     VectorDataIndexModifier(const std::map<int, int> &index_map, VectorData<T> &vector_data)
     {
-//        Row operation
+        //        Row operation
         for (auto it = vector_data._rowIndices->begin(); it != vector_data._rowIndices->end();)
         {
             if (!IndexModifier(index_map, *it))
@@ -345,6 +345,6 @@ public:
         return res;
     }
 
-protected:
+  protected:
     const DofMapper<N, T> &_dofMapper;
 };

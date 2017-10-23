@@ -271,7 +271,7 @@ public:
             auto slave_indices = _slaveDof.find(*it);
             if (slave_indices!=_slaveDof.end())
             {
-                res -= slave_indices->size();
+                res -= slave_indices->second.size();
             }
         }
         return res;
@@ -288,11 +288,11 @@ public:
             auto Dirichlet_indices = _DirichletDof.find(*it);
             if (slave_indices!=_slaveDof.end())
             {
-                res -= slave_indices->size();
+                res -= slave_indices->second.size();
             }
             if (Dirichlet_indices!=_DirichletDof.end())
             {
-                res -= Dirichlet_indices->size();
+                res -= Dirichlet_indices->second.size();
             }
         }
         return res;
@@ -321,7 +321,7 @@ public:
             auto slave_indices = _slaveDof.find(i);
             if (slave_indices!=_slaveDof.end())
             {
-                res -= slave_indices->size();
+                res -= slave_indices->second.size();
             }
         }
         return res;
@@ -428,7 +428,6 @@ public:
     bool
     GlobalToCondensedIndex(int& i) const
     {
-
         for (auto it = _domains.cbegin(); it!=_domains.cend(); ++it)
         {
             if (StartingIndex(*it)>i)
@@ -437,6 +436,7 @@ public:
                 return CondensedIndex(*(it-1),i);
             }
         }
+        return false;
     }
     // Return a vector of global indices of slave d.o.f in the given domain
     std::vector<int>

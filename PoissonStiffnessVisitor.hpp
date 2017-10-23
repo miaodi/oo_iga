@@ -23,6 +23,7 @@ public:
     PoissonStiffnessVisitor(const DofMapper<N, T>& dof_mapper, const LoadFunctor& body_force)
             :StiffnessVisitor<N, T>(dof_mapper, body_force) { }
 
+protected:
     virtual void
     IntegralElementAssembler(Matrix& bilinear_form_trail, Matrix& bilinear_form_test, Matrix& linear_form_value,
             Matrix& linear_form_test, const DomainShared_ptr domain, const Knot& u) const;

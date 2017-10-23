@@ -8,7 +8,7 @@
 #include "PoissonMapper.hpp"
 #include "PoissonStiffnessVisitor.hpp"
 #include "BiharmonicStiffnessVisitor.hpp"
-#include <ctime>
+#include "PoissonDirichletBoundaryVisitor.hpp"
 
 using namespace Eigen;
 using namespace std;
@@ -27,14 +27,12 @@ main()
 
     vector<Vector2d> point{point1, point2, point3, point4};
     vector<Vector2d> pointt{point1, point3, point5, point6};
-    vector<Vector2d> pointtt{point3, point4, point5, point7};
+    vector<Vector2d> pointtt{point3, point4, point6, point7};
 
     auto domain1 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(vector<KnotVector<double>>{a, a}, point);
     auto domain2 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(vector<KnotVector<double>>{a, a}, pointt);
     auto domain3 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(vector<KnotVector<double>>{a, a}, pointtt);
-    domain1->DegreeElevate(1);
-    domain2->DegreeElevate(1);
-    domain3->DegreeElevate(1);
+
 
     auto surface1 = make_shared<Surface<2, double>>(domain1, array<bool, 4>{false, false, true, true});
     surface1->SurfaceInitialize();
@@ -68,16 +66,25 @@ main()
     dof_map.PrintSlaveGlobalIndicesIn(domain2);
     dof_map.PrintSlaveGlobalIndicesIn(domain3);
 
-    BiharmonicStiffnessVisitor<2, double> poisson_stiffness(dof_map, body_force);
+    PoissonStiffnessVisitor<2, double> poisson_stiffness(dof_map, body_force);
     surface1->Accept(poisson_stiffness);
     surface2->Accept(poisson_stiffness);
     surface3->Accept(poisson_stiffness);
-    SparseMatrix<double> stiffness, load;
+    SparseMatrix<double> stiffness, load, dirichlet;
 
     poisson_stiffness.StiffnessAssembler(stiffness);
     poisson_stiffness.LoadAssembler(load);
     SparseMatrix<double> temp = stiffness.selfadjointView<Eigen::Upper>();
-    cout<<MatrixXd(temp)<<endl;
-
+    PoissonDirichletBoundaryVisitor<2,double> boundary(dof_map,body_force);
+    surface1->EdgeAccept(boundary);
+    surface2->EdgeAccept(boundary);
+    surface3->EdgeAccept(boundary);
+    boundary.DirichletBoundary(dirichlet);
+    Vector1d u;
+    u<<.3;
+    cout<<surface3->EdgePointerGetter(0)->NormalDirection(u)<<endl;
+    cout<<surface3->EdgePointerGetter(1)->NormalDirection(u)<<endl;
+    cout<<surface3->EdgePointerGetter(2)->NormalDirection(u)<<endl;
+    cout<<surface3->EdgePointerGetter(3)->NormalDirection(u)<<endl;
     return 0;
 }

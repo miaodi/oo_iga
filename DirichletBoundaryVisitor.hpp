@@ -7,12 +7,24 @@
 #include "DomainVisitor.hpp"
 #include "Edge.hpp"
 
+namespace Accessory {
+
+    template<int N, int d_from, int d_to, typename T>
+    bool MapParametricPoint(const PhyTensorBsplineBasis<d_from, N, T>* const from_domain,
+            const Eigen::Matrix<T, Eigen::Dynamic, 1>& from_point,
+            const PhyTensorBsplineBasis<d_to, N, T>* const to_domain, Eigen::Matrix<T, Eigen::Dynamic, 1>& to_point)
+    {
+        ASSERT(from_domain->InDomain(from_point), "The point about to be mapped is out of the domain.");
+        Eigen::Matrix<T, N, 1> physical_point = from_domain->AffineMap(from_point);
+        return to_domain->InversePts(physical_point, to_point);
+    };
+}
+
 template<int N, typename T>
 class DofMapper;
 
 template<int N, typename T>
-class DirichletBoundaryVisitor : public DomainVisitor<1, N, T>
-{
+class DirichletBoundaryVisitor : public DomainVisitor<1, N, T> {
 public:
     using Knot = typename DomainVisitor<1, N, T>::Knot;
     using Quadrature = typename DomainVisitor<1, N, T>::Quadrature;
@@ -22,31 +34,37 @@ public:
     using LoadFunctor = typename DomainVisitor<1, N, T>::LoadFunctor;
     using Matrix = typename DomainVisitor<1, N, T>::Matrix;
     using Vector = typename DomainVisitor<1, N, T>::Vector;
+    using DomainShared_ptr = typename std::shared_ptr<PhyTensorBsplineBasis<2, N, T>>;
 
 public:
-    DirichletBoundaryVisitor(const DofMapper<N, T> &dof_mapper, const LoadFunctor &body_force)
-        : DomainVisitor<2, N, T>(dof_mapper), _DirichletFunctor(body_force) {}
+    DirichletBoundaryVisitor(const DofMapper<N, T>& dof_mapper, const LoadFunctor& boundary_value)
+            :DomainVisitor<1, N, T>(dof_mapper), _dirichletFunctor(boundary_value) { }
 
+    void
+    Visit(Element<1, N, T>*);
+
+    void
+    DirichletBoundary(Eigen::SparseMatrix<T>& dirichlet_boundary) const;
+
+    void
+    CondensedDirichletBoundary(Eigen::SparseMatrix<T>& dirichlet_boundary) const;
+
+protected:
     void
     SolveDirichletBoundary() const;
 
-    void
-    Visit(Element<1, N, T> *);
+    virtual void
+    IntegralElementAssembler(Matrix& bilinear_form_trail, Matrix& bilinear_form_test, Matrix& linear_form_value,
+            Matrix& linear_form_test, const DomainShared_ptr domain, const Knot& u) const = 0;
 
     void
-    LocalAssemble(Element<1, N, T> *, const QuadratureRule<T> &, const KnotSpan &, std::mutex &);
-
-    void
-    DirichletBoundary(Eigen::SparseMatrix<T> &dirichlet_boundary) const;
-
-    void
-    CondensedDirichletBoundary(Eigen::SparseMatrix<T> &dirichlet_boundary) const;
+    LocalAssemble(Element<1, N, T>*, const QuadratureRule<T>&, const KnotSpan&, std::mutex&);
 
 protected:
     std::vector<Eigen::Triplet<T>> _gramian;
     std::vector<Eigen::Triplet<T>> _rhs;
-    std::vector<Eigen::Triplet<T>> _dirichlet;
-    const LoadFunctor &_DirichletFunctor;
+    mutable std::vector<Eigen::Triplet<T>> _dirichlet;
+    const LoadFunctor& _dirichletFunctor;
 };
 
 template<int N, typename T>
@@ -60,11 +78,11 @@ DirichletBoundaryVisitor<N, T>::SolveDirichletBoundary() const
     this->CondensedTripletVia(dirichlet_map, dirichlet_map, _gramian, condensed_gramian);
     this->CondensedTripletVia(dirichlet_map, _rhs, condensed_rhs);
     Eigen::SparseMatrix<T> gramian_matrix_triangle, rhs_vector, gramian_matrix;
-    this->MatrixAssembler(dirichlet_map.size(), dirichlet_map.size(), _gramian, gramian_matrix_triangle);
-    this->VectorAssembler(dirichlet_map.size(), _rhs, rhs_vector);
-    gramian_matrix = gramian_matrix_triangle.selfadjointView<Eigen::Upper>();
+    this->MatrixAssembler(dirichlet_map.size(), dirichlet_map.size(), condensed_gramian, gramian_matrix_triangle);
+    this->VectorAssembler(dirichlet_map.size(), condensed_rhs, rhs_vector);
+    gramian_matrix = gramian_matrix_triangle.template selfadjointView<Eigen::Upper>();
     Vector res = this->Solve(gramian_matrix, rhs_vector);
-    for (int i = 0; i < res.rows(); ++i)
+    for (int i = 0; i<res.rows(); ++i)
     {
         _dirichlet.push_back(Eigen::Triplet<T>(dirichlet_indices[i], 0, res(i)));
     }
@@ -72,17 +90,25 @@ DirichletBoundaryVisitor<N, T>::SolveDirichletBoundary() const
 
 template<int N, typename T>
 void
-DirichletBoundaryVisitor<N, T>::DirichletBoundary(Eigen::SparseMatrix<T> &dirichlet_boundary) const
+DirichletBoundaryVisitor<N, T>::DirichletBoundary(Eigen::SparseMatrix<T>& dirichlet_boundary) const
 {
-    this->VectorAssembler(_dofMapper.Dof(), _dirichlet, dirichlet_boundary);
+    if (_dirichlet.size()==0)
+    {
+        SolveDirichletBoundary();
+    }
+    this->VectorAssembler(this->_dofMapper.Dof(), _dirichlet, dirichlet_boundary);
 }
 
 template<int N, typename T>
 void
-DirichletBoundaryVisitor<N, T>::CondensedDirichletBoundary(Eigen::SparseMatrix<T> &dirichlet_boundary) const
+DirichletBoundaryVisitor<N, T>::CondensedDirichletBoundary(Eigen::SparseMatrix<T>& dirichlet_boundary) const
 {
+    if (_dirichlet.size()==0)
+    {
+        SolveDirichletBoundary();
+    }
     std::vector<Eigen::Triplet<T>> condensed_dirichlet;
-    for (const auto &i : _dirichlet)
+    for (const auto& i : _dirichlet)
     {
         int global_dirichlet_index = i.row();
         if (this->_dofMapper.GlobalToCondensedIndex(global_dirichlet_index))
@@ -94,14 +120,14 @@ DirichletBoundaryVisitor<N, T>::CondensedDirichletBoundary(Eigen::SparseMatrix<T
             std::cout << "error happens when creates condensed richlet boundary" << std::endl;
         }
     }
-    this->VectorAssembler(_dofMapper.CondensedDof(), condensed_dirichlet, dirichlet_boundary);
+    this->VectorAssembler(this->_dofMapper.CondensedDof(), condensed_dirichlet, dirichlet_boundary);
 }
 
 template<int N, typename T>
 void
-DirichletBoundaryVisitor<N, T>::Visit(Element<1, N, T> *g)
+DirichletBoundaryVisitor<N, T>::Visit(Element<1, N, T>* g)
 {
-    auto edge = dynamic_cast<Edge<N, T> *>(g);
+    auto edge = dynamic_cast<Edge<N, T>*>(g);
     if (edge->IsDirichlet())
     {
         DomainVisitor<1, N, T>::Visit(g);
@@ -110,28 +136,48 @@ DirichletBoundaryVisitor<N, T>::Visit(Element<1, N, T> *g)
 
 template<int N, typename T>
 void
-DirichletBoundaryVisitor<N, T>::LocalAssemble(Element<1, N, T> *g,
-                                              const QuadratureRule<T> &quadrature_rule,
-                                              const DirichletBoundaryVisitor<N, T>::KnotSpan &knot_span,
-                                              std::mutex &pmutex)
+DirichletBoundaryVisitor<N, T>::LocalAssemble(Element<1, N, T>* g,
+        const QuadratureRule<T>& quadrature_rule,
+        const DirichletBoundaryVisitor<N, T>::KnotSpan& knot_span,
+        std::mutex& pmutex)
 {
-    auto domain = g->GetDomain();
-    QuadList quadrature_points;
-    quadrature_rule.MapToQuadrature(knot_span, quadrature_points);
 
-    auto index = domain->ActiveIndex(quadrature_points[0].first);
-    this->_dofMapper.IndicesToGlobal(domain, index);
-    auto num_of_quadrature = quadrature_points.size();
+    auto edge = dynamic_cast<Edge<N, T>*>(g);
+    auto test_domain = edge->GetDomain();
+    auto trial_domain = (edge->Parent(0).lock())->GetDomain();
+    QuadList test_quadrature_points;
+    quadrature_rule.MapToQuadrature(knot_span, test_quadrature_points);
 
-    std::vector<int> bilinear_form_test_indices{index}, bilinear_form_trial_indices{index}, linear_form_test_indices{
-        index};
+    std::vector<int> index;
+    this->_dofMapper.IndicesToGlobal(trial_domain, index);
+    auto num_of_quadrature = test_quadrature_points.size();
+
     std::vector<Matrix> bilinear_form_test(num_of_quadrature), bilinear_form_trial(
-        num_of_quadrature), linear_form_test(num_of_quadrature), linear_form_value(num_of_quadrature);
+            num_of_quadrature), linear_form_test(num_of_quadrature), linear_form_value(num_of_quadrature);
     std::vector<T> weights;
-    for (int i = 0; i<quadrature_points.size(); ++i)
+    for (int i = 0; i<num_of_quadrature; ++i)
     {
-        weights.push_back(quadrature_points[i].second*domain->Jacobian(quadrature_points[i].first));
-        IntegralElementAssembler(bilinear_form_test[i], bilinear_form_trial[i], linear_form_test[i],
-                                 linear_form_value[i], domain, quadrature_points[i].first);
+        weights.push_back(test_quadrature_points[i].second*test_domain->Jacobian(test_quadrature_points[i].first));
+        Vector trial_quadrature_abscissa;
+        if (!Accessory::MapParametricPoint(&*test_domain, test_quadrature_points[i].first, &*trial_domain,
+                trial_quadrature_abscissa))
+        {
+            std::cout << "MapParametericPoint failed" << std::endl;
+        }
+        IntegralElementAssembler(bilinear_form_trial[i], bilinear_form_test[i], linear_form_value[i],
+                linear_form_test[i], trial_domain, trial_quadrature_abscissa);
+        if (index.size()==0)
+        {
+            index = trial_domain->ActiveIndex(trial_quadrature_abscissa);
+        }
     }
+    this->_dofMapper.IndicesToGlobal(trial_domain, index);
+    std::vector<int> bilinear_form_test_indices{index}, bilinear_form_trial_indices{index}, linear_form_test_indices{
+            index};
+    auto stiff = this->LocalStiffness(bilinear_form_test, bilinear_form_test_indices, bilinear_form_trial,
+            bilinear_form_trial_indices, weights);
+    auto load = this->LocalRhs(linear_form_test, linear_form_test_indices, linear_form_value, weights);
+    std::lock_guard<std::mutex> lock(pmutex);
+    this->SymmetricTriplet(stiff, _gramian);
+    this->Triplet(load, _rhs);
 }

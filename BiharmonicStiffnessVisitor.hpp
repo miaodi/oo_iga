@@ -23,6 +23,7 @@ public:
     BiharmonicStiffnessVisitor(const DofMapper<N, T>& dof_mapper, const LoadFunctor& body_force)
             :StiffnessVisitor<N, T>(dof_mapper, body_force) { }
 
+protected:
     virtual void
     IntegralElementAssembler(Matrix& bilinear_form_trail, Matrix& bilinear_form_test, Matrix& linear_form_value,
             Matrix& linear_form_test, const DomainShared_ptr domain, const Knot& u) const;
@@ -31,7 +32,8 @@ public:
 };
 
 template<int N, typename T>
-void BiharmonicStiffnessVisitor<N, T>::IntegralElementAssembler(BiharmonicStiffnessVisitor<N, T>::Matrix& bilinear_form_trail,
+void BiharmonicStiffnessVisitor<N, T>::IntegralElementAssembler(
+        BiharmonicStiffnessVisitor<N, T>::Matrix& bilinear_form_trail,
         BiharmonicStiffnessVisitor<N, T>::Matrix& bilinear_form_test,
         BiharmonicStiffnessVisitor<N, T>::Matrix& linear_form_value,
         BiharmonicStiffnessVisitor<N, T>::Matrix& linear_form_test,
@@ -46,7 +48,7 @@ void BiharmonicStiffnessVisitor<N, T>::IntegralElementAssembler(BiharmonicStiffn
     for (int j = 0; j<evals->size(); ++j)
     {
         linear_form_test(0, j) = (*evals)[j].second[0];
-        bilinear_form_trail(0, j) = (*evals)[j].second[3]+ (*evals)[j].second[5];
+        bilinear_form_trail(0, j) = (*evals)[j].second[3]+(*evals)[j].second[5];
     }
     bilinear_form_test = bilinear_form_trail;
 }
