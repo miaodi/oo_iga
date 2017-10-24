@@ -57,8 +57,7 @@ PoissonDirichletBoundaryVisitor<N, T>::IntegralElementAssembler(Matrix &bilinear
     //    set up integration weights
     integral_weight = u.second * edge_domain->Jacobian(u.first);
     Vector trial_quadrature_abscissa;
-    if (!Accessory::MapParametricPoint(&*edge_domain, u.first, &*trial_domain,
-                                       trial_quadrature_abscissa))
+    if (!Accessory::MapParametricPoint(&*edge_domain, u.first, &*trial_domain, trial_quadrature_abscissa))
     {
         std::cout << "MapParametericPoint failed" << std::endl;
     }
@@ -75,6 +74,7 @@ PoissonDirichletBoundaryVisitor<N, T>::IntegralElementAssembler(Matrix &bilinear
     bilinear_form_trail = linear_form_test;
     bilinear_form_test = bilinear_form_trail;
 
+    // set up indices cooresponding to test basis functions and trial basis functions
     if (bilinear_form_test_indices.size() == 0)
     {
         bilinear_form_test_indices = trial_domain->ActiveIndex(trial_quadrature_abscissa);

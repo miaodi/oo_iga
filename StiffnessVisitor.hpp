@@ -48,7 +48,7 @@ template<int N, typename T>
 void
 StiffnessVisitor<N, T>::LocalAssemble(Element<2, N, T>* g,
         const QuadratureRule<T>& quadrature_rule,
-        const StiffnessVisitor<N, T>::KnotSpan& knot_span,
+        const KnotSpan& knot_span,
         std::mutex& pmutex)
 {
     auto domain = g->GetDomain();

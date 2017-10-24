@@ -11,7 +11,7 @@
 #include "BiharmonicStiffnessVisitor.hpp"
 #include "PoissonDirichletBoundaryVisitor.hpp"
 #include "BiharmonicDirichletBoundaryVisitor.hpp"
-#include "InterfaceVisitor.hpp"
+#include "PoissonInterface.hpp"
 
 using namespace Eigen;
 using namespace std;
@@ -84,7 +84,7 @@ main()
     dof_map.PrintSlaveGlobalIndicesIn(domain2);
     dof_map.PrintSlaveGlobalIndicesIn(domain3);
 
-    InterfaceVisitor<2, double> interface(dof_map);
+    PoissonInterface<2,double> interface(dof_map);
     surface1->EdgeAccept(interface);
     surface2->EdgeAccept(interface);
     surface3->EdgeAccept(interface);

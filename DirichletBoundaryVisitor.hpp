@@ -136,7 +136,6 @@ DirichletBoundaryVisitor<N, T>::LocalAssemble(Element<1, N, T> *g,
                                               const DirichletBoundaryVisitor<N, T>::KnotSpan &knot_span,
                                               std::mutex &pmutex)
 {
-
     auto edge = dynamic_cast<Edge<N, T> *>(g);
     QuadList edge_quadrature_points;
     quadrature_rule.MapToQuadrature(knot_span, edge_quadrature_points);

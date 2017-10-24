@@ -669,7 +669,7 @@ class DofMapper
 
   private:
     //! container of domain smart ptr
-    std::vector<const DomainShared_ptr> _domains;
+    std::vector<DomainShared_ptr> _domains;
     //! map domain smart ptr to d.o.f
     std::map<const DomainShared_ptr, int> _patchDof;
     //! map domain smart ptr to sorted dirichlet d.o.f

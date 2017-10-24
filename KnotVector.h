@@ -88,6 +88,9 @@ public:
 
     KnotVector Difference(const KnotVector&) const;
 
+    // leave the knot vector with unique knots, difference within tolerance will not be considered.
+    void Uniquify(const T& tol=1e-12);
+
 private:
     //Knots with repetitions {0,0,0,.5,1,1,1}
     knotContainer _multiKnots;
