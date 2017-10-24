@@ -25,7 +25,7 @@ public:
         auto edge = dynamic_cast<Edge<N, T> *>(g);
 
 //        If not matched to other edges, see if it is a Dirichlet boundary
-        if (!edge->GetMatchInfo())
+        if (!edge->IsMatched())
         {
             if (edge->IsDirichlet())
             {
@@ -40,7 +40,7 @@ public:
         {
 
 //          See if it is a slave edge.  I
-            if (!edge->Slave())
+            if (!edge->IsSlave())
                 return;
             auto tmp = edge->ExclusiveIndices(_numOfLayer);
             for (const auto &i : *tmp)

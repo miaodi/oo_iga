@@ -6,6 +6,7 @@
 
 #include <unordered_map>
 #include "TensorBsplineBasis.h"
+#include "Utility.hpp"
 
 template<int d, int N, typename T>
 struct ComputeJacobian;
@@ -461,7 +462,7 @@ bool PhyTensorBsplineBasis<d, N, T>::InversePts(const PhyTensorBsplineBasis::Phy
                 }
             }
         }
-        PhyPts residual = phyu-AffineMap(result);
+        vector residual = phyu-AffineMap(result);
         if (residual.norm()<=error)
             return true;
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> jacobianMatrix(JacobianMatrix(result));

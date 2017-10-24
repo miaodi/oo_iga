@@ -6,6 +6,7 @@
 
 #include "DirichletBoundaryVisitor.hpp"
 #include "DofMapper.hpp"
+#include "Utility.hpp"
 
 template<int N, typename T>
 class BiharmonicDirichletBoundaryVisitor : public DirichletBoundaryVisitor<N, T>
@@ -37,6 +38,7 @@ protected:
                              Edge<N, T> *edge,
                              const Quadrature &u) const;
 };
+
 template<int N, typename T>
 void
 BiharmonicDirichletBoundaryVisitor<N, T>::IntegralElementAssembler(Matrix &bilinear_form_trail,

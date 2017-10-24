@@ -268,13 +268,13 @@ public:
     }
 
     bool
-    GetMatchInfo() const
+    IsMatched() const
     {
         return _matched;
     }
 
     bool
-    Slave() const
+    IsSlave() const
     {
         return _slave;
     }

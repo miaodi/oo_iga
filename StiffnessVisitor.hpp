@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include "DofMapper.hpp"
 #include "DomainVisitor.hpp"
 
 template<int N, typename T>

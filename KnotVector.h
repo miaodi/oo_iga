@@ -29,16 +29,15 @@ public:
     using uniContainer = std::map<T, int>;
 
     //methods
-    KnotVector() {};
+    KnotVector() { };
 
-    KnotVector(const knotContainer &target);
+    KnotVector(const knotContainer& target);
 
-    KnotVector(const uniContainer &target);
+    KnotVector(const uniContainer& target);
 
-    const T &operator[](int i) const;
+    const T& operator[](int i) const;
 
-    T &operator()(int i);
-
+    T& operator()(int i);
 
     void Insert(T knot);
 
@@ -64,37 +63,39 @@ public:
 
     void InitClosedUniform(int _dof, int _deg, T first = T(0.0), T last = T(1.0));
 
-    KnotVector UniKnotUnion(const KnotVector &vb) const;
+    KnotVector UniKnotUnion(const KnotVector& vb) const;
 
-    int FindSpan(const T &u) const;
+    int FindSpan(const T& u) const;
 
     std::vector<std::pair<T, T>> KnotSpans() const;
 
-    int SpanNum(const T &u) const{
+    int SpanNum(const T& u) const
+    {
         uniContainer temp;
         UniQue(temp);
         knotContainer tmp;
-        for(auto &i:temp){
+        for (auto& i:temp)
+        {
             tmp.push_back(i.first);
         }
         return KnotVector(tmp).FindSpan(u);
     };
 
-    std::vector<std::pair<Eigen::Matrix<T, 1, 1>, Eigen::Matrix<T, 1, 1>>> KnotEigenSpans() const;
+    std::vector<std::pair<Eigen::Matrix<T, Eigen::Dynamic, 1>, Eigen::Matrix<T, Eigen::Dynamic, 1>>>
+    KnotEigenSpans() const;
 
     void resize(int t) { _multiKnots.resize(t); };
 
-    KnotVector Difference(const KnotVector &) const;
+    KnotVector Difference(const KnotVector&) const;
 
 private:
     //Knots with repetitions {0,0,0,.5,1,1,1}
     knotContainer _multiKnots;
 
-    void UniQue(uniContainer &) const;
+    void UniQue(uniContainer&) const;
 
-    void MultiPle(const uniContainer &);
+    void MultiPle(const uniContainer&);
 
 };
-
 
 #endif //OO_IGA_KNOTVECTOR_H

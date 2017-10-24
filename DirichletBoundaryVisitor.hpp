@@ -6,25 +6,8 @@
 
 #include "DomainVisitor.hpp"
 #include "Edge.hpp"
+#include "Utility.hpp"
 
-namespace Accessory
-{
-
-template<int N, int d_from, int d_to, typename T>
-bool
-MapParametricPoint(const PhyTensorBsplineBasis<d_from, N, T> *const from_domain,
-                   const Eigen::Matrix<T, Eigen::Dynamic, 1> &from_point,
-                   const PhyTensorBsplineBasis<d_to, N, T> *const to_domain,
-                   Eigen::Matrix<T, Eigen::Dynamic, 1> &to_point)
-{
-    ASSERT(from_domain->InDomain(from_point), "The point about to be mapped is out of the domain.");
-    Eigen::Matrix<T, N, 1> physical_point = from_domain->AffineMap(from_point);
-    return to_domain->InversePts(physical_point, to_point);
-};
-}
-
-template<int N, typename T>
-class DofMapper;
 
 template<int N, typename T>
 class DirichletBoundaryVisitor : public DomainVisitor<1, N, T>

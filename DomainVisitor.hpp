@@ -7,6 +7,7 @@
 #include "Visitor.hpp"
 #include "Topology.hpp"
 #include "QuadratureRule.h"
+#include "DofMapper.hpp"
 #include <thread>
 #include <mutex>
 

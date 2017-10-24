@@ -11,6 +11,7 @@
 #include "BiharmonicStiffnessVisitor.hpp"
 #include "PoissonDirichletBoundaryVisitor.hpp"
 #include "BiharmonicDirichletBoundaryVisitor.hpp"
+#include "InterfaceVisitor.hpp"
 
 using namespace Eigen;
 using namespace std;
@@ -34,19 +35,25 @@ main()
     auto domain1 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(vector<KnotVector<double>>{a, a}, point);
     auto domain2 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(vector<KnotVector<double>>{a, a}, pointt);
     auto domain3 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(vector<KnotVector<double>>{a, a}, pointtt);
-    domain1->DegreeElevate(1);
-    domain2->DegreeElevate(1);
-    domain3->DegreeElevate(1);
-    domain1->UniformRefine(3);
-    domain2->UniformRefine(3);
-    domain3->UniformRefine(3);
+    domain1->DegreeElevate(2);
+    domain2->DegreeElevate(2);
+    domain3->DegreeElevate(2);
+    domain1->UniformRefine(1);
+    domain2->UniformRefine(1);
+    domain3->KnotInsertion(0, 1.0/3);
+    domain3->KnotInsertion(0, 2.0/3);
+    domain3->KnotInsertion(1, 1.0/3);
+    domain3->KnotInsertion(1, 2.0/3);
+    domain1->UniformRefine(2);
+    domain2->UniformRefine(2);
+    domain3->UniformRefine(2);
     auto surface1 = make_shared<Surface<2, double>>(domain1, array<bool, 4>{false, false, true, true});
     surface1->SurfaceInitialize();
     auto surface2 = make_shared<Surface<2, double>>(domain2, array<bool, 4>{true, true, false, false});
     surface2->SurfaceInitialize();
     auto surface3 = make_shared<Surface<2, double>>(domain3, array<bool, 4>{false, true, true, false});
     surface3->SurfaceInitialize();
-    surface1->PrintIndices(0);
+
     surface1->Match(surface2);
     surface1->Match(surface3);
     surface2->Match(surface3);
@@ -54,14 +61,14 @@ main()
     surface2->PrintVertexInfo();
     surface3->PrintVertexInfo();
 
-    function<vector<double>(const VectorXd &)> body_force = [](const VectorXd &u)
+    function<vector<double>(const VectorXd&)> body_force = [](const VectorXd& u)
     {
-        return vector<double>{4 * sin(u(0)) * sin(u(1))};
+        return vector<double>{4*sin(u(0))*sin(u(1))};
     };
 
-    function<vector<double>(const VectorXd &)> analytical_solution = [](const VectorXd &u)
+    function<vector<double>(const VectorXd&)> analytical_solution = [](const VectorXd& u)
     {
-        return vector<double>{sin(u(0)) * sin(u(1)), cos(u(0)) * sin(u(1)), cos(u(0)) * sin(u(1))};
+        return vector<double>{sin(u(0))*sin(u(1)), cos(u(0))*sin(u(1)), cos(u(0))*sin(u(1))};
     };
 
     DofMapper<2, double> dof_map;
@@ -77,20 +84,9 @@ main()
     dof_map.PrintSlaveGlobalIndicesIn(domain2);
     dof_map.PrintSlaveGlobalIndicesIn(domain3);
 
-    // PoissonStiffnessVisitor<2, double> poisson_stiffness(dof_map, body_force);
-    // surface1->Accept(poisson_stiffness);
-    // surface2->Accept(poisson_stiffness);
-    // surface3->Accept(poisson_stiffness);
-    SparseMatrix<double> stiffness, load, dirichlet;
-
-    // poisson_stiffness.StiffnessAssembler(stiffness);
-    // poisson_stiffness.LoadAssembler(load);
-    // SparseMatrix<double> temp = stiffness.selfadjointView<Eigen::Upper>();
-    BiharmonicDirichletBoundaryVisitor<2, double> boundary(dof_map, analytical_solution);
-    surface1->EdgeAccept(boundary);
-    surface2->EdgeAccept(boundary);
-    surface3->EdgeAccept(boundary);
-    boundary.DirichletBoundary(dirichlet);
-    cout<<MatrixXd(dirichlet)<<endl;
+    InterfaceVisitor<2, double> interface(dof_map);
+    surface1->EdgeAccept(interface);
+    surface2->EdgeAccept(interface);
+    surface3->EdgeAccept(interface);
     return 0;
 }
