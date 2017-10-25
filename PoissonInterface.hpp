@@ -7,8 +7,7 @@
 #include "InterfaceVisitor.hpp"
 
 template<int N, typename T>
-class PoissonInterface : public InterfaceVisitor<N, T>
-{
+class PoissonInterface : public InterfaceVisitor<N, T> {
 public:
     using Knot = typename InterfaceVisitor<N, T>::Knot;
     using Quadrature = typename InterfaceVisitor<N, T>::Quadrature;
@@ -21,31 +20,34 @@ public:
     using DomainShared_ptr = typename InterfaceVisitor<N, T>::DomainShared_ptr;
     using ConstraintIntegralElementAssembler = typename InterfaceVisitor<N, T>::ConstraintIntegralElementAssembler;
 public:
-    PoissonInterface(const DofMapper<N, T> &dof_mapper) : InterfaceVisitor<N, T>(dof_mapper) {}
+    PoissonInterface(const DofMapper<N, T>& dof_mapper)
+            :InterfaceVisitor<N, T>(dof_mapper) { }
 
 protected:
     void
     InitializeTripletContainer();
 
-    void
-    SolveConstraint();
+    void SolveConstraint(Edge<N, T>*);
 
     void
-    LocalAssemble(Element<1, N, T> *,
-                  const QuadratureRule<T> &,
-                  const KnotSpan &,
-                  std::mutex &);
+    SolveC0Constraint(Edge<N, T>*);
 
     void
-    C0IntegralElementAssembler(Matrix &slave_constraint_basis,
-                               std::vector<int> &slave_constraint_basis_indices,
-                               Matrix &master_constrint_basis,
-                               std::vector<int> &master_constraint_basis_indices,
-                               Matrix &multiplier_basis,
-                               std::vector<int> &multiplier_basis_indices,
-                               T &integral_weight,
-                               Edge<N, T> *edge,
-                               const Quadrature &u);
+    LocalAssemble(Element<1, N, T>*,
+                  const QuadratureRule<T>&,
+                  const KnotSpan&,
+                  std::mutex&);
+
+    void
+    C0IntegralElementAssembler(Matrix& slave_constraint_basis,
+                               std::vector<int>& slave_constraint_basis_indices,
+                               Matrix& master_constrint_basis,
+                               std::vector<int>& master_constraint_basis_indices,
+                               Matrix& multiplier_basis,
+                               std::vector<int>& multiplier_basis_indices,
+                               T& integral_weight,
+                               Edge<N, T>* edge,
+                               const Quadrature& u);
 
 protected:
     std::vector<Eigen::Triplet<T>> _constraintsEquationElements;
@@ -60,37 +62,69 @@ PoissonInterface<N, T>::InitializeTripletContainer()
 }
 
 template<int N, typename T>
-void
-PoissonInterface<N, T>::SolveConstraint()
+void PoissonInterface<N, T>::SolveConstraint(Edge<N, T>* edge)
 {
-
+    SolveC0Constraint(edge);
 }
 
 template<int N, typename T>
 void
-PoissonInterface<N, T>::LocalAssemble(Element<1, N, T> *g,
-                                      const QuadratureRule<T> &quadrature_rule,
-                                      const KnotSpan &knot_span,
-                                      std::mutex &pmutex)
+PoissonInterface<N, T>::SolveC0Constraint(Edge<N, T>* edge)
+{
+    std::vector<int> activated_indices = Accessory::ColIndicesVector(_constraintsEquationElements);
+    std::vector<int> multiplier_indices = Accessory::RowIndicesVector(_constraintsEquationElements);
+    std::vector<int> slave_indices = this->_dofMapper.GlobalEdgeIndicesGetter(edge);
+    std::vector<int> activated_slave_indices, activated_master_indices;
+    std::set_intersection(activated_indices.begin(), activated_indices.end(), slave_indices.begin(),
+            slave_indices.end(), std::back_inserter(activated_slave_indices));
+    std::set_difference(activated_indices.begin(), activated_indices.end(), slave_indices.begin(),
+            slave_indices.end(), std::back_inserter(activated_master_indices));
+
+    multiplier_indices.erase(multiplier_indices.begin());
+    multiplier_indices.erase(multiplier_indices.end()-1);
+    auto activated_slave_indices_inverse_map = Accessory::IndicesInverseMap(activated_slave_indices);
+    auto activated_master_indices_inverse_map = Accessory::IndicesInverseMap(activated_master_indices);
+    auto multiplier_indices_inverse_map = Accessory::IndicesInverseMap(multiplier_indices);
+    std::vector<Eigen::Triplet<T>> condensed_gramian, condensed_rhs;
+    this->CondensedTripletVia(multiplier_indices_inverse_map, activated_slave_indices_inverse_map,
+            _constraintsEquationElements, condensed_gramian);
+    this->MoveToRhs(edge->Counterpart().lock()->Parent(0).lock()->GetDomain(), _constraintsEquationElements);
+    this->CondensedTripletVia(multiplier_indices_inverse_map, activated_slave_indices_inverse_map,
+            _constraintsEquationElements, condensed_rhs);
+    Eigen::SparseMatrix<T> gramian_matrix, rhs_matrix;
+    this->MatrixAssembler(multiplier_indices_inverse_map.size(), activated_slave_indices_inverse_map.size(),
+            condensed_gramian, gramian_matrix);
+    this->MatrixAssembler(multiplier_indices_inverse_map.size(), activated_master_indices_inverse_map.size(),
+            condensed_rhs, rhs_matrix);
+    std::cout << Matrix(gramian_matrix) << std::endl<<std::endl;
+    std::cout << Matrix(rhs_matrix) << std::endl<<std::endl;
+}
+
+template<int N, typename T>
+void
+PoissonInterface<N, T>::LocalAssemble(Element<1, N, T>* g,
+                                      const QuadratureRule<T>& quadrature_rule,
+                                      const KnotSpan& knot_span,
+                                      std::mutex& pmutex)
 {
     // non-static member function take this pointer.
     using namespace std::placeholders;
     auto c0_function =
-        std::bind(&PoissonInterface<N, T>::C0IntegralElementAssembler, this, _1, _2, _3, _4, _5, _6, _7, _8, _9);
+            std::bind(&PoissonInterface<N, T>::C0IntegralElementAssembler, this, _1, _2, _3, _4, _5, _6, _7, _8, _9);
     this->ConstraintLocalAssemble(g, quadrature_rule, knot_span, pmutex, c0_function, _constraintsEquationElements);
 }
 
 template<int N, typename T>
 void
-PoissonInterface<N, T>::C0IntegralElementAssembler(PoissonInterface::Matrix &slave_constraint_basis,
-                                                   std::vector<int> &slave_constraint_basis_indices,
-                                                   PoissonInterface::Matrix &master_constraint_basis,
-                                                   std::vector<int> &master_constraint_basis_indices,
-                                                   PoissonInterface::Matrix &multiplier_basis,
-                                                   std::vector<int> &multiplier_basis_indices,
-                                                   T &integral_weight,
-                                                   Edge<N, T> *edge,
-                                                   const PoissonInterface::Quadrature &u)
+PoissonInterface<N, T>::C0IntegralElementAssembler(PoissonInterface::Matrix& slave_constraint_basis,
+                                                   std::vector<int>& slave_constraint_basis_indices,
+                                                   PoissonInterface::Matrix& master_constraint_basis,
+                                                   std::vector<int>& master_constraint_basis_indices,
+                                                   PoissonInterface::Matrix& multiplier_basis,
+                                                   std::vector<int>& multiplier_basis_indices,
+                                                   T& integral_weight,
+                                                   Edge<N, T>* edge,
+                                                   const PoissonInterface::Quadrature& u)
 {
     auto multiplier_domain = edge->GetDomain();
     auto slave_domain = edge->Parent(0).lock()->GetDomain();
@@ -116,32 +150,34 @@ PoissonInterface<N, T>::C0IntegralElementAssembler(PoissonInterface::Matrix &sla
     master_constraint_basis.resize(1, master_evals->size());
     multiplier_basis.resize(1, multiplier_evals->size());
 
-    for (int j = 0; j < slave_evals->size(); ++j)
+    for (int j = 0; j<slave_evals->size(); ++j)
     {
         slave_constraint_basis(0, j) = (*slave_evals)[j].second[0];
     }
-    for (int j = 0; j < master_evals->size(); ++j)
+    for (int j = 0; j<master_evals->size(); ++j)
     {
         master_constraint_basis(0, j) = (*master_evals)[j].second[0];
     }
-    for (int j = 0; j < multiplier_evals->size(); ++j)
+    for (int j = 0; j<multiplier_evals->size(); ++j)
     {
         multiplier_basis(0, j) = (*multiplier_evals)[j].second[0];
     }
-    // set up indices cooresponding to test basis functions and trial basis functions
-    if (slave_constraint_basis_indices.size() == 0)
+    // set up indices corresponding to test basis functions and trial basis functions
+    if (slave_constraint_basis_indices.size()==0)
     {
         slave_constraint_basis_indices = slave_domain->ActiveIndex(slave_quadrature_abscissa);
         this->_dofMapper.IndicesToGlobal(slave_domain, slave_constraint_basis_indices);
     }
-    if (master_constraint_basis_indices.size() == 0)
+    if (master_constraint_basis_indices.size()==0)
     {
         master_constraint_basis_indices = master_domain->ActiveIndex(master_quadrature_abscissa);
         this->_dofMapper.IndicesToGlobal(master_domain, master_constraint_basis_indices);
     }
-    if (multiplier_basis_indices.size() == 0)
+    if (multiplier_basis_indices.size()==0)
     {
         multiplier_basis_indices = multiplier_domain->ActiveIndex(u.first);
     }
 }
+
+
 

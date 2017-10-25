@@ -35,18 +35,14 @@ main()
     auto domain1 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(vector<KnotVector<double>>{a, a}, point);
     auto domain2 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(vector<KnotVector<double>>{a, a}, pointt);
     auto domain3 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(vector<KnotVector<double>>{a, a}, pointtt);
-    domain1->DegreeElevate(2);
-    domain2->DegreeElevate(2);
-    domain3->DegreeElevate(2);
+
     domain1->UniformRefine(1);
     domain2->UniformRefine(1);
     domain3->KnotInsertion(0, 1.0/3);
     domain3->KnotInsertion(0, 2.0/3);
     domain3->KnotInsertion(1, 1.0/3);
     domain3->KnotInsertion(1, 2.0/3);
-    domain1->UniformRefine(2);
-    domain2->UniformRefine(2);
-    domain3->UniformRefine(2);
+
     auto surface1 = make_shared<Surface<2, double>>(domain1, array<bool, 4>{false, false, true, true});
     surface1->SurfaceInitialize();
     auto surface2 = make_shared<Surface<2, double>>(domain2, array<bool, 4>{true, true, false, false});
@@ -72,7 +68,7 @@ main()
     };
 
     DofMapper<2, double> dof_map;
-    BiharmonicMapper<2, double> mapper(dof_map);
+    PoissonMapper<2, double> mapper(dof_map);
     surface1->Accept(mapper);
     surface2->Accept(mapper);
     surface3->Accept(mapper);
@@ -80,10 +76,17 @@ main()
     dof_map.PrintDirichletGlobalIndicesIn(domain2);
     dof_map.PrintDirichletGlobalIndicesIn(domain3);
 
+
     dof_map.PrintSlaveGlobalIndicesIn(domain1);
     dof_map.PrintSlaveGlobalIndicesIn(domain2);
     dof_map.PrintSlaveGlobalIndicesIn(domain3);
-
+    surface1->EdgePointerGetter(0)->PrintIndices(0);
+    PoissonDirichletBoundaryVisitor<2,double> boundary(dof_map,analytical_solution);
+    surface1->EdgeAccept(boundary);
+    surface2->EdgeAccept(boundary);
+    surface3->EdgeAccept(boundary);
+    SparseMatrix<double> boundary_value;
+    boundary.DirichletBoundary(boundary_value);
     PoissonInterface<2,double> interface(dof_map);
     surface1->EdgeAccept(interface);
     surface2->EdgeAccept(interface);

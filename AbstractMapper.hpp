@@ -23,7 +23,7 @@ public:
     Visit(Element<1, N, T> *g)
     {
         auto edge = dynamic_cast<Edge<N, T> *>(g);
-
+        _dofMap.EdgeIndicesInserter(edge,*edge->ExclusiveIndices(_numOfLayer));
 //        If not matched to other edges, see if it is a Dirichlet boundary
         if (!edge->IsMatched())
         {

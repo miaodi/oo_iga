@@ -61,7 +61,7 @@ class DomainVisitor : public Visitor<d, N, T>
         InitializeKnotSpans(g, knot_spans);
         std::mutex pmutex;
         auto n = std::thread::hardware_concurrency();
-        std::vector<std::thread> threads(n);
+        std::vector<std::thread> threads(1);
         const int grainsize = knot_spans.size() / n;
         auto work_iter = knot_spans.begin();
         auto

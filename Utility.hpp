@@ -8,6 +8,8 @@
 #include <boost/math/special_functions/binomial.hpp>
 #include <eigen3/Eigen/Dense>
 #include "KnotVector.h"
+#include <set>
+#include <eigen3/Eigen/Sparse>
 
 template<int d, int N, typename T>
 class PhyTensorBsplineBasis;
@@ -30,26 +32,36 @@ namespace Accessory {
     {
         int n, k;
         // Setup the first line
-        Bin(0, 0) = 1.0;
+        Bin(0,
+                0) = 1.0;
         for (k = static_cast<int>(Bin.cols())-1; k>0; --k)
-            Bin(0, k) = 0.0;
+            Bin(0,
+                    k) = 0.0;
         // Setup the other lines
         for (n = 0; n<static_cast<int>(Bin.rows())-1; n++)
         {
-            Bin(n+1, 0) = 1.0;
+            Bin(n+1,
+                    0) = 1.0;
             for (k = 1; k<static_cast<int>(Bin.cols()); k++)
                 if (n+1<k)
-                    Bin(n, k) = 0.0;
+                    Bin(n,
+                            k) = 0.0;
                 else
-                    Bin(n+1, k) = Bin(n, k)+Bin(n, k-1);
+                    Bin(n+1,
+                            k) = Bin(n,
+                            k)+Bin(n,
+                            k-1);
         }
     }
 
     template<typename T, int N>
     void
-    degreeElevate(int t, KnotVector<T>& U, ContPtsList<T, N>& P)
+    degreeElevate(int t,
+                  KnotVector<T>& U,
+                  ContPtsList<T, N>& P)
     {
-        ASSERT(t>0, "Invalid geometrical information input, check size bro.");
+        ASSERT(t>0,
+                "Invalid geometrical information input, check size bro.");
         int i, j, k;
         auto dof = U.GetDOF();
         auto cP = P;
@@ -59,7 +71,8 @@ namespace Accessory {
         int m = n+p+1;
         int ph = p+t;
         int ph2 = ph/2;
-        Matrix<T, Dynamic, Dynamic> bezalfs(p+t+1, p+1); // coefficients for degree elevating the Bezier segment
+        Matrix<T, Dynamic, Dynamic> bezalfs(p+t+1,
+                p+1); // coefficients for degree elevating the Bezier segment
         Matrix<Matrix<T, N, 1>, Dynamic, 1> bpts(p+1);       // pth-degree Bezier control points of the current segment
         Matrix<Matrix<T, N, 1>, Dynamic, 1> ebpts(
                 p+t
@@ -67,7 +80,8 @@ namespace Accessory {
         Matrix<Matrix<T, N, 1>, Dynamic, 1> Nextbpts(p-1); // leftmost control points of the next Bezier segment
         Matrix<T, Dynamic, 1> alphas(p-1);                 // knot instertion alphas.
         // Compute the binomial coefficients
-        Matrix<T, Dynamic, Dynamic> Bin(ph+1, ph2+1);
+        Matrix<T, Dynamic, Dynamic> Bin(ph+1,
+                ph2+1);
         bezalfs.setZero();
         alphas.setZero();
         Bin.setZero();
@@ -75,22 +89,34 @@ namespace Accessory {
 
         // Compute Bezier degree elevation coefficients
         T inv, mpi;
-        bezalfs(0, 0) = bezalfs(ph, p) = 1.0;
+        bezalfs(0,
+                0) = bezalfs(ph,
+                p) = 1.0;
         for (i = 1; i<=ph2; i++)
         {
-            inv = 1.0/Bin(ph, i);
-            mpi = std::min(p, i);
-            for (j = std::max(0, i-t); j<=mpi; j++)
+            inv = 1.0/Bin(ph,
+                    i);
+            mpi = std::min(p,
+                    i);
+            for (j = std::max(0,
+                    i-t); j<=mpi; j++)
             {
-                bezalfs(i, j) = inv*Bin(p, j)*Bin(t, i-j);
+                bezalfs(i,
+                        j) = inv*Bin(p,
+                        j)*Bin(t,
+                        i-j);
             }
         }
 
         for (i = ph2+1; i<ph; i++)
         {
-            mpi = std::min(p, i);
-            for (j = std::max(0, i-t); j<=mpi; j++)
-                bezalfs(i, j) = bezalfs(ph-i, p-j);
+            mpi = std::min(p,
+                    i);
+            for (j = std::max(0,
+                    i-t); j<=mpi; j++)
+                bezalfs(i,
+                        j) = bezalfs(ph-i,
+                        p-j);
         }
 
         P.resize(cP.size()*t*3); // Allocate more control points than necessary
@@ -159,9 +185,12 @@ namespace Accessory {
             for (i = lbz; i<=ph; i++)
             { // Degree elevate Bezier,  only the points lbz,...,ph are used
                 ebpts(i) = Matrix<T, Dynamic, 1>::Zero(N);
-                mpi = std::min(p, i);
-                for (j = std::max(0, i-t); j<=mpi; j++)
-                    ebpts(i) += bezalfs(i, j)*bpts(j);
+                mpi = std::min(p,
+                        i);
+                for (j = std::max(0,
+                        i-t); j<=mpi; j++)
+                    ebpts(i) += bezalfs(i,
+                            j)*bpts(j);
             }
 
             if (oldr>1)
@@ -237,7 +266,10 @@ namespace Accessory {
 
     template<typename T, int N>
     void
-    knotInsertion(T u, int r, KnotVector<T>& U, ContPtsList<T, N>& P)
+    knotInsertion(T u,
+                  int r,
+                  KnotVector<T>& U,
+                  ContPtsList<T, N>& P)
     {
 
         int n = U.GetDOF();
@@ -284,7 +316,9 @@ namespace Accessory {
 
     template<typename T, int N>
     void
-    refineKnotVectorCurve(const KnotVector<T>& X, KnotVector<T>& U, ContPtsList<T, N>& P)
+    refineKnotVectorCurve(const KnotVector<T>& X,
+                          KnotVector<T>& U,
+                          ContPtsList<T, N>& P)
     {
 
         int n = U.GetDOF()-1;
@@ -341,11 +375,19 @@ namespace Accessory {
     {
         std::vector<int> kk(r);
         DifferentialPatternList_ptr a(new DifferentialPatternList);
-        std::function<void(int, int, std::vector<int>&, int, int,
-                DifferentialPatternList_ptr&)>
+        std::function<void(int,
+                           int,
+                           std::vector<int>&,
+                           int,
+                           int,
+                           DifferentialPatternList_ptr&)>
                 recursive;
-        recursive = [&](int D, int i, std::vector<int>& k, int n, int start,
-                std::unique_ptr<std::vector<std::vector<int>>>& a)
+        recursive = [&](int D,
+                        int i,
+                        std::vector<int>& k,
+                        int n,
+                        int start,
+                        std::unique_ptr<std::vector<std::vector<int>>>& a)
         {
             if (n==i)
             {
@@ -354,7 +396,9 @@ namespace Accessory {
                 for (int it1 = 0; it1<D; ++it1)
                 {
                     int amount = 0;
-                    while (find(k.begin(), k.end(), it)!=k.end())
+                    while (find(k.begin(),
+                            k.end(),
+                            it)!=k.end())
                     {
                         amount++;
                         it++;
@@ -369,11 +413,21 @@ namespace Accessory {
                 for (int jj = start; jj<D+i-(i-n); ++jj)
                 {
                     k[n] = jj;
-                    recursive(D, i, k, n+1, jj+1, a);
+                    recursive(D,
+                            i,
+                            k,
+                            n+1,
+                            jj+1,
+                            a);
                 }
             }
         };
-        recursive(N, r, kk, 0, 0, a);
+        recursive(N,
+                r,
+                kk,
+                0,
+                0,
+                a);
         return a;
     }
 
@@ -387,10 +441,12 @@ namespace Accessory {
         int b = a+1;
         int nb = 1;
         std::vector<T> alphas(p+1);
-        ExtractionOperator<T> C = ExtractionOperator<T>::Identity(p+1, p+1);
+        ExtractionOperator<T> C = ExtractionOperator<T>::Identity(p+1,
+                p+1);
         while (b<m)
         {
-            ExtractionOperator<T> C_next = ExtractionOperator<T>::Identity(p+1, p+1);
+            ExtractionOperator<T> C_next = ExtractionOperator<T>::Identity(p+1,
+                    p+1);
             int i = b;
             while (b<m && knot[b]==knot[b-1])
             {
@@ -419,7 +475,9 @@ namespace Accessory {
                     {
                         for (int l = 0; l<=j; l++)
                         {
-                            C_next(save+l-1, save-1) = C(p-j+l, p);
+                            C_next(save+l-1,
+                                    save-1) = C(p-j+l,
+                                    p);
                         }
                     }
                 }
@@ -453,14 +511,19 @@ namespace Accessory {
     {
         using namespace boost::math;
         int n = p+1;
-        Matrix<T, Dynamic, Dynamic> res(n, n);
+        Matrix<T, Dynamic, Dynamic> res(n,
+                n);
         res.setZero();
         for (int i = 0; i<n; i++)
         {
             for (int j = 0; j<=i; j++)
             {
-                res(i, j) = binomial_coefficient<T>(p, i)*binomial_coefficient<T>(p, j)/(2*p+1)/
-                        binomial_coefficient<T>(2*p, i+j);
+                res(i,
+                        j) = binomial_coefficient<T>(p,
+                        i)*binomial_coefficient<T>(p,
+                        j)/(2*p+1)/
+                        binomial_coefficient<T>(2*p,
+                                i+j);
             }
         }
         res = res.template selfadjointView<Eigen::Lower>();
@@ -472,19 +535,31 @@ namespace Accessory {
     {
         using namespace boost::math;
         int n = p+1;
-        Matrix<T, Dynamic, Dynamic> res(n, n);
+        Matrix<T, Dynamic, Dynamic> res(n,
+                n);
         res.setZero();
         for (int i = 0; i<n; i++)
         {
             for (int j = 0; j<=i; j++)
             {
                 T sum = 0;
-                for (int k = 0; k<=std::min(i, j); k++)
+                for (int k = 0;
+                     k<=std::min(i,
+                             j);
+                     k++)
                 {
-                    sum += (2*k+1)*binomial_coefficient<T>(p+k+1, p-i)*binomial_coefficient<T>(p-k, p-i)*
-                            binomial_coefficient<T>(p+k+1, p-j)*binomial_coefficient<T>(p-k, p-j);
+                    sum += (2*k+1)*binomial_coefficient<T>(p+k+1,
+                            p-i)*binomial_coefficient<T>(p-k,
+                            p-i)*
+                            binomial_coefficient<T>(p+k+1,
+                                    p-j)*binomial_coefficient<T>(p-k,
+                            p-j);
                 }
-                res(i, j) = sum*pow(-1, i+j)/binomial_coefficient<T>(p, i)/binomial_coefficient<T>(p, j);
+                res(i,
+                        j) = sum*pow(-1,
+                        i+j)/binomial_coefficient<T>(p,
+                        i)/binomial_coefficient<T>(p,
+                        j);
             }
         }
         res = res.template selfadjointView<Eigen::Lower>();
@@ -492,7 +567,8 @@ namespace Accessory {
     };
 
     template<typename T>
-    std::vector<T> AllBernstein(int p, T u)
+    std::vector<T> AllBernstein(int p,
+                                T u)
     {
         std::vector<T> res(p+1);
         res[0] = 1;
@@ -511,17 +587,76 @@ namespace Accessory {
         return res;
     }
 
-
     template<int N, int d_from, int d_to, typename T>
     bool
-    MapParametricPoint(const PhyTensorBsplineBasis<d_from, N, T> *const from_domain,
-            const Eigen::Matrix<T, Eigen::Dynamic, 1> &from_point,
-            const PhyTensorBsplineBasis<d_to, N, T> *const to_domain,
-            Eigen::Matrix<T, Eigen::Dynamic, 1> &to_point)
+    MapParametricPoint(const PhyTensorBsplineBasis<d_from, N, T>* const from_domain,
+                       const Eigen::Matrix<T, Eigen::Dynamic, 1>& from_point,
+                       const PhyTensorBsplineBasis<d_to, N, T>* const to_domain,
+                       Eigen::Matrix<T, Eigen::Dynamic, 1>& to_point)
     {
-        ASSERT(from_domain->InDomain(from_point), "The point about to be mapped is out of the domain.");
+        ASSERT(from_domain->InDomain(from_point),
+                "The point about to be mapped is out of the domain.");
         Eigen::Matrix<T, N, 1> physical_point = from_domain->AffineMap(from_point);
-        return to_domain->InversePts(physical_point, to_point);
+        return to_domain->InversePts(physical_point,
+                to_point);
     };
+
+    std::map<int, int> IndicesInverseMap(const std::vector<int>& forward_map)
+    {
+        std::map<int, int> inverse_map;
+        for (int i = 0; i<forward_map.size(); ++i)
+        {
+            ASSERT(inverse_map.find(forward_map[i])==inverse_map.end(),
+                    "Given forward map is not available for inverse.\n");
+            inverse_map[forward_map[i]] = i;
+        }
+        return inverse_map;
+    };
+
+    template<typename T>
+    std::set<int> ColIndicesSet(const std::vector<Eigen::Triplet<T>>& triplet)
+    {
+        std::set<int> res;
+        for (const auto& i:triplet)
+        {
+            res.insert(i.col());
+        }
+        return res;
+    }
+
+    template<typename T>
+    std::vector<int> ColIndicesVector(const std::vector<Eigen::Triplet<T>>& triplet)
+    {
+        std::set<int> res;
+        for (const auto& i:triplet)
+        {
+            res.insert(i.col());
+        }
+        std::vector<int> res_vector(res.begin(), res.end());
+        return res_vector;
+    }
+
+    template<typename T>
+    std::set<int> RowIndicesSet(const std::vector<Eigen::Triplet<T>>& triplet)
+    {
+        std::set<int> res;
+        for (const auto& i:triplet)
+        {
+            res.insert(i.row());
+        }
+        return res;
+    }
+
+    template<typename T>
+    std::vector<int> RowIndicesVector(const std::vector<Eigen::Triplet<T>>& triplet)
+    {
+        std::set<int> res;
+        for (const auto& i:triplet)
+        {
+            res.insert(i.row());
+        }
+        std::vector<int> res_vector(res.begin(), res.end());
+        return res_vector;
+    }
 }
 

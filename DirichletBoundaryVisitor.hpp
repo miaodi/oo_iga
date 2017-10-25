@@ -68,13 +68,13 @@ DirichletBoundaryVisitor<N, T>::SolveDirichletBoundary() const
 {
     std::vector<Eigen::Triplet<T>> condensed_gramian;
     std::vector<Eigen::Triplet<T>> condensed_rhs;
-    auto dirichlet_map = this->_dofMapper.GlobalDirichletCondensedMap();
     auto dirichlet_indices = this->_dofMapper.GlobalDirichletIndices();
-    this->CondensedTripletVia(dirichlet_map, dirichlet_map, _gramian, condensed_gramian);
-    this->CondensedTripletVia(dirichlet_map, _rhs, condensed_rhs);
+    auto dirichlet_inverse_map = Accessory::IndicesInverseMap(dirichlet_indices);
+    this->CondensedTripletVia(dirichlet_inverse_map, dirichlet_inverse_map, _gramian, condensed_gramian);
+    this->CondensedTripletVia(dirichlet_inverse_map, _rhs, condensed_rhs);
     Eigen::SparseMatrix<T> gramian_matrix_triangle, rhs_vector, gramian_matrix;
-    this->MatrixAssembler(dirichlet_map.size(), dirichlet_map.size(), condensed_gramian, gramian_matrix_triangle);
-    this->VectorAssembler(dirichlet_map.size(), condensed_rhs, rhs_vector);
+    this->MatrixAssembler(dirichlet_inverse_map.size(), dirichlet_inverse_map.size(), condensed_gramian, gramian_matrix_triangle);
+    this->VectorAssembler(dirichlet_inverse_map.size(), condensed_rhs, rhs_vector);
     gramian_matrix = gramian_matrix_triangle.template selfadjointView<Eigen::Upper>();
     Vector res = this->Solve(gramian_matrix, rhs_vector);
     for (int i = 0; i < res.rows(); ++i)
