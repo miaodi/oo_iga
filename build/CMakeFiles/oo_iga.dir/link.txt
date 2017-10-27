@@ -1,1 +1,0 @@
-/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/c++  -Ofast -Wno-switch -g -Wl,-search_paths_first -Wl,-headerpad_max_install_names  CMakeFiles/oo_iga.dir/main.cpp.o CMakeFiles/oo_iga.dir/KnotVector.cpp.o  -o oo_iga 

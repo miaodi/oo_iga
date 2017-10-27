@@ -1,3 +1,0 @@
-/Users/dimiao/CLionProjects/oo_iga/build/CMakeFiles/rebuild_cache.dir
-/Users/dimiao/CLionProjects/oo_iga/build/CMakeFiles/edit_cache.dir
-/Users/dimiao/CLionProjects/oo_iga/build/CMakeFiles/oo_iga.dir
