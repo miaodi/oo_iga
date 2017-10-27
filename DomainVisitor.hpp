@@ -11,7 +11,7 @@
 #include <thread>
 #include <mutex>
 
-template <typename T>
+template<typename T>
 struct MatrixData
 {
     std::unique_ptr<std::vector<int>> _rowIndices;
@@ -22,9 +22,16 @@ struct MatrixData
         : _rowIndices{std::make_unique<std::vector<int>>()},
           _colIndices{std::make_unique<std::vector<int>>()},
           _matrix{std::make_unique<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>>()} {}
+    bool
+    Check() const
+    {
+        if (_rowIndices->size() == _matrix->rows() && _colIndices->size() == _matrix->cols())
+            return true;
+        return false;
+    }
 };
 
-template <typename T>
+template<typename T>
 struct VectorData
 {
     std::unique_ptr<std::vector<int>> _rowIndices;
@@ -33,12 +40,20 @@ struct VectorData
     VectorData()
         : _rowIndices{std::make_unique<std::vector<int>>()},
           _vector{std::make_unique<Eigen::Matrix<T, Eigen::Dynamic, 1>>()} {}
+
+    bool
+    Check() const
+    {
+        if (_rowIndices->size() == _vector->rows())
+            return true;
+        return false;
+    }
 };
 
-template <int d, int N, typename T>
+template<int d, int N, typename T>
 class DomainVisitor : public Visitor<d, N, T>
 {
-  public:
+public:
     using Knot = typename QuadratureRule<T>::Coordinate;
     using Quadrature = typename QuadratureRule<T>::Quadrature;
     using QuadList = typename QuadratureRule<T>::QuadList;
@@ -49,7 +64,7 @@ class DomainVisitor : public Visitor<d, N, T>
     using Vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
 
     DomainVisitor(const DofMapper<N, T> &dof_mapper)
-        : _dofMapper(dof_mapper){};
+        : _dofMapper(dof_mapper) {};
 
     //    Multi thread domain visitor
     void
@@ -65,7 +80,9 @@ class DomainVisitor : public Visitor<d, N, T>
         const int grainsize = knot_spans.size() / n;
         auto work_iter = knot_spans.begin();
         auto
-            lambda = [&](typename KnotSpanlist::iterator begin, typename KnotSpanlist::iterator end) -> void {
+            lambda = [&](typename KnotSpanlist::iterator begin,
+                         typename KnotSpanlist::iterator end) -> void
+        {
             for (auto i = begin; i != end; ++i)
             {
                 LocalAssemble(g, quad_rule, *i, pmutex);
@@ -86,7 +103,8 @@ class DomainVisitor : public Visitor<d, N, T>
 protected:
     //    Initialize quadrature rule
     virtual void
-    InitializeQuadratureRule(Element<d, N, T> *g, QuadratureRule<T> &quad_rule)
+    InitializeQuadratureRule(Element<d, N, T> *g,
+                             QuadratureRule<T> &quad_rule)
     {
         if (d == 0)
         {
@@ -106,14 +124,18 @@ protected:
 
     //    Initialize knot spans
     virtual void
-    InitializeKnotSpans(Element<d, N, T> *g, KnotSpanlist &knot_spans)
+    InitializeKnotSpans(Element<d, N, T> *g,
+                        KnotSpanlist &knot_spans)
     {
         g->GetDomain()->KnotSpanGetter(knot_spans);
     }
 
     //    Pure virtual method local assemble algorithm is needed to be implemented here
     virtual void
-    LocalAssemble(Element<d, N, T> *, const QuadratureRule<T> &, const KnotSpan &, std::mutex &) = 0;
+    LocalAssemble(Element<d, N, T> *,
+                  const QuadratureRule<T> &,
+                  const KnotSpan &,
+                  std::mutex &) = 0;
 
     virtual MatrixData<T>
     LocalStiffness(const std::vector<Matrix> &weight_basis,
@@ -132,6 +154,7 @@ protected:
         *(res._rowIndices) = std::move(weight_basis_indices);
         *(res._colIndices) = std::move(basis_indices);
         *(res._matrix) = std::move(tmp);
+        ASSERT(res.Check(), "Error in construct stiffness.\n");
         return res;
     }
 
@@ -150,6 +173,7 @@ protected:
         VectorData<T> res;
         *(res._rowIndices) = std::move(weight_basis_indices);
         *(res._vector) = std::move(tmp);
+        ASSERT(res.Check(), "Error in construct rhs.\n");
         return res;
     }
 
@@ -188,7 +212,8 @@ protected:
     }
 
     void
-    LocalToGlobal(Element<d, N, T> *g, MatrixData<T> &indexed_matrix)
+    LocalToGlobal(Element<d, N, T> *g,
+                  MatrixData<T> &indexed_matrix)
     {
         int start_index = _dofMapper.StartingIndex(g->GetDomain());
         std::transform(indexed_matrix._colIndices->cbegin(), indexed_matrix._colIndices->cend(),
@@ -198,7 +223,8 @@ protected:
     }
 
     void
-    LocalToGlobal(Element<d, N, T> *g, VectorData<T> &indexed_matrix)
+    LocalToGlobal(Element<d, N, T> *g,
+                  VectorData<T> &indexed_matrix)
     {
         int start_index = _dofMapper.StartingIndex(g->GetDomain());
         std::transform(indexed_matrix._rowIndices->cbegin(), indexed_matrix._rowIndices->cend(),
@@ -207,7 +233,9 @@ protected:
 
     //    Convert non-zero Symmetric MatrixData elements to Triplet
     void
-    SymmetricTriplet(const MatrixData<T> &matrix, std::vector<Eigen::Triplet<T>> &triplet, const T &tol = 1e-11) const
+    SymmetricTriplet(const MatrixData<T> &matrix,
+                     std::vector<Eigen::Triplet<T>> &triplet,
+                     const T &tol = 1e-11) const
     {
         ASSERT(matrix._rowIndices->size() == matrix._colIndices->size(),
                "Given matrix data does not fit to symmetric assembler.");
@@ -226,7 +254,9 @@ protected:
 
     //    Convert non-zero MatrixData elements to Triplet
     void
-    Triplet(const MatrixData<T> &matrix, std::vector<Eigen::Triplet<T>> &triplet, const T &tol = 1e-11) const
+    Triplet(const MatrixData<T> &matrix,
+            std::vector<Eigen::Triplet<T>> &triplet,
+            const T &tol = 1e-11) const
     {
         for (int i = 0; i < matrix._rowIndices->size(); ++i)
         {
@@ -242,7 +272,9 @@ protected:
     }
     //    Convert non-zero VectorData elements to Triplet
     void
-    Triplet(const VectorData<T> &vector, std::vector<Eigen::Triplet<T>> &triplet, const T &tol = 1e-11) const
+    Triplet(const VectorData<T> &vector,
+            std::vector<Eigen::Triplet<T>> &triplet,
+            const T &tol = 1e-11) const
     {
         for (int i = 0; i < vector._rowIndices->size(); ++i)
         {
@@ -255,7 +287,8 @@ protected:
     }
 
     bool
-    IndexModifier(const std::map<int, int> &index_map, int &index) const
+    IndexModifier(const std::map<int, int> &index_map,
+                  int &index) const
     {
         auto it = index_map.find(index);
         if (it != index_map.end())
@@ -267,7 +300,8 @@ protected:
     }
 
     void
-    MatrixDataIndexModifier(const std::map<int, int> &index_map, MatrixData<T> &matrix_data)
+    MatrixDataIndexModifier(const std::map<int, int> &index_map,
+                            MatrixData<T> &matrix_data)
     {
         //        Row operation
         for (auto it = matrix_data._rowIndices->begin(); it != matrix_data._rowIndices->end();)
@@ -300,7 +334,8 @@ protected:
     }
 
     void
-    VectorDataIndexModifier(const std::map<int, int> &index_map, VectorData<T> &vector_data)
+    VectorDataIndexModifier(const std::map<int, int> &index_map,
+                            VectorData<T> &vector_data)
     {
         //        Row operation
         for (auto it = vector_data._rowIndices->begin(); it != vector_data._rowIndices->end();)
@@ -338,14 +373,16 @@ protected:
     }
 
     Matrix
-    Solve(const Eigen::SparseMatrix<T> &gramian, const Eigen::SparseMatrix<T> &rhs) const
+    Solve(const Eigen::SparseMatrix<T> &gramian,
+          const Eigen::SparseMatrix<T> &rhs) const
     {
+        ASSERT(gramian.rows() == gramian.cols(), "The size of given gramian matrix is not correct.\n");
         Eigen::ConjugateGradient<Eigen::SparseMatrix<T>, Eigen::Lower | Eigen::Upper> cg;
         cg.compute(gramian);
         Matrix res = cg.solve(rhs);
         return res;
     }
 
-  protected:
+protected:
     const DofMapper<N, T> &_dofMapper;
 };

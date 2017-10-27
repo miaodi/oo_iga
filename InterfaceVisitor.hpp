@@ -162,7 +162,7 @@ InterfaceVisitor<N, T>::ConstraintLocalAssemble(Element<1, N, T>* g,
             master_constraint_basis,
             master_constraint_basis_indices,
             weights);
-    std::cout<<(*load._matrix)<<std::endl;
+
     std::lock_guard<std::mutex> lock(pmutex);
     this->Triplet(stiff, constraintsEquationElements);
     this->Triplet(load, constraintsEquationElements);
@@ -180,4 +180,5 @@ void InterfaceVisitor<N, T>::MoveToRhs(const DomainShared_ptr& domain,
             i = tmp;
         }
     }
+    std::cout<<std::endl;
 }

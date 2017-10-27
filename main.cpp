@@ -23,7 +23,7 @@ using Vector1d = Matrix<double, 1, 1>;
 int
 main()
 {
-    clock_t time_a = clock();
+
     KnotVector<double> a;
     a.InitClosed(1, 0, 1);
     Vector2d point1(0, 0), point2(0, 2), point3(1, 1), point4(1, 2), point5(2, 0), point6(2, 1), point7(2, 2);
