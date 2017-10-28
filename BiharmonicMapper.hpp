@@ -13,4 +13,5 @@ public:
     BiharmonicMapper(DofMapper<N, T> &dofMap) : AbstractMapper<1, N, T>(dofMap)
     {
     }
+    ~BiharmonicMapper(){}
 };

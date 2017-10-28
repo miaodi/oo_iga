@@ -6,11 +6,14 @@
 
 #include "AbstractMapper.hpp"
 
-template<int N, typename T>
+template <int N, typename T>
 class PoissonMapper : public AbstractMapper<0, N, T>
 {
 public:
-    PoissonMapper(DofMapper<N, T> &dofMap) : AbstractMapper<0, N, T>(dofMap)
-    {
-    }
+  PoissonMapper(DofMapper<N, T> &dofMap) : AbstractMapper<0, N, T>(dofMap)
+  {
+  }
+  ~PoissonMapper()
+  {
+  }
 };

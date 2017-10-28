@@ -51,11 +51,9 @@ class PoissonInterface : public InterfaceVisitor<N, T>
                                Edge<N, T> *edge,
                                const Quadrature &u);
 
-                               
-
   protected:
     std::vector<Eigen::Triplet<T>> _constraintsEquationElements;
-    std::map<DomainShared_ptr, Eigen::Triplet<T>> _c0Constraint;
+    std::map<Edge<N, T> *, std::vector<Eigen::Triplet<T>>> _c0Constraint;
 };
 
 template <int N, typename T>
@@ -88,8 +86,15 @@ void PoissonInterface<N, T>::SolveC0Constraint(Edge<N, T> *edge)
     std::set_difference(activated_indices.begin(), activated_indices.end(), slave_indices.begin(),
                         slave_indices.end(), std::back_inserter(activated_master_indices));
 
+#ifdef BIHARMONIC
+    multiplier_indices.erase(multiplier_indices.begin(), multiplier_indices.begin() + 1);
+    multiplier_indices.erase(multiplier_indices.end() - 2, multiplier_indices.end());
+#else
     multiplier_indices.erase(multiplier_indices.begin());
     multiplier_indices.erase(multiplier_indices.end() - 1);
+#endif
+
+    ASSERT(multiplier_indices.size() > 0, "Lagrange multiplier size is zero, needs more refines.\n");
     auto activated_slave_indices_inverse_map = Accessory::IndicesInverseMap(activated_slave_indices);
     auto activated_master_indices_inverse_map = Accessory::IndicesInverseMap(activated_master_indices);
     auto multiplier_indices_inverse_map = Accessory::IndicesInverseMap(multiplier_indices);
@@ -105,9 +110,10 @@ void PoissonInterface<N, T>::SolveC0Constraint(Edge<N, T> *edge)
     this->MatrixAssembler(multiplier_indices_inverse_map.size(), activated_master_indices_inverse_map.size(),
                           condensed_rhs, rhs_matrix);
     Matrix constraint = this->Solve(gramian_matrix, rhs_matrix);
-    std::cout << constraint << std::endl
-              << std::endl;
-
+    MatrixData<T> constraint_data(constraint, activated_slave_indices, activated_master_indices);
+    std::vector<Eigen::Triplet<T>> temp;
+    this->Triplet(constraint_data, temp);
+    _c0Constraint[edge] = std::move(temp);
 }
 
 template <int N, typename T>
