@@ -8,6 +8,7 @@
 #include "QuadratureRule.h"
 #include "Topology.hpp"
 #include "Visitor.hpp"
+#include "Utility.hpp"
 #include <mutex>
 #include <thread>
 
@@ -22,16 +23,46 @@ struct MatrixData
         : _rowIndices{std::make_unique<std::vector<int>>()}, _colIndices{std::make_unique<std::vector<int>>()}, _matrix{std::make_unique<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>>()}
     {
     }
+
     MatrixData(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> &matrix,
                std::vector<int> &row,
-               std::vector<int> &col):MatrixData()
+               std::vector<int> &col) : MatrixData()
     {
         *_matrix = std::move(matrix);
         *_rowIndices = std::move(row);
         *_colIndices = std::move(col);
-        Check();
+        ASSERT(Check(), "Given data does not match for creating MatrixData.\n");
     }
-    bool Check() const
+
+    MatrixData operator*(const MatrixData &matrix)
+    {
+        ASSERT(*(this->_colIndices) == *(matrix._rowIndices), "MatrixData multiply can't be performed.\n");
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> temp = *(this->_matrix) * (*(matrix._matrix));
+        auto col_indices = *(matrix._colIndices);
+        auto row_indices = *(this->_rowIndices);
+        return MatrixData(temp, row_indices, col_indices);
+    }
+
+    void Print() const
+    {
+        std::cout << "Row indices: ";
+        for (const auto &i : *_rowIndices)
+        {
+            std::cout << i << ", ";
+        }
+        std::cout << std::endl;
+        std::cout << "Col indices: ";
+        for (const auto &i : *_colIndices)
+        {
+            std::cout << i << ", ";
+        }
+        std::cout << std::endl;
+        std::cout << "Matrix: \n";
+        std::cout << *_matrix;
+        std::cout << std::endl;
+    }
+    bool
+    Check() const
     {
         if (_rowIndices->size() == _matrix->rows() && _colIndices->size() == _matrix->cols())
             return true;
@@ -50,7 +81,7 @@ struct VectorData
     {
     }
     VectorData(Eigen::Matrix<T, Eigen::Dynamic, 1> &vector,
-               std::vector<int> &row):VectorData()
+               std::vector<int> &row) : VectorData()
     {
         *_vector = std::move(vector);
         *_rowIndices = std::move(row);
@@ -295,6 +326,21 @@ class DomainVisitor : public Visitor<d, N, T>
                     Eigen::Triplet<T>((*vector._rowIndices)[i], 0, tmp));
             }
         }
+    }
+
+    MatrixData<T> ToMatrixData(const std::vector<Eigen::Triplet<T>> &triplet)
+    {
+        std::vector<int> col_indices = Accessory::ColIndicesVector(triplet);
+        std::vector<int> row_indices = Accessory::RowIndicesVector(triplet);
+        auto col_inverse_indices = Accessory::IndicesInverseMap(col_indices);
+        auto row_inverse_indices = Accessory::IndicesInverseMap(row_indices);
+        std::vector<Eigen::Triplet<T>> condensed_triplet;
+        CondensedTripletVia(row_inverse_indices, col_inverse_indices, triplet, condensed_triplet);
+        Eigen::SparseMatrix<T> tmp;
+        tmp.resize(row_indices.size(), col_indices.size());
+        tmp.setFromTriplets(condensed_triplet.begin(), condensed_triplet.end());
+        Matrix matrix = Matrix(tmp);
+        return MatrixData<T>(matrix, row_indices, col_indices);
     }
 
     bool IndexModifier(const std::map<int, int> &index_map, int &index) const

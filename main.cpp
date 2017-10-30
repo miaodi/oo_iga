@@ -12,6 +12,7 @@
 #include "PoissonDirichletBoundaryVisitor.hpp"
 #include "BiharmonicDirichletBoundaryVisitor.hpp"
 #include "PoissonInterface.hpp"
+#include "BiharmonicInterface.hpp"
 
 using namespace Eigen;
 using namespace std;
@@ -20,10 +21,8 @@ using KnotSpanList = TensorBsplineBasis<2, double>::KnotSpanList;
 
 using Vector1d = Matrix<double, 1, 1>;
 
-int
-main()
+int main()
 {
-
     KnotVector<double> a;
     a.InitClosed(1, 0, 1);
     Vector2d point1(0, 0), point2(0, 2), point3(1, 1), point4(1, 2), point5(2, 0), point6(2, 1), point7(2, 2);
@@ -35,13 +34,16 @@ main()
     auto domain1 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(vector<KnotVector<double>>{a, a}, point);
     auto domain2 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(vector<KnotVector<double>>{a, a}, pointt);
     auto domain3 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(vector<KnotVector<double>>{a, a}, pointtt);
+    domain1->DegreeElevate(2);
+    domain2->DegreeElevate(2);
+    domain3->DegreeElevate(2);
 
     domain1->UniformRefine(1);
     domain2->UniformRefine(1);
-    domain3->KnotInsertion(0, 1.0/3);
-    domain3->KnotInsertion(0, 2.0/3);
-    domain3->KnotInsertion(1, 1.0/3);
-    domain3->KnotInsertion(1, 2.0/3);
+    domain3->KnotInsertion(0, 1.0 / 3);
+    domain3->KnotInsertion(0, 2.0 / 3);
+    domain3->KnotInsertion(1, 1.0 / 3);
+    domain3->KnotInsertion(1, 2.0 / 3);
 
     auto surface1 = make_shared<Surface<2, double>>(domain1, array<bool, 4>{false, false, true, true});
     surface1->SurfaceInitialize();
@@ -57,18 +59,16 @@ main()
     surface2->PrintVertexInfo();
     surface3->PrintVertexInfo();
 
-    function<vector<double>(const VectorXd&)> body_force = [](const VectorXd& u)
-    {
-        return vector<double>{4*sin(u(0))*sin(u(1))};
+    function<vector<double>(const VectorXd &)> body_force = [](const VectorXd &u) {
+        return vector<double>{4 * sin(u(0)) * sin(u(1))};
     };
 
-    function<vector<double>(const VectorXd&)> analytical_solution = [](const VectorXd& u)
-    {
-        return vector<double>{sin(u(0))*sin(u(1)), cos(u(0))*sin(u(1)), cos(u(0))*sin(u(1))};
+    function<vector<double>(const VectorXd &)> analytical_solution = [](const VectorXd &u) {
+        return vector<double>{sin(u(0)) * sin(u(1)), cos(u(0)) * sin(u(1)), cos(u(0)) * sin(u(1))};
     };
 
     DofMapper<2, double> dof_map;
-    PoissonMapper<2, double> mapper(dof_map);
+    BiharmonicMapper<2, double> mapper(dof_map);
     surface1->Accept(mapper);
     surface2->Accept(mapper);
     surface3->Accept(mapper);
@@ -76,18 +76,17 @@ main()
     dof_map.PrintDirichletGlobalIndicesIn(domain2);
     dof_map.PrintDirichletGlobalIndicesIn(domain3);
 
-
     dof_map.PrintSlaveGlobalIndicesIn(domain1);
     dof_map.PrintSlaveGlobalIndicesIn(domain2);
     dof_map.PrintSlaveGlobalIndicesIn(domain3);
     surface1->EdgePointerGetter(0)->PrintIndices(0);
-    PoissonDirichletBoundaryVisitor<2,double> boundary(dof_map,analytical_solution);
+    PoissonDirichletBoundaryVisitor<2, double> boundary(dof_map, analytical_solution);
     surface1->EdgeAccept(boundary);
     surface2->EdgeAccept(boundary);
     surface3->EdgeAccept(boundary);
-    SparseMatrix<double> boundary_value;
+    SparseMatrix<double> boundary_value, c0_constraint;
     boundary.DirichletBoundary(boundary_value);
-    PoissonInterface<2,double> interface(dof_map);
+    BiharmonicInterface<2, double> interface(dof_map);
     surface1->EdgeAccept(interface);
     surface2->EdgeAccept(interface);
     surface3->EdgeAccept(interface);
