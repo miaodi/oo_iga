@@ -56,7 +56,7 @@ class PoissonInterface : public InterfaceVisitor<N, T>
 
   protected:
     std::vector<Eigen::Triplet<T>> _c0ConstraintsEquationElements;
-    std::map<Edge<N, T> *, std::vector<Eigen::Triplet<T>>> _c0Constraint;
+    std::map<Edge<N, T> *, std::vector<Eigen::Triplet<T>>> _Constraint;
     std::map<Edge<N, T> *, std::vector<int>> _slaveIndices;
 };
 
@@ -127,7 +127,7 @@ void PoissonInterface<N, T>::SolveC0Constraint(Edge<N, T> *edge, const int &codi
     MatrixData<T> constraint_data(constraint, activated_slave_indices, activated_master_indices);
     std::vector<Eigen::Triplet<T>> temp;
     this->Triplet(constraint_data, temp);
-    _c0Constraint[edge] = std::move(temp);
+    _Constraint[edge] = std::move(temp);
 }
 
 template <int N, typename T>
@@ -152,7 +152,7 @@ void PoissonInterface<N, T>::ConstraintMatrix(Eigen::SparseMatrix<T> &sparse_con
     {
         constraint_triplet.push_back(Eigen::Triplet<T>(i, i, 1));
     }
-    for (const auto &i : _c0Constraint)
+    for (const auto &i : _Constraint)
     {
         constraint_triplet.insert(constraint_triplet.end(), i.second.begin(), i.second.end());
     }

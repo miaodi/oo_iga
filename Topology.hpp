@@ -81,6 +81,12 @@ Element<d, N, T>::Element(const Element::DomainShared_ptr &m):_domain{m}, _calle
 
 }
 
+
+// +---------------------------+
+// |          north            |
+// | west                 east |
+// |          south            |
+// +---------------------------+
 enum Orientation {
     south = 0, east, north, west
 };

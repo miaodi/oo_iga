@@ -52,7 +52,6 @@ class BiharmonicInterface : public PoissonInterface<N, T>
                                const Quadrature &u);
 
   protected:
-    std::map<Edge<N, T> *, std::vector<Eigen::Triplet<T>>> _c1Constraint;
     std::vector<Eigen::Triplet<T>> _c1ConstraintsEquationElements;
 };
 
@@ -81,6 +80,7 @@ void BiharmonicInterface<N, T>::SolveC1Constraint(Edge<N, T> *edge)
     // get all the slave indices on the edge
     std::vector<int> slave_indices = this->_dofMapper.GlobalEdgeIndicesGetter(edge);
 
+    // Get the slave indices that used for C0 constraint
     std::vector<int> c0_slave_indices = this->_slaveIndices[edge];
 
     // find slave indices and master indices
@@ -90,8 +90,10 @@ void BiharmonicInterface<N, T>::SolveC1Constraint(Edge<N, T> *edge)
     std::set_difference(activated_indices.begin(), activated_indices.end(), slave_indices.begin(),
                         slave_indices.end(), std::back_inserter(activated_master_indices));
 
+    // Codimension 2 Lagrange multiplier
     multiplier_indices.erase(multiplier_indices.begin(), multiplier_indices.begin() + 2);
     multiplier_indices.erase(multiplier_indices.end() - 2, multiplier_indices.end());
+
 
     auto activated_slave_indices_inverse_map = Accessory::IndicesInverseMap(activated_slave_indices);
     auto c0_slave_indices_inverse_map = Accessory::IndicesInverseMap(c0_slave_indices);
@@ -117,12 +119,10 @@ void BiharmonicInterface<N, T>::SolveC1Constraint(Edge<N, T> *edge)
     auto activated_slave_indices_copy = activated_slave_indices;
     MatrixData<T> c1_constraint_data(c1_constraint, activated_slave_indices, activated_master_indices);
     MatrixData<T> c0_c1constraint_data(c0_c1_constraint, activated_slave_indices_copy, c0_slave_indices);
-    MatrixData<T> c0_constraint_data = this->ToMatrixData(this->_c0Constraint[edge]);
+    MatrixData<T> c0_constraint_data = this->ToMatrixData(this->_Constraint[edge]);
     auto c0_slave_c1_constraint_data = c0_c1constraint_data * c0_constraint_data;
-    std::vector<Eigen::Triplet<T>> temp;
-    this->Triplet(c1_constraint_data, temp);
-    this->Triplet(c0_slave_c1_constraint_data, temp);
-    _c1Constraint[edge] = std::move(temp);
+    this->Triplet(c1_constraint_data, this->_Constraint[edge]);
+    this->Triplet(c0_slave_c1_constraint_data, this->_Constraint[edge]);
 }
 
 template <int N, typename T>
@@ -154,9 +154,10 @@ void BiharmonicInterface<N, T>::C1IntegralElementAssembler(Matrix &slave_constra
     auto multiplier_domain = edge->GetDomain();
     auto slave_domain = edge->Parent(0).lock()->GetDomain();
     auto master_domain = edge->Counterpart().lock()->Parent(0).lock()->GetDomain();
-    //    set up integration weights
+    // Set up integration weights
     integral_weight = u.second;
 
+    // Map abscissa from Lagrange multiplier space to slave and master domain
     Vector slave_quadrature_abscissa, master_quadrature_abscissa;
     if (!Accessory::MapParametricPoint(&*multiplier_domain, u.first, &*slave_domain, slave_quadrature_abscissa))
     {
@@ -167,27 +168,40 @@ void BiharmonicInterface<N, T>::C1IntegralElementAssembler(Matrix &slave_constra
         std::cout << "MapParametericPoint failed" << std::endl;
     }
 
+    // Evaluate derivative upto 1^st order in slave and master domain
     auto slave_evals = slave_domain->EvalDerAllTensor(slave_quadrature_abscissa, 1);
     auto master_evals = master_domain->EvalDerAllTensor(master_quadrature_abscissa, 1);
+
+    //  Evaluate Lagrange multiplier basis
     auto multiplier_evals = multiplier_domain->EvalDerAllTensor(u.first, 0);
+
+    // Resize integration matrices
     slave_constraint_basis.resize(1, slave_evals->size());
     master_constraint_basis.resize(1, master_evals->size());
     multiplier_basis.resize(1, multiplier_evals->size());
 
+    // Compute the following matrix
+    // +-----------+-----------+
+    // | ∂ξ_m/∂ξ_s | ∂η_m/∂ξ_s |
+    // +-----------+-----------+
+    // | ∂ξ_m/∂η_s | ∂η_m/∂η_s |
+    // +-----------+-----------+
     Matrix slave_jacobian = slave_domain->JacobianMatrix(slave_quadrature_abscissa);
     Matrix master_jacobian = master_domain->JacobianMatrix(master_quadrature_abscissa);
     Matrix master_to_slave = slave_jacobian * master_jacobian.inverse();
 
-    // substitute master coordinate of master basis by slave coordinate
+    // Substitute master coordinate of master basis by slave coordinate
     for (auto &i : *master_evals)
     {
         Vector tmp = master_to_slave * (Vector(2) << i.second[1], i.second[2]).finished();
         i.second[1] = tmp(0);
         i.second[2] = tmp(1);
     }
-
+    
+    // Two strategies for horizontal edge and vertical edge.
     switch (edge->GetOrient())
     {
+    // For south and north edge derivative w.r.t η_s should be consistent
     case south:
     case north:
     {
@@ -201,6 +215,7 @@ void BiharmonicInterface<N, T>::C1IntegralElementAssembler(Matrix &slave_constra
         }
         break;
     }
+    // For south and north edge derivative w.r.t ξ_s should be consistent
     case east:
     case west:
     {
@@ -215,10 +230,13 @@ void BiharmonicInterface<N, T>::C1IntegralElementAssembler(Matrix &slave_constra
         break;
     }
     }
+
+    // Lagrange multiplier basis
     for (int j = 0; j < multiplier_evals->size(); ++j)
     {
         multiplier_basis(0, j) = (*multiplier_evals)[j].second[0];
     }
+
     // set up indices corresponding to test basis functions and trial basis functions
     if (slave_constraint_basis_indices.size() == 0)
     {

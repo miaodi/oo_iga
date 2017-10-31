@@ -3,7 +3,7 @@ project(oo_iga)
 
 #set(CMAKE_CXX_COMPILER /usr/local/opt/llvm/bin/clang++)
 set(CMAKE_CXX_STANDARD 14)
-#set (LINK_DIR /usr/local/opt/llvm/lib)
+#set(LINK_DIR /usr/local/opt/llvm/lib)
 set(CMAKE_CXX_FLAGS "-Ofast -Wno-switch")
 set(SOURCE_FILES main.cpp KnotVector.cpp KnotVector.h BsplineBasis.h TensorBsplineBasis.h MultiArray.h PhyTensorBsplineBasis.h PhyTensorNURBSBasis.h Topology.hpp Surface.hpp Visitor.hpp Edge.hpp Vertex.hpp DofMapper.hpp PoissonMapper.hpp DomainVisitor.hpp QuadratureRule.h PoissonStiffnessVisitor.hpp DirichletBoundaryVisitor.hpp StiffnessVisitor.hpp BiharmonicStiffnessVisitor.hpp PoissonDirichletBoundaryVisitor.hpp AbstractMapper.hpp BiharmonicMapper.hpp BiharmonicDirichletBoundaryVisitor.hpp InterfaceVisitor.hpp Utility.hpp PoissonInterface.hpp)
 link_directories(${LINK_DIR})

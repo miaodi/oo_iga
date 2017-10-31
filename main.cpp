@@ -80,15 +80,17 @@ int main()
     dof_map.PrintSlaveGlobalIndicesIn(domain2);
     dof_map.PrintSlaveGlobalIndicesIn(domain3);
     surface1->EdgePointerGetter(0)->PrintIndices(0);
-    PoissonDirichletBoundaryVisitor<2, double> boundary(dof_map, analytical_solution);
+    BiharmonicDirichletBoundaryVisitor<2, double> boundary(dof_map, analytical_solution);
     surface1->EdgeAccept(boundary);
     surface2->EdgeAccept(boundary);
     surface3->EdgeAccept(boundary);
-    SparseMatrix<double> boundary_value, c0_constraint;
+    SparseMatrix<double> boundary_value, constraint;
     boundary.DirichletBoundary(boundary_value);
     BiharmonicInterface<2, double> interface(dof_map);
     surface1->EdgeAccept(interface);
     surface2->EdgeAccept(interface);
     surface3->EdgeAccept(interface);
+    interface.ConstraintMatrix(constraint);
+    cout<<MatrixXd(constraint)<<endl;
     return 0;
 }
