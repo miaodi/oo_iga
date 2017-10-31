@@ -45,6 +45,9 @@ int main()
     domain3->KnotInsertion(1, 1.0 / 3);
     domain3->KnotInsertion(1, 2.0 / 3);
 
+    domain1->UniformRefine(0);
+    domain2->UniformRefine(0);
+    domain3->UniformRefine(0);
     auto surface1 = make_shared<Surface<2, double>>(domain1, array<bool, 4>{false, false, true, true});
     surface1->SurfaceInitialize();
     auto surface2 = make_shared<Surface<2, double>>(domain2, array<bool, 4>{true, true, false, false});
@@ -64,7 +67,7 @@ int main()
     };
 
     function<vector<double>(const VectorXd &)> analytical_solution = [](const VectorXd &u) {
-        return vector<double>{sin(u(0)) * sin(u(1)), cos(u(0)) * sin(u(1)), cos(u(0)) * sin(u(1))};
+        return vector<double>{sin(u(0)) * sin(u(1)), cos(u(0)) * sin(u(1)), sin(u(0)) * cos(u(1))};
     };
 
     DofMapper<2, double> dof_map;
@@ -72,25 +75,37 @@ int main()
     surface1->Accept(mapper);
     surface2->Accept(mapper);
     surface3->Accept(mapper);
-    dof_map.PrintDirichletGlobalIndicesIn(domain1);
-    dof_map.PrintDirichletGlobalIndicesIn(domain2);
-    dof_map.PrintDirichletGlobalIndicesIn(domain3);
+    SparseMatrix<double> global_to_condensed, condensed_to_free, global_to_free;
+    dof_map.CondensedIndexMap(global_to_condensed);
+    dof_map.FreeIndexMap(global_to_free);
+    dof_map.FreeToCondensedIndexMap(condensed_to_free);
 
-    dof_map.PrintSlaveGlobalIndicesIn(domain1);
-    dof_map.PrintSlaveGlobalIndicesIn(domain2);
-    dof_map.PrintSlaveGlobalIndicesIn(domain3);
-    surface1->EdgePointerGetter(0)->PrintIndices(0);
+    BiharmonicStiffnessVisitor<2, double> stiffness(dof_map, body_force);
+    surface1->Accept(stiffness);
+    surface2->Accept(stiffness);
+    surface3->Accept(stiffness);
+    SparseMatrix<double> stiffness_matrix, load_vector;
+    stiffness.StiffnessAssembler(stiffness_matrix);
+    stiffness.LoadAssembler(load_vector);
+
     BiharmonicDirichletBoundaryVisitor<2, double> boundary(dof_map, analytical_solution);
     surface1->EdgeAccept(boundary);
     surface2->EdgeAccept(boundary);
     surface3->EdgeAccept(boundary);
     SparseMatrix<double> boundary_value, constraint;
-    boundary.DirichletBoundary(boundary_value);
+    boundary.CondensedDirichletBoundary(boundary_value);
     BiharmonicInterface<2, double> interface(dof_map);
     surface1->EdgeAccept(interface);
     surface2->EdgeAccept(interface);
     surface3->EdgeAccept(interface);
     interface.ConstraintMatrix(constraint);
-    cout<<MatrixXd(constraint)<<endl;
+
+    SparseMatrix<double> condensed_stiffness_matrix = global_to_condensed * constraint.transpose() * stiffness_matrix * constraint * global_to_condensed.transpose();
+    SparseMatrix<double> free_stiffness_matrix = condensed_to_free * condensed_stiffness_matrix * condensed_to_free.transpose();
+    SparseMatrix<double> condensed_rhs = global_to_condensed * constraint.transpose() * load_vector - condensed_stiffness_matrix * boundary_value;
+    SparseMatrix<double> free_rhs = condensed_to_free * condensed_rhs;
+    ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower | Eigen::Upper> cg;
+    cg.compute(free_stiffness_matrix);
+    VectorXd Solution = cg.solve(free_rhs);
     return 0;
 }

@@ -120,7 +120,7 @@ class DomainVisitor : public Visitor<d, N, T>
         InitializeKnotSpans(g, knot_spans);
         std::mutex pmutex;
         auto n = std::thread::hardware_concurrency();
-        std::vector<std::thread> threads(1);
+        std::vector<std::thread> threads(n);
         const int grainsize = knot_spans.size() / n;
         auto work_iter = knot_spans.begin();
         auto lambda = [&](typename KnotSpanlist::iterator begin,
@@ -418,6 +418,16 @@ class DomainVisitor : public Visitor<d, N, T>
         matrix.setFromTriplets(triplet.cbegin(), triplet.cend());
     }
 
+    void MatrixAssembler(const int &row_dof,
+                         const int &col_dof,
+                         const std::vector<Eigen::Triplet<T>> &triplet,
+                         Matrix &matrix) const
+    {
+        Eigen::SparseMatrix<T> sparse_matrix;
+        MatrixAssembler(row_dof, col_dof, triplet, sparse_matrix);
+        matrix = Matrix(sparse_matrix);
+    }
+
     void VectorAssembler(const int &row_dof,
                          const std::vector<Eigen::Triplet<T>> &triplet,
                          Eigen::SparseMatrix<T> &vector) const
@@ -434,6 +444,17 @@ class DomainVisitor : public Visitor<d, N, T>
         Eigen::ConjugateGradient<Eigen::SparseMatrix<T>,
                                  Eigen::Lower | Eigen::Upper>
             cg;
+        cg.compute(gramian);
+        Matrix res = cg.solve(rhs);
+        return res;
+    }
+
+    Matrix Solve(const Matrix &gramian,
+                 const Matrix &rhs) const
+    {
+        ASSERT(gramian.rows() == gramian.cols(),
+               "The size of given gramian matrix is not correct.\n");
+        Eigen::ConjugateGradient<Matrix, Eigen::Lower | Eigen::Upper> cg;
         cg.compute(gramian);
         Matrix res = cg.solve(rhs);
         return res;

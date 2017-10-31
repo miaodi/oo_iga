@@ -61,7 +61,7 @@ SparseMatrixMaker(const std::vector<Eigen::Triplet<T>> &_list,
     using IndexedValue = Eigen::Triplet<T>;
     using IndexedValueList = std::vector<IndexedValue>;
     std::unique_ptr<Eigen::SparseMatrix<T>> matrix(new Eigen::SparseMatrix<T>);
-    
+
     // Find maximum row
     auto list_row = std::max_element(_list.begin(),
                                      _list.end(),
@@ -127,22 +127,17 @@ NonZeroRows(const std::vector<Eigen::Triplet<T>> &matrix)
 }
 
 template <typename T>
-std::unique_ptr<Eigen::SparseMatrix<T>>
-SparseTransform(const std::vector<int> &mapInform,
-                const int &col)
+void SparseTransform(const std::vector<int> &map_info,
+                     const int &original_dof,
+                     Eigen::SparseMatrix<T> &sparse_matrix)
 {
-    std::unique_ptr<Eigen::SparseMatrix<T>> matrix(new Eigen::SparseMatrix<T>);
-    int row = mapInform.size();
-    ASSERT(mapInform[mapInform.size() - 1] + 1 <= col,
-           "Invalide matrix col/row.");
-    matrix->resize(row,
-                   col);
+    int row = map_info.size();
+    int col = original_dof;
+    sparse_matrix.resize(row, col);
     for (int i = 0; i != row; i++)
     {
-        matrix->coeffRef(i,
-                         mapInform[i]) = 1;
+        sparse_matrix.coeffRef(i, map_info[i]) = 1;
     }
-    return matrix;
 }
 
 template <typename T>
@@ -547,8 +542,9 @@ class DofMapper
         std::vector<int> res;
         for (const auto &i : _domains)
         {
+            int domainDof = _patchDof.find(i)->second;
             auto startIndex = StartingIndex(i);
-            for (int inDomainIndex = 0, domainDof = _patchDof[i]; inDomainIndex != domainDof; ++inDomainIndex)
+            for (int inDomainIndex = 0; inDomainIndex != domainDof; ++inDomainIndex)
             {
                 int copyIndex = inDomainIndex;
                 if (FreeIndexInDomain(i,
@@ -561,6 +557,13 @@ class DofMapper
         return res;
     }
 
+    void
+    FreeIndexMap(Eigen::SparseMatrix<T> &sparse_matrix)
+    {
+        auto free_index = FreeIndexMap();
+        Accessory::SparseTransform(free_index, Dof(), sparse_matrix);
+    }
+
     // Return a vector with vector index as condensed index, vector element as global index
     std::vector<int>
     CondensedIndexMap() const
@@ -569,7 +572,8 @@ class DofMapper
         for (const auto &i : _domains)
         {
             auto startIndex = StartingIndex(i);
-            for (int inDomainIndex = 0, domainDof = _patchDof[i]; inDomainIndex != domainDof; ++inDomainIndex)
+            int domainDof = _patchDof.find(i)->second;
+            for (int inDomainIndex = 0; inDomainIndex != domainDof; ++inDomainIndex)
             {
                 int copyIndex = inDomainIndex;
 
@@ -582,6 +586,13 @@ class DofMapper
             }
         }
         return res;
+    }
+
+    void
+    CondensedIndexMap(Eigen::SparseMatrix<T> &sparse_matrix)
+    {
+        auto free_index = CondensedIndexMap();
+        Accessory::SparseTransform(free_index, Dof(), sparse_matrix);
     }
 
     // Return a vector with vector index as free index, vector element as condensed index
@@ -598,9 +609,16 @@ class DofMapper
                                 i);
             ASSERT(it != condensed_indices.end(),
                    "Inconsistence happens between free indices and condensed indices.");
-            res.push_back(*it);
+            res.push_back(it - condensed_indices.begin());
         }
         return res;
+    }
+
+    void
+    FreeToCondensedIndexMap(Eigen::SparseMatrix<T> &sparse_matrix)
+    {
+        auto free_index = FreeToCondensedIndexMap();
+        Accessory::SparseTransform(free_index, CondensedDof(), sparse_matrix);
     }
 
     // Print out all Dirichlet local indices in the given domain.
