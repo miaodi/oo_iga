@@ -96,4 +96,4 @@ class AbstractMapper : public Visitor<2, N, T>, Visitor<1, N, T>, Visitor<0, N, 
 };
 
 template <int layer, int N, typename T>
-AbstractMapper<layer,N,T>::~AbstractMapper(){}
+AbstractMapper<layer, N, T>::~AbstractMapper() {}

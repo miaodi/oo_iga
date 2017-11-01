@@ -9,31 +9,34 @@
 #include "Edge.hpp"
 #include "Visitor.hpp"
 
-template<int d, int N, typename T>
+template <int d, int N, typename T>
 class Visitor;
 
-template<int N, typename T>
+template <int N, typename T>
 class Edge;
 
-template<int N, typename T>
+template <int N, typename T>
 class Vertex;
 
-template<int N, typename T>
-class Surface : public Element<2, N, T>, public std::enable_shared_from_this<Surface<N, T>> {
-public:
+template <int N, typename T>
+class Surface : public Element<2, N, T>, public std::enable_shared_from_this<Surface<N, T>>
+{
+  public:
     typedef typename Element<2, N, T>::PhyPts PhyPts;
     typedef typename Element<2, N, T>::DomainShared_ptr DomainShared_ptr;
     typedef typename Element<2, N, T>::Coordinate Coordinate;
     typedef typename Element<2, N, T>::CoordinatePairList CoordinatePairList;
     using SurfaceShared_Ptr = typename std::shared_ptr<Surface<N, T>>;
 
-    Surface() : Element<2, N, T>() {};
+    Surface() : Element<2, N, T>(){};
 
-    Surface(DomainShared_ptr m, const std::array<bool, 4> &boundary) : Element<2, N, T>(m), _Dirichlet(boundary) {
+    Surface(DomainShared_ptr m, const std::array<bool, 4> &boundary) : Element<2, N, T>(m), _Dirichlet(boundary)
+    {
     }
 
     // shared_from_this requires that there be at least one shared_ptr instance that owns *this
-    void SurfaceInitialize() {
+    void SurfaceInitialize()
+    {
         for (int i = 0; i < 4; i++)
         {
             _vertices[i] = std::make_shared<Vertex<N, T>>(MakeVertex(static_cast<VertexIndex>(i)),
@@ -64,12 +67,14 @@ public:
         _vertices[0]->ParentSetter(_edges[3]);
     }
 
-    virtual std::unique_ptr<std::vector<int>> Indices(const int &layer) const {
+    virtual std::unique_ptr<std::vector<int>> Indices(const int &layer) const
+    {
         return this->_domain->Indices();
     }
 
     // Return all indices that belong to this domain but not belong to the rest.
-    std::unique_ptr<std::vector<int>> ExclusiveIndices(const int &layer) const {
+    std::unique_ptr<std::vector<int>> ExclusiveIndices(const int &layer) const
+    {
         auto res = this->Indices(layer);
         std::unique_ptr<std::vector<int>> temp;
         for (int i = 0; i < _edges.size(); ++i)
@@ -82,45 +87,53 @@ public:
         return res;
     }
 
-    void Accept(Visitor<2, N, T> &a) {
+    void Accept(Visitor<2, N, T> &a)
+    {
         a.Visit(this);
     };
 
-    void EdgeAccept(Visitor<1, N, T> &a) {
+    void EdgeAccept(Visitor<1, N, T> &a)
+    {
         for (auto &i : _edges)
         {
             i->Accept(a);
         }
     };
 
-    void VertexAccept(Visitor<0, N, T> &a) {
+    void VertexAccept(Visitor<0, N, T> &a)
+    {
         for (auto &i : _vertices)
         {
             i->Accept(a);
         }
     };
 
-    auto EdgePointerGetter(const int &i) {
+    auto EdgePointerGetter(const int &i)
+    {
         return _edges[i];
     }
 
-    auto VertexPointerGetter(const int &i) {
+    auto VertexPointerGetter(const int &i)
+    {
         return _vertices[i];
     }
 
-    void PrintIndices(const int &layerNum = 0) const {
+    void PrintIndices(const int &layerNum = 0) const
+    {
         std::cout << "Activated Dofs on this surface are: ";
         Element<2, N, T>::PrintIndices(layerNum);
     }
 
-    void PrintExclusiveIndices(const int &layerNum) const {
+    void PrintExclusiveIndices(const int &layerNum) const
+    {
         std::cout << "Activated exclusive Dofs on this surface are: ";
         Element<2, N, T>::PrintExclusiveIndices(layerNum);
     }
 
     //! Return the element coordinates in parametric domain. (Each element in the vector is composed with two points,
     //! i.e. Southeast and Northwest.)
-    void KnotSpansGetter(CoordinatePairList &knotspanslist) {
+    void KnotSpansGetter(CoordinatePairList &knotspanslist)
+    {
         auto knotspan_x = this->_domain->KnotVectorGetter(0).KnotSpans();
         auto knotspan_y = this->_domain->KnotVectorGetter(1).KnotSpans();
         knotspanslist.reserve(knotspan_x.size() * knotspan_y.size());
@@ -138,11 +151,13 @@ public:
     };
 
     //TODO: Finish the calculation of area;
-    T Measure() const {
+    T Measure() const
+    {
         return 0;
     }
 
-    void Match(std::shared_ptr<Surface<N, T>> &counterpart) {
+    void Match(std::shared_ptr<Surface<N, T>> &counterpart)
+    {
         for (auto &i : _edges)
         {
             for (auto &j : counterpart->_edges)
@@ -150,16 +165,17 @@ public:
                 i->Match(j);
             }
         }
-        for (auto &i : _vertices)
-        {
-            for (auto &j : counterpart->_vertices)
-            {
-                i->Match(j);
-            }
-        }
+        // for (auto &i : _vertices)
+        // {
+        //     for (auto &j : counterpart->_vertices)
+        //     {
+        //         i->Match(j);
+        //     }
+        // }
     }
 
-    void PrintEdgeInfo() const {
+    void PrintEdgeInfo() const
+    {
         for (const auto &i : _edges)
         {
             i->PrintInfo();
@@ -167,7 +183,8 @@ public:
         std::cout << std::endl;
     }
 
-    void PrintVertexInfo() const {
+    void PrintVertexInfo() const
+    {
         for (const auto &i : _vertices)
         {
             i->PrintInfo();
@@ -175,60 +192,63 @@ public:
         std::cout << std::endl;
     }
 
-    T Jacobian(const Coordinate &u) const {
+    T Jacobian(const Coordinate &u) const
+    {
         return this->_domain->Jacobian(u);
     }
 
-protected:
+  protected:
     std::array<std::shared_ptr<Edge<N, T>>, 4> _edges;
     std::array<std::shared_ptr<Vertex<N, T>>, 4> _vertices;
     std::array<bool, 4> _Dirichlet;
 
-    std::shared_ptr<PhyTensorBsplineBasis<1, N, T>> MakeEdge(const Orientation &orient) const {
+    std::shared_ptr<PhyTensorBsplineBasis<1, N, T>> MakeEdge(const Orientation &orient) const
+    {
         switch (orient)
         {
-            case west:
-            {
-                return this->_domain->MakeHyperPlane(0, 0);
-            }
-            case east:
-            {
-                return this->_domain->MakeHyperPlane(0, this->_domain->GetDof(0) - 1);
-            }
-            case south:
-            {
-                return this->_domain->MakeHyperPlane(1, 0);
-            }
-            case north:
-            {
-                return this->_domain->MakeHyperPlane(1, this->_domain->GetDof(1) - 1);
-            }
+        case west:
+        {
+            return this->_domain->MakeHyperPlane(0, 0);
+        }
+        case east:
+        {
+            return this->_domain->MakeHyperPlane(0, this->_domain->GetDof(0) - 1);
+        }
+        case south:
+        {
+            return this->_domain->MakeHyperPlane(1, 0);
+        }
+        case north:
+        {
+            return this->_domain->MakeHyperPlane(1, this->_domain->GetDof(1) - 1);
+        }
         }
     }
 
-    std::shared_ptr<PhyTensorBsplineBasis<0, N, T>> MakeVertex(const VertexIndex &index) const {
+    std::shared_ptr<PhyTensorBsplineBasis<0, N, T>> MakeVertex(const VertexIndex &index) const
+    {
         switch (index)
         {
-            case first:
-            {
-                return std::make_shared<PhyTensorBsplineBasis<0, N, T>>(this->_domain->AffineMap(
-                        Coordinate(this->_domain->DomainStart(0), this->_domain->DomainStart(1))));
-            }
-            case second:
-            {
-                return std::make_shared<PhyTensorBsplineBasis<0, N, T>>(this->_domain->AffineMap(
-                        Coordinate(this->_domain->DomainEnd(0), this->_domain->DomainStart(1))));
-            }
-            case third:
-            {
-                return std::make_shared<PhyTensorBsplineBasis<0, N, T>>(this->_domain->AffineMap(
-                        Coordinate(this->_domain->DomainEnd(0), this->_domain->DomainEnd(1))));
-            }
-            case fourth:
-            {
-                return std::make_shared<PhyTensorBsplineBasis<0, N, T>>(this->_domain->AffineMap(
-                        Coordinate(this->_domain->DomainStart(0), this->_domain->DomainEnd(1))));
-            }
+        case first:
+        {
+            return std::make_shared<PhyTensorBsplineBasis<0, N, T>>(this->_domain->AffineMap(
+                Coordinate(this->_domain->DomainStart(0), this->_domain->DomainStart(1))));
+        }
+        case second:
+        {
+            return std::make_shared<PhyTensorBsplineBasis<0, N, T>>(this->_domain->AffineMap(
+                Coordinate(this->_domain->DomainEnd(0), this->_domain->DomainStart(1))));
+        }
+        case third:
+        {
+            return std::make_shared<PhyTensorBsplineBasis<0, N, T>>(this->_domain->AffineMap(
+                Coordinate(this->_domain->DomainEnd(0), this->_domain->DomainEnd(1))));
+        }
+        case fourth:
+        {
+            return std::make_shared<PhyTensorBsplineBasis<0, N, T>>(this->_domain->AffineMap(
+                Coordinate(this->_domain->DomainStart(0), this->_domain->DomainEnd(1))));
+        }
         }
     }
 };
