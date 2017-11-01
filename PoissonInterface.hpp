@@ -145,7 +145,7 @@ void PoissonInterface<N, T>::SolveC0Constraint(Edge<N, T> *edge, const int &codi
                   << std::endl;
     }
 
-    Matrix constraint = this->Solve(gramian_matrix, rhs_matrix);
+    Matrix constraint = this->SolveNonSymmetric(gramian_matrix, rhs_matrix);
     MatrixData<T> constraint_data(constraint, activated_slave_indices, activated_master_indices);
     std::vector<Eigen::Triplet<T>> temp;
     this->Triplet(constraint_data, temp);

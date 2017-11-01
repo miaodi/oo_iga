@@ -460,6 +460,14 @@ class DomainVisitor : public Visitor<d, N, T>
         return res;
     }
 
+    Matrix SolveNonSymmetric(const Matrix &gramian,
+                 const Matrix &rhs) const
+    {
+        ASSERT(gramian.rows() == gramian.cols(),
+               "The size of given gramian matrix is not correct.\n");
+        return gramian.partialPivLu().solve(rhs);;
+    }
+
   protected:
     const DofMapper<N, T> &_dofMapper;
 };

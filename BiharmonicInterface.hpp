@@ -135,18 +135,15 @@ void BiharmonicInterface<N, T>::SolveC1Constraint(Edge<N, T> *edge)
     Accessory::removeRow<T>(rhs_matrix_c0_slave, rhs_matrix_c0_slave.rows() - 1);
     Accessory::removeRow<T>(rhs_matrix_c0_slave, rhs_matrix_c0_slave.rows() - 1);
 
-    Matrix c1_constraint = this->Solve(gramian_matrix, rhs_matrix_c1);
-    Matrix c0_c1_constraint = this->Solve(gramian_matrix, rhs_matrix_c0_slave);
+    Matrix c1_constraint = this->SolveNonSymmetric(gramian_matrix, rhs_matrix_c1);
+    Matrix c0_c1_constraint = this->SolveNonSymmetric(gramian_matrix, rhs_matrix_c0_slave);
 
     auto activated_slave_indices_copy = activated_slave_indices;
     MatrixData<T> c1_constraint_data(c1_constraint, activated_slave_indices, activated_master_indices);
     MatrixData<T> c0_c1constraint_data(c0_c1_constraint, activated_slave_indices_copy, c0_slave_indices);
     MatrixData<T> c0_constraint_data = this->ToMatrixData(this->_Constraint[edge]);
     auto c0_slave_c1_constraint_data = c0_c1constraint_data * c0_constraint_data;
-    std::cout << *(c1_constraint_data._matrix) << std::endl
-              << std::endl;
-    std::cout << *(c0_slave_c1_constraint_data._matrix) << std::endl
-              << std::endl;
+
 
     this->Triplet(c1_constraint_data, this->_Constraint[edge]);
     this->Triplet(c0_slave_c1_constraint_data, this->_Constraint[edge]);

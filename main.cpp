@@ -34,9 +34,9 @@ int main()
     auto domain1 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(vector<KnotVector<double>>{a, a}, point);
     auto domain2 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(vector<KnotVector<double>>{a, a}, pointt);
     auto domain3 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(vector<KnotVector<double>>{a, a}, pointtt);
-    domain1->DegreeElevate(2);
-    domain2->DegreeElevate(2);
-    domain3->DegreeElevate(2);
+    domain1->DegreeElevate(3);
+    domain2->DegreeElevate(3);
+    domain3->DegreeElevate(3);
 
     domain1->UniformRefine(1);
     domain2->UniformRefine(1);
@@ -45,9 +45,9 @@ int main()
     domain3->KnotInsertion(1, 1.0 / 3);
     domain3->KnotInsertion(1, 2.0 / 3);
 
-    domain1->UniformRefine(0);
-    domain2->UniformRefine(0);
-    domain3->UniformRefine(0);
+    domain1->UniformRefine(1);
+    domain2->UniformRefine(1);
+    domain3->UniformRefine(1);
     auto surface1 = make_shared<Surface<2, double>>(domain1, array<bool, 4>{false, false, true, true});
     surface1->SurfaceInitialize();
     auto surface2 = make_shared<Surface<2, double>>(domain2, array<bool, 4>{true, true, false, false});
@@ -99,7 +99,11 @@ int main()
     surface2->EdgeAccept(interface);
     surface3->EdgeAccept(interface);
     interface.ConstraintMatrix(constraint);
-
+    for (int k = 0; k < constraint.outerSize(); ++k)
+        for (SparseMatrix<double>::InnerIterator it(constraint, k); it; ++it)
+        {
+            cout<<it.value()<<", "<<it.row()<<", "<<it.col()<<endl;
+        }
     SparseMatrix<double> condensed_stiffness_matrix = global_to_condensed * constraint.transpose() * stiffness_matrix * constraint * global_to_condensed.transpose();
     SparseMatrix<double> free_stiffness_matrix = condensed_to_free * condensed_stiffness_matrix * condensed_to_free.transpose();
     SparseMatrix<double> condensed_rhs = global_to_condensed * constraint.transpose() * load_vector - condensed_stiffness_matrix * boundary_value;
