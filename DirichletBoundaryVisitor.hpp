@@ -76,7 +76,7 @@ DirichletBoundaryVisitor<N, T>::SolveDirichletBoundary() const
     this->MatrixAssembler(dirichlet_inverse_map.size(), dirichlet_inverse_map.size(), condensed_gramian, gramian_matrix_triangle);
     this->VectorAssembler(dirichlet_inverse_map.size(), condensed_rhs, rhs_vector);
     gramian_matrix = gramian_matrix_triangle.template selfadjointView<Eigen::Upper>();
-    Vector res = this->Solve(gramian_matrix, rhs_vector);
+    Vector res = this->SolveLU(gramian_matrix, rhs_vector);
     for (int i = 0; i < res.rows(); ++i)
     {
         _dirichlet.push_back(Eigen::Triplet<T>(dirichlet_indices[i], 0, res(i)));

@@ -55,7 +55,7 @@ class AbstractMapper : public Visitor<2, N, T>, Visitor<1, N, T>, Visitor<0, N, 
         Visit(Element<0, N, T> *g)
     {
         auto vertex = dynamic_cast<Vertex<N, T> *>(g);
-
+        _dofMap.VertexIndicesInserter(vertex, *vertex->ExclusiveIndices(_numOfLayer));
         //        If it is not Dirichlet and is slave push d.o.f associated with this vertex to slave d.o.f
         if (!vertex->IsDirichlet() && vertex->IsSlave())
         {

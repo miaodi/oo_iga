@@ -441,11 +441,27 @@ class DomainVisitor : public Visitor<d, N, T>
     {
         ASSERT(gramian.rows() == gramian.cols(),
                "The size of given gramian matrix is not correct.\n");
-        Eigen::ConjugateGradient<Eigen::SparseMatrix<T>,
-                                 Eigen::Lower | Eigen::Upper>
-            cg;
+        Eigen::ConjugateGradient<Eigen::SparseMatrix<T>, Eigen::Lower | Eigen::Upper> cg;
+        cg.setMaxIterations(10*gramian.rows());
         cg.compute(gramian);
         Matrix res = cg.solve(rhs);
+        return res;
+    }
+
+    Matrix SolveLU(const Eigen::SparseMatrix<T> &gramian,
+                   const Eigen::SparseMatrix<T> &rhs) const
+    {
+        using namespace Eigen;
+        ASSERT(gramian.rows() == gramian.cols(),
+               "The size of given gramian matrix is not correct.\n");
+        SparseLU<SparseMatrix<T>> solver;
+
+        // Compute the ordering permutation vector from the structural pattern of A
+        solver.analyzePattern(gramian);
+        // Compute the numerical factorization
+        solver.factorize(gramian);
+        //Use the factors to solve the linear system
+        Matrix res = solver.solve(rhs);
         return res;
     }
 
@@ -461,11 +477,12 @@ class DomainVisitor : public Visitor<d, N, T>
     }
 
     Matrix SolveNonSymmetric(const Matrix &gramian,
-                 const Matrix &rhs) const
+                             const Matrix &rhs) const
     {
         ASSERT(gramian.rows() == gramian.cols(),
                "The size of given gramian matrix is not correct.\n");
-        return gramian.partialPivLu().solve(rhs);;
+        return gramian.partialPivLu().solve(rhs);
+        ;
     }
 
   protected:

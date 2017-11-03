@@ -42,25 +42,25 @@ class Surface : public Element<2, N, T>, public std::enable_shared_from_this<Sur
             _vertices[i] = std::make_shared<Vertex<N, T>>(MakeVertex(static_cast<VertexIndex>(i)),
                                                           _Dirichlet[(i - 1 >= 0) ? (i - 1) : 3] || _Dirichlet[i]);
         }
-        _edges[0] = std::make_shared<Edge<N, T>>(MakeEdge(south), south, _vertices[0], _vertices[1]);
+        _edges[0] = std::make_shared<Edge<N, T>>(MakeEdge(south), south, _vertices[0], _vertices[1], _Dirichlet[0]);
         _edges[0]->ParentSetter(this->shared_from_this());
 
         _vertices[0]->ParentSetter(_edges[0]);
         _vertices[1]->ParentSetter(_edges[0]);
 
-        _edges[1] = std::make_shared<Edge<N, T>>(MakeEdge(east), east, _vertices[1], _vertices[2]);
+        _edges[1] = std::make_shared<Edge<N, T>>(MakeEdge(east), east, _vertices[1], _vertices[2], _Dirichlet[1]);
         _edges[1]->ParentSetter(this->shared_from_this());
 
         _vertices[1]->ParentSetter(_edges[1]);
         _vertices[2]->ParentSetter(_edges[1]);
 
-        _edges[2] = std::make_shared<Edge<N, T>>(MakeEdge(north), north, _vertices[2], _vertices[3]);
+        _edges[2] = std::make_shared<Edge<N, T>>(MakeEdge(north), north, _vertices[2], _vertices[3], _Dirichlet[2]);
         _edges[2]->ParentSetter(this->shared_from_this());
 
         _vertices[2]->ParentSetter(_edges[2]);
         _vertices[3]->ParentSetter(_edges[2]);
 
-        _edges[3] = std::make_shared<Edge<N, T>>(MakeEdge(west), west, _vertices[3], _vertices[0]);
+        _edges[3] = std::make_shared<Edge<N, T>>(MakeEdge(west), west, _vertices[3], _vertices[0], _Dirichlet[3]);
         _edges[3]->ParentSetter(this->shared_from_this());
 
         _vertices[3]->ParentSetter(_edges[3]);

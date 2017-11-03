@@ -211,12 +211,12 @@ void BiharmonicInterface<N, T>::C1IntegralElementAssembler(Matrix &slave_constra
     // +-----------+-----------+
     Matrix slave_jacobian = (slave_domain->JacobianMatrix(slave_quadrature_abscissa)).transpose();
     Matrix master_jacobian = (master_domain->JacobianMatrix(master_quadrature_abscissa)).transpose();
-    Matrix master_to_slave = slave_jacobian * master_jacobian.inverse();
+    // Matrix master_to_slave = slave_jacobian * master_jacobian.inverse(); 
 
     // Substitute master coordinate of master basis by slave coordinate
     for (auto &i : *master_evals)
     {
-        Vector tmp = master_to_slave * (Vector(2) << i.second[1], i.second[2]).finished();
+        Vector tmp = slave_jacobian * master_jacobian.partialPivLu().solve((Vector(2) << i.second[1], i.second[2]).finished());
         i.second[1] = tmp(0);
         i.second[2] = tmp(1);
     }
@@ -254,6 +254,7 @@ void BiharmonicInterface<N, T>::C1IntegralElementAssembler(Matrix &slave_constra
     }
     }
 
+    #pragma region
     // switch (edge->GetOrient())
     // {
     // // For south and north edge derivative w.r.t η_s should be consistent
@@ -313,6 +314,7 @@ void BiharmonicInterface<N, T>::C1IntegralElementAssembler(Matrix &slave_constra
     //     break;
     // }
     // }
+    #pragma endregion
 
     // Lagrange multiplier basis
     for (int j = 0; j < multiplier_evals->size(); ++j)

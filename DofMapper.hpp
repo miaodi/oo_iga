@@ -313,12 +313,31 @@ class DofMapper
         }
     }
 
+    void
+    VertexIndicesInserter(Vertex<N, T> *g,
+                        const std::vector<int> &indices)
+    {
+        for (const auto &i : indices)
+        {
+            _vertexDof[g].insert(i);
+        }
+    }
+
     std::vector<int>
     GlobalEdgeIndicesGetter(Edge<N, T> *g) const
     {
         auto it = _edgeDof.find(g);
         std::vector<int> res(it->second.begin(), it->second.end());
         IndicesToGlobal(g->Parent(0).lock()->GetDomain(), res);
+        return res;
+    }
+
+    std::vector<int>
+    GlobalVertexIndicesGetter(Vertex<N, T> *g) const
+    {
+        auto it = _vertexDof.find(g);
+        std::vector<int> res(it->second.begin(), it->second.end());
+        IndicesToGlobal(g->Parent(0).lock()->Parent(0).lock()->GetDomain(), res);
         return res;
     }
 
@@ -809,6 +828,8 @@ class DofMapper
     std::map<const DomainShared_ptr, std::set<int>> _slaveDof;
 
     std::map<Edge<N, T> *, std::set<int>> _edgeDof;
+
+    std::map<Vertex<N, T> *, std::set<int>> _vertexDof;
 };
 
 #endif //OO_IGA_DOFMAPPER_H

@@ -137,6 +137,11 @@ class Vertex : public Element<0, N, T>, public std::enable_shared_from_this<Vert
         }
     }
 
+    std::vector<std::weak_ptr<Vertex<N, T>>> Counterpart() const
+    {
+        return _pairList;
+    }
+
   protected:
     std::vector<std::weak_ptr<Vertex<N, T>>> _pairList;
     bool _Dirichlet{false};
