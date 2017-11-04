@@ -14,8 +14,9 @@
 #include "PoissonVertexVisitor.hpp"
 #include "PoissonInterface.hpp"
 #include "BiharmonicInterface.hpp"
-#include "PostProcess.h"
+#include "PostProcess.hpp"
 #include <fstream>
+#include <time.h>
 
 using namespace Eigen;
 using namespace std;
@@ -26,7 +27,6 @@ using Vector1d = Matrix<double, 1, 1>;
 
 int main()
 {
-
     KnotVector<double> a;
     a.InitClosed(1, 0, 1);
     Vector2d point1(0, 0), point2(0, 2), point3(1, 1), point4(1, 2), point5(2, 0), point6(2, 1), point7(2, 2);
@@ -37,11 +37,11 @@ int main()
 
     int order, refine;
     cin >> order >> refine;
+    auto t1 = std::chrono::high_resolution_clock::now();
     for (int i = 1; i < order; i++)
     {
         for (int j = 0; j < refine; j++)
         {
-
             auto domain1 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(vector<KnotVector<double>>{a, a}, point);
             auto domain2 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(vector<KnotVector<double>>{a, a}, pointt);
             auto domain3 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(vector<KnotVector<double>>{a, a}, pointtt);
@@ -128,25 +128,17 @@ int main()
             VectorXd Solution = cg.solve(free_rhs);
 
             VectorXd solution = constraint * global_to_condensed.transpose() * (condensed_to_free.transpose() * Solution + boundary_value);
-            vector<KnotVector<double>> solutionDomain1, solutionDomain2, solutionDomain3;
-            solutionDomain1.push_back(domain1->KnotVectorGetter(0));
-            solutionDomain1.push_back(domain1->KnotVectorGetter(1));
-            solutionDomain2.push_back(domain2->KnotVectorGetter(0));
-            solutionDomain2.push_back(domain2->KnotVectorGetter(1));
-            solutionDomain3.push_back(domain3->KnotVectorGetter(0));
-            solutionDomain3.push_back(domain3->KnotVectorGetter(1));
-            VectorXd controlDomain1 = solution.segment(dof_map.StartingIndex(domain1), domain1->GetDof());
-            VectorXd controlDomain2 = solution.segment(dof_map.StartingIndex(domain2), domain2->GetDof());
-            VectorXd controlDomain3 = solution.segment(dof_map.StartingIndex(domain3), domain3->GetDof());
-            vector<shared_ptr<PhyTensorBsplineBasis<2, 1, double>>> solutions(3);
-            solutions[0] = make_shared<PhyTensorBsplineBasis<2, 1, double>>(solutionDomain1, controlDomain1);
-            solutions[1] = make_shared<PhyTensorBsplineBasis<2, 1, double>>(solutionDomain2, controlDomain2);
-            solutions[2] = make_shared<PhyTensorBsplineBasis<2, 1, double>>(solutionDomain3, controlDomain3);
-            PostProcess<double> post(cells, solutions, analytical_solution);
-            std::cout << post.RelativeL2Error() << std::endl;
-            cout << dof_map.CondensedDof() << endl;
+            PostProcess<2, double> post_process(dof_map, solution, analytical_solution);
+            surface1->Accept(post_process);
+            surface2->Accept(post_process);
+            surface3->Accept(post_process);
+            cout<<post_process.L2Norm()<<endl;
         }
         std::cout << endl;
     }
+    auto t2 = std::chrono::high_resolution_clock::now();
+    std::cout << "test function took "
+              << std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count()
+              << " milliseconds\n";
     return 0;
 }

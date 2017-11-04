@@ -109,7 +109,7 @@ class DomainVisitor : public Visitor<d, N, T>
     using Vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
 
     DomainVisitor(const DofMapper<N, T> &dof_mapper)
-        : _dofMapper(dof_mapper){};
+        : _dofMapper(dof_mapper){}
 
     //    Multi thread domain visitor
     void Visit(Element<d, N, T> *g)
