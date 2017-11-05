@@ -3,3 +3,4 @@
 //
 
 #include "BsplineBasis.h"
+#include <boost/multiprecision/gmp.hpp>

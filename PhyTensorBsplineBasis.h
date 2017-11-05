@@ -112,7 +112,7 @@ class PhyTensorBsplineBasis : public TensorBsplineBasis<d, T>
     UniformRefine(int r)
     {
         if (r == 0)
-        return;
+            return;
         for (int i = 0; i != d; ++i)
             UniformRefine(i, r);
     }
@@ -298,7 +298,7 @@ void PhyTensorBsplineBasis<d, N, T>::UniformRefine(int orientation,
                                                    int r,
                                                    int m)
 {
-    ASSERT(orientation < d, "Invalid degree elevate orientation");
+    ASSERT(orientation < d, "Invalid knot vector refine orientation");
     if (r == 0)
         return;
     std::vector<int> indexes(d, 0);

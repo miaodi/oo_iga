@@ -3,22 +3,23 @@
 //
 
 #include "KnotVector.h"
+#include <iomanip>
+#include <boost/multiprecision/gmp.hpp>
 
-template<typename T>
+template <typename T>
 KnotVector<T>::KnotVector(const KnotVector::knotContainer &target)
-    :_multiKnots(target)
+    : _multiKnots(target)
 {
 }
 
-template<typename T>
+template <typename T>
 KnotVector<T>::KnotVector(const KnotVector::uniContainer &target)
 {
     MultiPle(target);
 }
 
-template<typename T>
-void
-KnotVector<T>::UniQue(uniContainer &_uniKnots) const
+template <typename T>
+void KnotVector<T>::UniQue(uniContainer &_uniKnots) const
 {
     _uniKnots.clear();
     for (auto const &s : _multiKnots)
@@ -27,7 +28,20 @@ KnotVector<T>::UniQue(uniContainer &_uniKnots) const
     }
 }
 
-template<typename T>
+template <typename T>
+int KnotVector<T>::SpanNum(const T &u) const
+{
+    uniContainer temp;
+    UniQue(temp);
+    knotContainer tmp;
+    for (auto &i : temp)
+    {
+        tmp.push_back(i.first);
+    }
+    return KnotVector(tmp).FindSpan(u);
+};
+
+template <typename T>
 typename KnotVector<T>::knotContainer
 KnotVector<T>::GetUnique() const
 {
@@ -41,41 +55,37 @@ KnotVector<T>::GetUnique() const
     return result;
 }
 
-template<typename T>
-void
-KnotVector<T>::printUnique() const
+template <typename T>
+void KnotVector<T>::printUnique() const
 {
     uniContainer _uniKnots;
     UniQue(_uniKnots);
     for (auto const &e : _uniKnots)
     {
-        std::cout << e.first << " : " << e.second << std::endl;
+        std::cout << std::setprecision(std::numeric_limits<T>::digits) << e.first << " : " << e.second << std::endl;
     }
 }
 
-template<typename T>
-void
-KnotVector<T>::printKnotVector() const
+template <typename T>
+void KnotVector<T>::printKnotVector() const
 {
     for (auto const &e : _multiKnots)
     {
-        std::cout << e << " ";
+        std::cout << std::setprecision(std::numeric_limits<T>::digits) << e << " ";
     }
     std::cout << std::endl;
 }
 
-template<typename T>
-int
-KnotVector<T>::GetDegree() const
+template <typename T>
+int KnotVector<T>::GetDegree() const
 {
     uniContainer _uniKnots;
     UniQue(_uniKnots);
     return (*_uniKnots.begin()).second - 1;
 }
 
-template<typename T>
-void
-KnotVector<T>::Insert(T r)
+template <typename T>
+void KnotVector<T>::Insert(T r)
 {
     for (auto it = _multiKnots.begin() + 1; it != _multiKnots.end(); ++it)
     {
@@ -87,9 +97,8 @@ KnotVector<T>::Insert(T r)
     }
 }
 
-template<typename T>
-void
-KnotVector<T>::MultiPle(const uniContainer &_uniKnots)
+template <typename T>
+void KnotVector<T>::MultiPle(const uniContainer &_uniKnots)
 {
     _multiKnots.clear();
     for (auto const &s : _uniKnots)
@@ -101,10 +110,9 @@ KnotVector<T>::MultiPle(const uniContainer &_uniKnots)
     }
 }
 
-template<typename T>
-void
-KnotVector<T>::UniformRefine(int r,
-                             int multi)
+template <typename T>
+void KnotVector<T>::UniformRefine(int r,
+                                  int multi)
 {
     uniContainer _uniKnots;
     UniQue(_uniKnots);
@@ -122,11 +130,10 @@ KnotVector<T>::UniformRefine(int r,
     MultiPle(_uniKnots);
 }
 
-template<typename T>
-void
-KnotVector<T>::RefineSpan(std::pair<T, T> span,
-                          int r,
-                          int multi)
+template <typename T>
+void KnotVector<T>::RefineSpan(std::pair<T, T> span,
+                               int r,
+                               int multi)
 {
     uniContainer _uniKnots, temp_uniKnots;
     UniQue(_uniKnots);
@@ -139,32 +146,30 @@ KnotVector<T>::RefineSpan(std::pair<T, T> span,
     MultiPle(_uniKnots);
 }
 
-template<typename T>
+template <typename T>
 Eigen::Matrix<T, Eigen::Dynamic, 1>
 KnotVector<T>::MapToEigen() const
 {
     return Eigen::Matrix<T, -1, 1, 0, -1, 1>::Map(_multiKnots.data(), _multiKnots.size());
 }
 
-template<typename T>
-int
-KnotVector<T>::GetSize() const
+template <typename T>
+int KnotVector<T>::GetSize() const
 {
     return static_cast<int>(_multiKnots.size());
 }
 
-template<typename T>
+template <typename T>
 const T &
-KnotVector<T>::operator[](int i) const
+    KnotVector<T>::operator[](int i) const
 {
     return _multiKnots[i];
 }
 
-template<typename T>
-void
-KnotVector<T>::InitClosed(int _deg,
-                          T first,
-                          T last)
+template <typename T>
+void KnotVector<T>::InitClosed(int _deg,
+                               T first,
+                               T last)
 {
     uniContainer _uniKnots;
     uniContainer tmp;
@@ -174,12 +179,11 @@ KnotVector<T>::InitClosed(int _deg,
     MultiPle(_uniKnots);
 }
 
-template<typename T>
-void
-KnotVector<T>::InitClosedUniform(int _dof,
-                                 int _deg,
-                                 T first,
-                                 T last)
+template <typename T>
+void KnotVector<T>::InitClosedUniform(int _dof,
+                                      int _deg,
+                                      T first,
+                                      T last)
 {
     InitClosed(_deg, first, last);
     uniContainer _uniKnots;
@@ -198,7 +202,7 @@ KnotVector<T>::InitClosedUniform(int _dof,
     MultiPle(_uniKnots);
 }
 
-template<typename T>
+template <typename T>
 KnotVector<T>
 KnotVector<T>::UniKnotUnion(const KnotVector &vb) const
 {
@@ -214,7 +218,7 @@ KnotVector<T>::UniKnotUnion(const KnotVector &vb) const
     return KnotVector(tmp);
 }
 
-template<typename T>
+template <typename T>
 std::vector<std::pair<T, T>>
 KnotVector<T>::KnotSpans() const
 {
@@ -228,23 +232,20 @@ KnotVector<T>::KnotSpans() const
     return tmp;
 }
 
-template<typename T>
-int
-KnotVector<T>::GetDOF() const
+template <typename T>
+int KnotVector<T>::GetDOF() const
 {
     return GetSize() - GetDegree() - 1;
 }
 
-template<typename T>
-T &
-KnotVector<T>::operator()(int i)
+template <typename T>
+T &KnotVector<T>::operator()(int i)
 {
     return _multiKnots[i];
 }
 
-template<typename T>
-int
-KnotVector<T>::FindSpan(const T &u) const
+template <typename T>
+int KnotVector<T>::FindSpan(const T &u) const
 {
     const int dof = GetDOF();
     const int deg = GetDegree();
@@ -268,7 +269,7 @@ KnotVector<T>::FindSpan(const T &u) const
     return mid;
 }
 
-template<typename T>
+template <typename T>
 KnotVector<T>
 KnotVector<T>::Difference(const KnotVector &reference) const
 {
@@ -279,7 +280,7 @@ KnotVector<T>::Difference(const KnotVector &reference) const
     return KnotVector(diff);
 }
 
-template<typename T>
+template <typename T>
 std::vector<std::pair<Eigen::Matrix<T, Eigen::Dynamic, 1>, Eigen::Matrix<T, Eigen::Dynamic, 1>>>
 KnotVector<T>::KnotEigenSpans() const
 {
@@ -297,29 +298,28 @@ KnotVector<T>::KnotEigenSpans() const
     return tmp;
 }
 
-template<typename T>
-void
-KnotVector<T>::Uniquify(const T &tol)
+template <typename T>
+void KnotVector<T>::Uniquify(const T &tol)
 {
     for (auto it = _multiKnots.begin();
          it != _multiKnots.end();
-        /*it++*/)
+         /*it++*/)
     {
 
         if (it != _multiKnots.begin())
         {
-            if (std::abs(*it - *(it - 1)) < tol)
+            if (abs(*it - *(it - 1)) < tol)
             {
                 it = _multiKnots.erase(it);
             }
             else
                 ++it;
-
         }
         else
             ++it;
     }
 }
-
-template
-class KnotVector<double>;
+template class KnotVector<double>;
+template class KnotVector<float>;
+template class KnotVector<boost::multiprecision::mpf_float_100>;
+template class KnotVector<boost::multiprecision::mpf_float_1000>;

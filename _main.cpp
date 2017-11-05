@@ -132,13 +132,13 @@ int main()
             surface1->Accept(post_process);
             surface2->Accept(post_process);
             surface3->Accept(post_process);
-            cout<<post_process.L2Norm()<<endl;
+            cout << post_process.L2Norm() << endl;
         }
         std::cout << endl;
     }
     auto t2 = std::chrono::high_resolution_clock::now();
     std::cout << "test function took "
-              << std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count()
+              << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count()
               << " milliseconds\n";
     return 0;
 }
