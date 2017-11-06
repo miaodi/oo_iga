@@ -109,7 +109,7 @@ class DomainVisitor : public Visitor<d, N, T>
     using Vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
 
     DomainVisitor(const DofMapper<N, T> &dof_mapper)
-        : _dofMapper(dof_mapper){}
+        : _dofMapper(dof_mapper) {}
 
     //    Multi thread domain visitor
     void Visit(Element<d, N, T> *g)
@@ -154,12 +154,7 @@ class DomainVisitor : public Visitor<d, N, T>
         else
         {
             auto domain = g->GetDomain();
-            int max_degree = 0;
-            for (int i = 0; i < d; i++)
-            {
-                max_degree = std::max(max_degree, domain->GetDegree(i));
-            }
-            quad_rule.SetUpQuadrature(max_degree + 1);
+            quad_rule.SetUpQuadrature(domain->MaxDegree() + 1);
         }
     }
 
@@ -442,7 +437,7 @@ class DomainVisitor : public Visitor<d, N, T>
         ASSERT(gramian.rows() == gramian.cols(),
                "The size of given gramian matrix is not correct.\n");
         Eigen::ConjugateGradient<Eigen::SparseMatrix<T>, Eigen::Lower | Eigen::Upper> cg;
-        cg.setMaxIterations(10*gramian.rows());
+        cg.setMaxIterations(10 * gramian.rows());
         cg.compute(gramian);
         Matrix res = cg.solve(rhs);
         return res;

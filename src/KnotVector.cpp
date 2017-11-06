@@ -319,6 +319,8 @@ void KnotVector<T>::Uniquify(const T &tol)
             ++it;
     }
 }
+
+template class KnotVector<long double>;
 template class KnotVector<double>;
 template class KnotVector<float>;
 template class KnotVector<boost::multiprecision::mpf_float_1000>;

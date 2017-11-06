@@ -1,157 +1,9 @@
 //
 // Created by di miao on 12/29/16.
 //
-#ifndef OO_IGA_PHYTENSORBSPLINEBASIS_H
-#define OO_IGA_PHYTENSORBSPLINEBASIS_H
 
-#include <unordered_map>
-#include "TensorBsplineBasis.h"
-#include "Utility.hpp"
-
-template <int d, int N, typename T>
-struct ComputeJacobian;
-
-template <int d, int N, typename T = double>
-class PhyTensorBsplineBasis : public TensorBsplineBasis<d, T>
-{
-
-  public:
-    using Pts = Eigen::Matrix<T, d, 1>;
-    using PhyPts = Eigen::Matrix<T, N, 1>;
-    using GeometryVector = std::vector<PhyPts>;
-    typedef std::vector<int> DiffPattern;
-    using vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
-    typedef typename TensorBsplineBasis<d, T>::BasisFunValDerAll BasisFunValDerAll;
-    typedef typename TensorBsplineBasis<d, T>::BasisFunValDerAllList BasisFunValDerAllList;
-    typedef typename TensorBsplineBasis<d, T>::BasisFunValDerAllList_ptr BasisFunValDerAllList_ptr;
-    using HyperPlane = PhyTensorBsplineBasis<d - 1, N, T>;
-    using HyperPlaneSharedPts = std::shared_ptr<PhyTensorBsplineBasis<d - 1, N, T>>;
-
-    PhyTensorBsplineBasis();
-
-    PhyTensorBsplineBasis(const BsplineBasis<T> &,
-                          const GeometryVector &);
-
-    PhyTensorBsplineBasis(const BsplineBasis<T> &,
-                          const BsplineBasis<T> &,
-                          const GeometryVector &);
-
-    PhyTensorBsplineBasis(const BsplineBasis<T> &,
-                          const BsplineBasis<T> &,
-                          const BsplineBasis<T> &,
-                          const GeometryVector &);
-
-    PhyTensorBsplineBasis(const std::vector<KnotVector<T>> &,
-                          const GeometryVector &);
-
-    PhyTensorBsplineBasis(const std::vector<KnotVector<T>> &,
-                          const Eigen::Matrix<T, Eigen::Dynamic, 1> &);
-
-    virtual PhyPts
-    AffineMap(const Pts &,
-              const DiffPattern &i = DiffPattern(d, 0)) const;
-
-    virtual T
-    Jacobian(const Pts &) const;
-
-    Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>
-    JacobianMatrix(const Pts &) const;
-
-    Pts
-    Middle() const
-    {
-        Pts u;
-        for (int i = 0; i != d; i++)
-            u(i) = (this->_basis[i].DomainStart() + this->_basis[i].DomainEnd()) * .5;
-        return u;
-    }
-
-    //! Return physical middle of the patch
-    PhyPts
-    PhyMiddle() const
-    {
-        return AffineMap(Middle());
-    }
-
-    bool
-    InversePts(const PhyPts &,
-               Pts &,
-               int = 1000,
-               T = 1e-10) const;
-
-    bool
-    InversePts(const vector &,
-               vector &,
-               int = 1000,
-               T = 1e-10) const;
-
-    virtual void
-    DegreeElevate(int,
-                  int);
-
-    virtual void
-    UniformRefine(int,
-                  int,
-                  int m = 1);
-
-    virtual void
-    KnotInsertion(int,
-                  T,
-                  int = 1);
-
-    virtual void
-    DegreeElevate(int p)
-    {
-        if (p == 0)
-            return;
-        for (int i = 0; i != d; ++i)
-            DegreeElevate(i, p);
-    }
-
-    void
-    UniformRefine(int r)
-    {
-        if (r == 0)
-            return;
-        for (int i = 0; i != d; ++i)
-            UniformRefine(i, r);
-    }
-
-    void
-    PrintCtrPts() const;
-
-    PhyPts
-    CtrPtsGetter(const int &i) const
-    {
-        return _geometricInfo[i];
-    }
-
-    PhyPts &
-    CtrPtsSetter(const int &i)
-    {
-        return _geometricInfo[i];
-    }
-
-    HyperPlaneSharedPts
-    MakeHyperPlane(const int &orientation,
-                   const int &layer) const;
-
-    virtual ~PhyTensorBsplineBasis()
-    {
-    }
-
-    BasisFunValDerAllList_ptr
-    Eval1PhyDerAllTensor(const vector &u) const;
-
-    BasisFunValDerAllList_ptr
-    Eval2PhyDerAllTensor(const vector &u) const;
-
-    BasisFunValDerAllList_ptr
-    Eval3PhyDerAllTensor(const vector &u) const;
-
-  protected:
-    GeometryVector _geometricInfo;
-};
+#include "PhyTensorBsplineBasis.h"
+#include <boost/multiprecision/gmp.hpp>
 
 template <int d, int N, typename T>
 PhyTensorBsplineBasis<d, N, T>::PhyTensorBsplineBasis()
@@ -164,6 +16,7 @@ typename PhyTensorBsplineBasis<d, N, T>::PhyPts
 PhyTensorBsplineBasis<d, N, T>::AffineMap(const PhyTensorBsplineBasis<d, N, T>::Pts &u,
                                           const DiffPattern &i) const
 {
+    ASSERT(this->InDomain(u), "Given parametric point is not in the domain.\n");
     PhyTensorBsplineBasis<d, N, T>::PhyPts result;
     result.setZero();
     auto p = this->EvalTensor(u, i);
@@ -197,6 +50,36 @@ template <int d, int N, typename T>
 PhyTensorBsplineBasis<d, N, T>::PhyTensorBsplineBasis(const BsplineBasis<T> &baseX,
                                                       const BsplineBasis<T> &baseY,
                                                       const BsplineBasis<T> &baseZ,
+                                                      const PhyTensorBsplineBasis::GeometryVector &geometry)
+    : TensorBsplineBasis<d, T>(baseX, baseY, baseZ), _geometricInfo(geometry)
+{
+    ASSERT((this->TensorBsplineBasis<d, T>::GetDof()) == geometry.size(),
+           "Invalid geometrical information input, check size bro.");
+}
+
+template <int d, int N, typename T>
+PhyTensorBsplineBasis<d, N, T>::PhyTensorBsplineBasis(const KnotVector<T> &baseX,
+                                                      const PhyTensorBsplineBasis<d, N, T>::GeometryVector &geometry)
+    : TensorBsplineBasis<d, T>(baseX), _geometricInfo(geometry)
+{
+    ASSERT((this->TensorBsplineBasis<d, T>::GetDof()) == geometry.size(),
+           "Invalid geometrical information input, check size bro.");
+}
+
+template <int d, int N, typename T>
+PhyTensorBsplineBasis<d, N, T>::PhyTensorBsplineBasis(const KnotVector<T> &baseX,
+                                                      const KnotVector<T> &baseY,
+                                                      const PhyTensorBsplineBasis::GeometryVector &geometry)
+    : TensorBsplineBasis<d, T>(baseX, baseY), _geometricInfo(geometry)
+{
+    ASSERT((this->TensorBsplineBasis<d, T>::GetDof()) == geometry.size(),
+           "Invalid geometrical information input, check size bro.");
+}
+
+template <int d, int N, typename T>
+PhyTensorBsplineBasis<d, N, T>::PhyTensorBsplineBasis(const KnotVector<T> &baseX,
+                                                      const KnotVector<T> &baseY,
+                                                      const KnotVector<T> &baseZ,
                                                       const PhyTensorBsplineBasis::GeometryVector &geometry)
     : TensorBsplineBasis<d, T>(baseX, baseY, baseZ), _geometricInfo(geometry)
 {
@@ -294,13 +177,11 @@ void PhyTensorBsplineBasis<d, N, T>::DegreeElevate(int orientation,
 }
 
 template <int d, int N, typename T>
-void PhyTensorBsplineBasis<d, N, T>::UniformRefine(int orientation,
-                                                   int r,
-                                                   int m)
+void PhyTensorBsplineBasis<d, N, T>::KnotRefine(int orientation,
+                                                const KnotVector<T> &X)
 {
     ASSERT(orientation < d, "Invalid knot vector refine orientation");
-    if (r == 0)
-        return;
+
     std::vector<int> indexes(d, 0);
     std::vector<int> endPerIndex;
     for (int direction = 0; direction != d; ++direction)
@@ -309,14 +190,9 @@ void PhyTensorBsplineBasis<d, N, T>::UniformRefine(int orientation,
     }
     GeometryVector temp1;
     std::vector<int> MultiIndex(d);
-    std::function<void(std::vector<int> &,
-                       const std::vector<int> &,
-                       int)>
-        recursive;
+    std::function<void(std::vector<int> &, const std::vector<int> &, int)> recursive;
     TensorBsplineBasis<d, T> tmp1;
-    KnotVector<T> knot_temp_storage(this->_basis[orientation].Knots());
-    knot_temp_storage.UniformRefine(r, m);
-    KnotVector<T> X = knot_temp_storage.Difference(this->_basis[orientation].Knots());
+    KnotVector<T> knot_temp_storage;
     knot_temp_storage.resize(0);
     bool called = false;
     recursive = [this, &X, &orientation, &called, &knot_temp_storage, &tmp1, &temp1, &MultiIndex, &recursive](
@@ -378,6 +254,163 @@ void PhyTensorBsplineBasis<d, N, T>::UniformRefine(int orientation,
     recursive(indexes, endPerIndex, 0);
     TensorBsplineBasis<d, T>::_basis[orientation] = knot_temp_storage;
     _geometricInfo = temp1;
+}
+
+template <int d, int N, typename T>
+void PhyTensorBsplineBasis<d, N, T>::UniformRefine(int orientation,
+                                                   int r,
+                                                   int m)
+{
+    ASSERT(orientation < d, "Invalid knot vector refine orientation");
+    if (r == 0)
+        return;
+    KnotVector<T> knot_temp_storage(this->_basis[orientation].Knots());
+    knot_temp_storage.UniformRefine(r, m);
+    KnotVector<T> X = knot_temp_storage.Difference(this->_basis[orientation].Knots());
+    this->KnotRefine(orientation, X);
+}
+
+template <>
+typename PhyTensorBsplineBasis<2, 2, double>::BasisFunValDerAllList_ptr
+PhyTensorBsplineBasis<2, 2, double>::Eval1PhyDerAllTensor(const vector &u) const
+{
+    auto parametric = this->EvalDerAllTensor(u, 1);
+    Eigen::Vector2d Pxi, Peta;
+    Pxi.setZero();
+    Peta.setZero();
+    for (const auto &i : *parametric)
+    {
+        Pxi += i.second[1] * _geometricInfo[i.first];
+        Peta += i.second[2] * _geometricInfo[i.first];
+    }
+    Eigen::Matrix2d Jacobian;
+    Jacobian.row(0) = Pxi.transpose();
+    Jacobian.row(1) = Peta.transpose();
+    for (auto &i : *parametric)
+    {
+        Eigen::Map<Eigen::VectorXd> temp(i.second.data() + 1, i.second.size() - 1);
+        Eigen::VectorXd solution = Jacobian.partialPivLu().solve(temp);
+        i.second[1] = solution(0);
+        i.second[2] = solution(1);
+    }
+    return parametric;
+}
+
+template <>
+typename PhyTensorBsplineBasis<2, 2, double>::BasisFunValDerAllList_ptr
+PhyTensorBsplineBasis<2, 2, double>::Eval2PhyDerAllTensor(const PhyTensorBsplineBasis::vector &u) const
+{
+    auto parametric = this->EvalDerAllTensor(u, 2);
+    Eigen::Vector2d Pxi, Peta, PxiPxi, PxiPeta, PetaPeta;
+    Pxi.setZero();
+    Peta.setZero();
+    PxiPxi.setZero();
+    PxiPeta.setZero();
+    PetaPeta.setZero();
+    for (const auto &i : *parametric)
+    {
+        Pxi += i.second[1] * _geometricInfo[i.first];
+        Peta += i.second[2] * _geometricInfo[i.first];
+        PxiPxi += i.second[3] * _geometricInfo[i.first];
+        PxiPeta += i.second[4] * _geometricInfo[i.first];
+        PetaPeta += i.second[5] * _geometricInfo[i.first];
+    }
+    Eigen::Matrix<double, 5, 5> Hessian;
+    Hessian << Pxi(0), Pxi(1), 0, 0, 0, Peta(0), Peta(1), 0, 0, 0, PxiPxi(0), PxiPxi(1), Pxi(0) * Pxi(0), 2 * Pxi(0) * Pxi(1),
+        Pxi(1) * Pxi(1), PxiPeta(0), PxiPeta(1), Pxi(0) * Peta(0), Pxi(0) * Peta(1) + Peta(0) * Pxi(1), Pxi(1) * Peta(1), PetaPeta(
+                                                                                                                              0),
+        PetaPeta(1), Peta(0) * Peta(0), 2 * Peta(0) * Peta(1), Peta(1) * Peta(1);
+    for (auto &i : *parametric)
+    {
+        Eigen::Map<Eigen::VectorXd> temp(i.second.data() + 1, i.second.size() - 1);
+        Eigen::VectorXd solution = Hessian.partialPivLu().solve(temp);
+        i.second[1] = solution(0);
+        i.second[2] = solution(1);
+        i.second[3] = solution(2);
+        i.second[4] = solution(3);
+        i.second[5] = solution(4);
+    }
+    return parametric;
+}
+
+template <>
+typename PhyTensorBsplineBasis<2, 2, double>::BasisFunValDerAllList_ptr
+PhyTensorBsplineBasis<2, 2, double>::Eval3PhyDerAllTensor(const PhyTensorBsplineBasis::vector &u) const
+{
+    auto parametric = this->EvalDerAllTensor(u, 3);
+    Eigen::Vector2d Pxi, Peta, PxiPxi, PxiPeta, PetaPeta, PxiPxiPxi, PxiPxiPeta, PxiPetaPeta, PetaPetaPeta;
+    Pxi.setZero();
+    Peta.setZero();
+    PxiPxi.setZero();
+    PxiPeta.setZero();
+    PetaPeta.setZero();
+    PxiPxiPxi.setZero();
+    PxiPxiPeta.setZero();
+    PxiPetaPeta.setZero();
+    PetaPetaPeta.setZero();
+    for (const auto &i : *parametric)
+    {
+        Pxi += i.second[1] * _geometricInfo[i.first];
+        Peta += i.second[2] * _geometricInfo[i.first];
+        PxiPxi += i.second[3] * _geometricInfo[i.first];
+        PxiPeta += i.second[4] * _geometricInfo[i.first];
+        PetaPeta += i.second[5] * _geometricInfo[i.first];
+        PxiPxiPxi += i.second[6] * _geometricInfo[i.first];
+        PxiPxiPeta += i.second[7] * _geometricInfo[i.first];
+        PxiPetaPeta += i.second[8] * _geometricInfo[i.first];
+        PetaPetaPeta += i.second[9] * _geometricInfo[i.first];
+    }
+    Eigen::Matrix<double, 9, 9> Hessian;
+    Hessian.setZero();
+    Hessian(0, 0) = Pxi(0), Hessian(0, 1) = Pxi(1);
+    Hessian(1, 0) = Peta(0), Hessian(1, 1) = Peta(1);
+    Hessian(2, 0) = PxiPxi(0), Hessian(2, 1) = PxiPxi(1), Hessian(2, 2) = Pxi(0) * Pxi(0), Hessian(2, 3) = 2 * Pxi(0) * Pxi(1), Hessian(2, 4) = Pxi(1) * Pxi(1);
+    Hessian(3, 0) = PxiPeta(0), Hessian(3, 1) = PxiPeta(1), Hessian(3, 2) = Pxi(0) * Peta(0), Hessian(3, 3) = Pxi(0) * Peta(1) + Peta(0) * Pxi(1), Hessian(3, 4) = Pxi(1) * Peta(1);
+    Hessian(4, 0) = PetaPeta(0), Hessian(4, 1) = PetaPeta(1), Hessian(4, 2) = Peta(0) * Peta(0), Hessian(4, 3) = 2 * Peta(0) * Peta(1), Hessian(4, 4) = Peta(1) * Peta(1);
+
+    Hessian(5, 0) = PxiPxiPxi(0), Hessian(5, 1) = PxiPxiPxi(1), Hessian(5, 2) = 3 * Pxi(0) * PxiPxi(0), Hessian(5, 3) = 3 * Pxi(1) * PxiPxi(0) + 3 * Pxi(0) * PxiPxi(1), Hessian(5, 4) = 3 * Pxi(1) * PxiPxi(1), Hessian(5, 5) = pow(Pxi(0), 3), Hessian(5, 6) = 3 * pow(Pxi(0), 2) * Pxi(1), Hessian(5, 7) = 3 * Pxi(0) * pow(Pxi(1), 2), Hessian(5, 8) = pow(Pxi(1), 3);
+
+    Hessian(6, 0) = PxiPxiPeta(0), Hessian(6, 1) = PxiPxiPeta(1), Hessian(6, 2) = 2 * Pxi(0) * PxiPeta(0) + Peta(0) * PxiPxi(0), Hessian(6, 3) = 2 * Pxi(1) * PxiPeta(0) + 2 * Pxi(0) * PxiPeta(1) + Peta(1) * PxiPxi(0) + Peta(0) * PxiPxi(1), Hessian(6, 4) = 2 * Pxi(1) * PxiPeta(1) + Peta(1) * PxiPxi(1), Hessian(6, 5) = Peta(0) * pow(Pxi(0), 2), Hessian(6, 6) = Peta(1) * pow(Pxi(0), 2) + 2 * Peta(0) * Pxi(0) * Pxi(1), Hessian(6, 7) = 2 * Peta(1) * Pxi(0) * Pxi(1) + Peta(0) * pow(Pxi(1), 2), Hessian(6, 8) = Peta(1) * pow(Pxi(1), 2);
+
+    Hessian(7, 0) = PxiPetaPeta(0), Hessian(7, 1) = PxiPetaPeta(1), Hessian(7, 2) = PetaPeta(0) * Pxi(0) + 2 * Peta(0) * PxiPeta(0), Hessian(7, 3) = 2 * Peta(1) * PxiPeta(0) + 2 * Peta(0) * PxiPeta(1) + Pxi(0) * PetaPeta(1) + Pxi(1) * PetaPeta(0), Hessian(7, 4) = 2 * Peta(1) * PxiPeta(1) + Pxi(1) * PetaPeta(1), Hessian(7, 5) = Pxi(0) * pow(Peta(0), 2), Hessian(7, 6) = Pxi(1) * pow(Peta(0), 2) + 2 * Peta(0) * Peta(1) * Pxi(0), Hessian(7, 7) = 2 * Peta(0) * Peta(1) * Pxi(1) + Pxi(0) * pow(Peta(1), 2), Hessian(7, 8) = Pxi(1) * pow(Peta(1), 2);
+
+    Hessian(8, 0) = PetaPetaPeta(0), Hessian(8, 1) = PetaPetaPeta(1), Hessian(8, 2) = 3 * Peta(0) * PetaPeta(0), Hessian(8, 3) = 3 * Peta(1) * PetaPeta(0) + 3 * Peta(0) * PetaPeta(1), Hessian(8, 4) = 3 * Peta(1) * PetaPeta(1), Hessian(8, 5) = pow(Peta(0), 3), Hessian(8, 6) = 3 * pow(Peta(0), 2) * Peta(1), Hessian(8, 7) = 3 * Peta(0) * pow(Peta(1), 2), Hessian(8, 8) = pow(Peta(1), 3);
+    for (auto &i : *parametric)
+    {
+        Eigen::Map<Eigen::VectorXd> temp(i.second.data() + 1, i.second.size() - 1);
+        Eigen::VectorXd solution = Hessian.partialPivLu().solve(temp);
+        i.second[1] = solution(0);
+        i.second[2] = solution(1);
+        i.second[3] = solution(2);
+        i.second[4] = solution(3);
+        i.second[5] = solution(4);
+        i.second[6] = solution(5);
+        i.second[7] = solution(6);
+        i.second[8] = solution(7);
+        i.second[9] = solution(8);
+    }
+    return parametric;
+}
+
+template <int d, int N, typename T>
+typename PhyTensorBsplineBasis<d, N, T>::HyperPlaneSharedPts
+PhyTensorBsplineBasis<d, N, T>::MakeHyperPlane(const int &orientation,
+                                               const int &layer) const
+{
+    ASSERT(orientation < d, "Invalid input vector size.");
+    std::vector<KnotVector<T>> hpknotvector;
+    for (int i = 0; i != d; ++i)
+    {
+        if (i != orientation)
+            hpknotvector.push_back(this->KnotVectorGetter(i));
+    }
+    auto indexList = this->HyperPlaneIndices(orientation, layer);
+    GeometryVector tempGeometry;
+    for (const auto &i : *indexList)
+    {
+        tempGeometry.push_back(_geometricInfo[i]);
+    }
+    return std::make_shared<HyperPlane>(hpknotvector, tempGeometry);
 }
 
 template <int d, int N, typename T>
@@ -557,163 +590,6 @@ bool PhyTensorBsplineBasis<d, N, T>::InversePts(const PhyTensorBsplineBasis::vec
     return false;
 }
 
-template <>
-typename PhyTensorBsplineBasis<2, 2, double>::BasisFunValDerAllList_ptr
-PhyTensorBsplineBasis<2, 2, double>::Eval1PhyDerAllTensor(const vector &u) const
-{
-    auto parametric = this->EvalDerAllTensor(u, 1);
-    Eigen::Vector2d Pxi, Peta;
-    Pxi.setZero();
-    Peta.setZero();
-    for (const auto &i : *parametric)
-    {
-        Pxi += i.second[1] * _geometricInfo[i.first];
-        Peta += i.second[2] * _geometricInfo[i.first];
-    }
-    Eigen::Matrix2d Jacobian;
-    Jacobian.row(0) = Pxi.transpose();
-    Jacobian.row(1) = Peta.transpose();
-    for (auto &i : *parametric)
-    {
-        Eigen::Map<Eigen::VectorXd> temp(i.second.data() + 1, i.second.size() - 1);
-        Eigen::VectorXd solution = Jacobian.partialPivLu().solve(temp);
-        i.second[1] = solution(0);
-        i.second[2] = solution(1);
-    }
-    return parametric;
-}
-
-template <>
-typename PhyTensorBsplineBasis<2, 2, double>::BasisFunValDerAllList_ptr
-PhyTensorBsplineBasis<2, 2, double>::Eval2PhyDerAllTensor(const PhyTensorBsplineBasis::vector &u) const
-{
-    auto parametric = this->EvalDerAllTensor(u, 2);
-    Eigen::Vector2d Pxi, Peta, PxiPxi, PxiPeta, PetaPeta;
-    Pxi.setZero();
-    Peta.setZero();
-    PxiPxi.setZero();
-    PxiPeta.setZero();
-    PetaPeta.setZero();
-    for (const auto &i : *parametric)
-    {
-        Pxi += i.second[1] * _geometricInfo[i.first];
-        Peta += i.second[2] * _geometricInfo[i.first];
-        PxiPxi += i.second[3] * _geometricInfo[i.first];
-        PxiPeta += i.second[4] * _geometricInfo[i.first];
-        PetaPeta += i.second[5] * _geometricInfo[i.first];
-    }
-    Eigen::Matrix<double, 5, 5> Hessian;
-    Hessian << Pxi(0), Pxi(1), 0, 0, 0, Peta(0), Peta(1), 0, 0, 0, PxiPxi(0), PxiPxi(1), Pxi(0) * Pxi(0), 2 * Pxi(0) * Pxi(1),
-        Pxi(1) * Pxi(1), PxiPeta(0), PxiPeta(1), Pxi(0) * Peta(0), Pxi(0) * Peta(1) + Peta(0) * Pxi(1), Pxi(1) * Peta(1), PetaPeta(
-                                                                                                                              0),
-        PetaPeta(1), Peta(0) * Peta(0), 2 * Peta(0) * Peta(1), Peta(1) * Peta(1);
-    for (auto &i : *parametric)
-    {
-        Eigen::Map<Eigen::VectorXd> temp(i.second.data() + 1, i.second.size() - 1);
-        Eigen::VectorXd solution = Hessian.partialPivLu().solve(temp);
-        i.second[1] = solution(0);
-        i.second[2] = solution(1);
-        i.second[3] = solution(2);
-        i.second[4] = solution(3);
-        i.second[5] = solution(4);
-    }
-    return parametric;
-}
-
-template <>
-typename PhyTensorBsplineBasis<2, 2, double>::BasisFunValDerAllList_ptr
-PhyTensorBsplineBasis<2, 2, double>::Eval3PhyDerAllTensor(const PhyTensorBsplineBasis::vector &u) const
-{
-    auto parametric = this->EvalDerAllTensor(u, 3);
-    Eigen::Vector2d Pxi, Peta, PxiPxi, PxiPeta, PetaPeta, PxiPxiPxi, PxiPxiPeta, PxiPetaPeta, PetaPetaPeta;
-    Pxi.setZero();
-    Peta.setZero();
-    PxiPxi.setZero();
-    PxiPeta.setZero();
-    PetaPeta.setZero();
-    PxiPxiPxi.setZero();
-    PxiPxiPeta.setZero();
-    PxiPetaPeta.setZero();
-    PetaPetaPeta.setZero();
-    for (const auto &i : *parametric)
-    {
-        Pxi += i.second[1] * _geometricInfo[i.first];
-        Peta += i.second[2] * _geometricInfo[i.first];
-        PxiPxi += i.second[3] * _geometricInfo[i.first];
-        PxiPeta += i.second[4] * _geometricInfo[i.first];
-        PetaPeta += i.second[5] * _geometricInfo[i.first];
-        PxiPxiPxi += i.second[6] * _geometricInfo[i.first];
-        PxiPxiPeta += i.second[7] * _geometricInfo[i.first];
-        PxiPetaPeta += i.second[8] * _geometricInfo[i.first];
-        PetaPetaPeta += i.second[9] * _geometricInfo[i.first];
-    }
-    Eigen::Matrix<double, 9, 9> Hessian;
-    Hessian.setZero();
-    Hessian(0, 0) = Pxi(0), Hessian(0, 1) = Pxi(1);
-    Hessian(1, 0) = Peta(0), Hessian(1, 1) = Peta(1);
-    Hessian(2, 0) = PxiPxi(0), Hessian(2, 1) = PxiPxi(1), Hessian(2, 2) = Pxi(0) * Pxi(0), Hessian(2, 3) = 2 * Pxi(0) * Pxi(1), Hessian(2, 4) = Pxi(1) * Pxi(1);
-    Hessian(3, 0) = PxiPeta(0), Hessian(3, 1) = PxiPeta(1), Hessian(3, 2) = Pxi(0) * Peta(0), Hessian(3, 3) = Pxi(0) * Peta(1) + Peta(0) * Pxi(1), Hessian(3, 4) = Pxi(1) * Peta(1);
-    Hessian(4, 0) = PetaPeta(0), Hessian(4, 1) = PetaPeta(1), Hessian(4, 2) = Peta(0) * Peta(0), Hessian(4, 3) = 2 * Peta(0) * Peta(1), Hessian(4, 4) = Peta(1) * Peta(1);
-
-    Hessian(5, 0) = PxiPxiPxi(0), Hessian(5, 1) = PxiPxiPxi(1), Hessian(5, 2) = 3 * Pxi(0) * PxiPxi(0), Hessian(5, 3) = 3 * Pxi(1) * PxiPxi(0) + 3 * Pxi(0) * PxiPxi(1), Hessian(5, 4) = 3 * Pxi(1) * PxiPxi(1), Hessian(5, 5) = pow(Pxi(0), 3), Hessian(5, 6) = 3 * pow(Pxi(0), 2) * Pxi(1), Hessian(5, 7) = 3 * Pxi(0) * pow(Pxi(1), 2), Hessian(5, 8) = pow(Pxi(1), 3);
-
-    Hessian(6, 0) = PxiPxiPeta(0), Hessian(6, 1) = PxiPxiPeta(1), Hessian(6, 2) = 2 * Pxi(0) * PxiPeta(0) + Peta(0) * PxiPxi(0), Hessian(6, 3) = 2 * Pxi(1) * PxiPeta(0) + 2 * Pxi(0) * PxiPeta(1) + Peta(1) * PxiPxi(0) + Peta(0) * PxiPxi(1), Hessian(6, 4) = 2 * Pxi(1) * PxiPeta(1) + Peta(1) * PxiPxi(1), Hessian(6, 5) = Peta(0) * pow(Pxi(0), 2), Hessian(6, 6) = Peta(1) * pow(Pxi(0), 2) + 2 * Peta(0) * Pxi(0) * Pxi(1), Hessian(6, 7) = 2 * Peta(1) * Pxi(0) * Pxi(1) + Peta(0) * pow(Pxi(1), 2), Hessian(6, 8) = Peta(1) * pow(Pxi(1), 2);
-
-    Hessian(7, 0) = PxiPetaPeta(0), Hessian(7, 1) = PxiPetaPeta(1), Hessian(7, 2) = PetaPeta(0) * Pxi(0) + 2 * Peta(0) * PxiPeta(0), Hessian(7, 3) = 2 * Peta(1) * PxiPeta(0) + 2 * Peta(0) * PxiPeta(1) + Pxi(0) * PetaPeta(1) + Pxi(1) * PetaPeta(0), Hessian(7, 4) = 2 * Peta(1) * PxiPeta(1) + Pxi(1) * PetaPeta(1), Hessian(7, 5) = Pxi(0) * pow(Peta(0), 2), Hessian(7, 6) = Pxi(1) * pow(Peta(0), 2) + 2 * Peta(0) * Peta(1) * Pxi(0), Hessian(7, 7) = 2 * Peta(0) * Peta(1) * Pxi(1) + Pxi(0) * pow(Peta(1), 2), Hessian(7, 8) = Pxi(1) * pow(Peta(1), 2);
-
-    Hessian(8, 0) = PetaPetaPeta(0), Hessian(8, 1) = PetaPetaPeta(1), Hessian(8, 2) = 3 * Peta(0) * PetaPeta(0), Hessian(8, 3) = 3 * Peta(1) * PetaPeta(0) + 3 * Peta(0) * PetaPeta(1), Hessian(8, 4) = 3 * Peta(1) * PetaPeta(1), Hessian(8, 5) = pow(Peta(0), 3), Hessian(8, 6) = 3 * pow(Peta(0), 2) * Peta(1), Hessian(8, 7) = 3 * Peta(0) * pow(Peta(1), 2), Hessian(8, 8) = pow(Peta(1), 3);
-    for (auto &i : *parametric)
-    {
-        Eigen::Map<Eigen::VectorXd> temp(i.second.data() + 1, i.second.size() - 1);
-        Eigen::VectorXd solution = Hessian.partialPivLu().solve(temp);
-        i.second[1] = solution(0);
-        i.second[2] = solution(1);
-        i.second[3] = solution(2);
-        i.second[4] = solution(3);
-        i.second[5] = solution(4);
-        i.second[6] = solution(5);
-        i.second[7] = solution(6);
-        i.second[8] = solution(7);
-        i.second[9] = solution(8);
-    }
-    return parametric;
-}
-
-template <int d, int N, typename T>
-typename PhyTensorBsplineBasis<d, N, T>::HyperPlaneSharedPts
-PhyTensorBsplineBasis<d, N, T>::MakeHyperPlane(const int &orientation,
-                                               const int &layer) const
-{
-    ASSERT(orientation < d, "Invalid input vector size.");
-    std::vector<KnotVector<T>> hpknotvector;
-    for (int i = 0; i != d; ++i)
-    {
-        if (i != orientation)
-            hpknotvector.push_back(this->KnotVectorGetter(i));
-    }
-    auto indexList = this->HyperPlaneIndices(orientation, layer);
-    GeometryVector tempGeometry;
-    for (const auto &i : *indexList)
-    {
-        tempGeometry.push_back(_geometricInfo[i]);
-    }
-    return std::make_shared<HyperPlane>(hpknotvector, tempGeometry);
-}
-
-template <>
-PhyTensorBsplineBasis<2, 1, double>::PhyTensorBsplineBasis(const std::vector<KnotVector<double>> &base,
-                                                           const Eigen::Matrix<double, Eigen::Dynamic, 1> &geometry)
-    : TensorBsplineBasis<2, double>(
-          base)
-{
-    ASSERT(geometry.rows() == (this->TensorBsplineBasis<2, double>::GetDof()),
-           "Invalid geometrical information input, check size bro.");
-    for (int i = 0; i != geometry.rows(); ++i)
-    {
-        _geometricInfo.push_back(Eigen::Matrix<double, 1, 1>(geometry(i)));
-    }
-}
-
 template <int d, int N, typename T>
 struct ComputeJacobian
 {
@@ -743,6 +619,21 @@ struct ComputeJacobian<1, 2, T>
 };
 
 template <typename T>
+struct ComputeJacobian<1, 3, T>
+{
+    using Pts = typename PhyTensorBsplineBasis<1, 3, T>::Pts;
+    using PhyPts = typename PhyTensorBsplineBasis<1, 3, T>::PhyPts;
+
+    T compute(const PhyTensorBsplineBasis<1, 3, T> *domain_ptr,
+              const Pts &u)
+    {
+        PhyPts normal = domain_ptr->JacobianMatrix(u);
+        T res = normal.transpose() * normal;
+        return sqrt(res);
+    }
+};
+
+template <typename T>
 struct ComputeJacobian<2, 3, T>
 {
     using Pts = typename PhyTensorBsplineBasis<2, 3, T>::Pts;
@@ -751,8 +642,8 @@ struct ComputeJacobian<2, 3, T>
     T compute(const PhyTensorBsplineBasis<2, 3, T> *domain_ptr,
               const Pts &u)
     {
-        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Jacob = domain_ptr->JacobianMatrix(u);
-        PhyPts normal = Jacob.col(0).head(3).cross(Jacob.col(1).head(3));
+        Eigen::Matrix<T, 3, 2> Jacob = domain_ptr->JacobianMatrix(u);
+        PhyPts normal = Jacob.col(0).cross(Jacob.col(1));
         T res = normal.transpose() * normal;
         std::cout << "Called 2 3." << std::endl;
         return sqrt(res);
@@ -760,40 +651,13 @@ struct ComputeJacobian<2, 3, T>
 };
 
 template <int N, typename T>
-class PhyTensorBsplineBasis<0, N, T> : public TensorBsplineBasis<0, T>
+PhyTensorBsplineBasis<0, N, T>::PhyTensorBsplineBasis(const T &knot, const PhyPts &point)
+    : TensorBsplineBasis<0, T>(knot), _point(point)
 {
-  public:
-    using PhyPts = Eigen::Matrix<T, N, 1>;
-    typedef std::vector<int> DiffPattern;
+}
 
-    typedef typename BsplineBasis<T>::BasisFunVal BasisFunVal;
-    typedef typename BsplineBasis<T>::BasisFunValPac BasisFunValPac;
-    typedef typename BsplineBasis<T>::BasisFunValPac_ptr BasisFunValPac_ptr;
-    typedef typename BsplineBasis<T>::BasisFunValDerAll BasisFunValDerAll;
-    typedef typename BsplineBasis<T>::BasisFunValDerAllList BasisFunValDerAllList;
-    typedef typename BsplineBasis<T>::BasisFunValDerAllList_ptr BasisFunValDerAllList_ptr;
-
-    PhyTensorBsplineBasis(const T &knot,
-                          const PhyPts &point)
-        : TensorBsplineBasis<0, T>(knot), _point(point)
-    {
-    }
-
-    PhyTensorBsplineBasis(const PhyPts &point)
-        : TensorBsplineBasis<0, T>(), _point(point)
-    {
-    }
-
-    ~PhyTensorBsplineBasis(){};
-
-    PhyPts
-    Position() const
-    {
-        return _point;
-    }
-
-  protected:
-    PhyPts _point;
-};
-
-#endif //OO_IGA_PHYTENSORBSPLINEBASIS_H
+template <int N, typename T>
+PhyTensorBsplineBasis<0, N, T>::PhyTensorBsplineBasis(const PhyPts &point)
+    : TensorBsplineBasis<0, T>(), _point(point)
+{
+}

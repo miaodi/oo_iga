@@ -354,6 +354,7 @@ void QuadratureRule<T>::MapToQuadrature(const CoordinatePair &range, QuadList &q
     recursive(indexes, endPerIndex, 0);
 }
 
+template class QuadratureRule<long double>;
 template class QuadratureRule<double>;
 template class QuadratureRule<float>;
 template class QuadratureRule<boost::multiprecision::mpf_float_50>;
