@@ -7,7 +7,7 @@
 #include "DirichletBoundaryVisitor.hpp"
 #include "DofMapper.hpp"
 
-template<int N, typename T>
+template <int N, typename T>
 class PoissonDirichletBoundaryVisitor : public DirichletBoundaryVisitor<N, T>
 {
     using Knot = typename DirichletBoundaryVisitor<N, T>::Knot;
@@ -20,11 +20,11 @@ class PoissonDirichletBoundaryVisitor : public DirichletBoundaryVisitor<N, T>
     using Vector = typename DirichletBoundaryVisitor<N, T>::Vector;
     using DomainShared_ptr = typename DirichletBoundaryVisitor<N, T>::DomainShared_ptr;
 
-public:
+  public:
     PoissonDirichletBoundaryVisitor(const DofMapper<N, T> &dof_mapper, const LoadFunctor &boundary_value)
         : DirichletBoundaryVisitor<N, T>(dof_mapper, boundary_value) {}
 
-protected:
+  protected:
     virtual void
     IntegralElementAssembler(Matrix &bilinear_form_trail,
                              std::vector<int> &bilinear_form_trail_indices,
@@ -38,19 +38,19 @@ protected:
                              const Quadrature &u) const;
 };
 
-template<int N, typename T>
-void
-PoissonDirichletBoundaryVisitor<N, T>::IntegralElementAssembler(Matrix &bilinear_form_trail,
-                                                                std::vector<int> &bilinear_form_trail_indices,
-                                                                Matrix &bilinear_form_test,
-                                                                std::vector<int> &bilinear_form_test_indices,
-                                                                Matrix &linear_form_value,
-                                                                Matrix &linear_form_test,
-                                                                std::vector<int> &linear_form_test_indices,
-                                                                T &integral_weight,
-                                                                Edge<N, T> *edge,
-                                                                const Quadrature &u) const
+template <int N, typename T>
+void PoissonDirichletBoundaryVisitor<N, T>::IntegralElementAssembler(Matrix &bilinear_form_trail,
+                                                                     std::vector<int> &bilinear_form_trail_indices,
+                                                                     Matrix &bilinear_form_test,
+                                                                     std::vector<int> &bilinear_form_test_indices,
+                                                                     Matrix &linear_form_value,
+                                                                     Matrix &linear_form_test,
+                                                                     std::vector<int> &linear_form_test_indices,
+                                                                     T &integral_weight,
+                                                                     Edge<N, T> *edge,
+                                                                     const Quadrature &u) const
 {
+
     auto edge_domain = edge->GetDomain();
     auto trial_domain = edge->Parent(0).lock()->GetDomain();
 
@@ -61,7 +61,6 @@ PoissonDirichletBoundaryVisitor<N, T>::IntegralElementAssembler(Matrix &bilinear
     {
         std::cout << "MapParametericPoint failed" << std::endl;
     }
-
     auto evals = trial_domain->EvalDerAllTensor(trial_quadrature_abscissa, 0);
     linear_form_value.resize(1, 1);
     linear_form_value(0, 0) = this->_dirichletFunctor(trial_domain->AffineMap(trial_quadrature_abscissa))[0];

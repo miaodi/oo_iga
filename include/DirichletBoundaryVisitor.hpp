@@ -8,11 +8,10 @@
 #include "Edge.hpp"
 #include "Utility.hpp"
 
-
-template<int N, typename T>
+template <int N, typename T>
 class DirichletBoundaryVisitor : public DomainVisitor<1, N, T>
 {
-public:
+  public:
     using Knot = typename DomainVisitor<1, N, T>::Knot;
     using Quadrature = typename DomainVisitor<1, N, T>::Quadrature;
     using QuadList = typename DomainVisitor<1, N, T>::QuadList;
@@ -23,12 +22,12 @@ public:
     using Vector = typename DomainVisitor<1, N, T>::Vector;
     using DomainShared_ptr = typename std::shared_ptr<PhyTensorBsplineBasis<2, N, T>>;
 
-public:
+  public:
     DirichletBoundaryVisitor(const DofMapper<N, T> &dof_mapper, const LoadFunctor &boundary_value)
         : DomainVisitor<1, N, T>(dof_mapper), _dirichletFunctor(boundary_value) {}
 
     void
-    Visit(Element<1, N, T> *);
+        Visit(Element<1, N, T> *);
 
     void
     DirichletBoundary(Eigen::SparseMatrix<T> &dirichlet_boundary) const;
@@ -36,7 +35,7 @@ public:
     void
     CondensedDirichletBoundary(Eigen::SparseMatrix<T> &dirichlet_boundary) const;
 
-protected:
+  protected:
     void
     SolveDirichletBoundary() const;
 
@@ -53,18 +52,17 @@ protected:
                              const Quadrature &u) const = 0;
 
     void
-    LocalAssemble(Element<1, N, T> *, const QuadratureRule<T> &, const KnotSpan &, std::mutex &);
+        LocalAssemble(Element<1, N, T> *, const QuadratureRule<T> &, const KnotSpan &, std::mutex &);
 
-protected:
+  protected:
     std::vector<Eigen::Triplet<T>> _gramian;
     std::vector<Eigen::Triplet<T>> _rhs;
     mutable std::vector<Eigen::Triplet<T>> _dirichlet;
     const LoadFunctor &_dirichletFunctor;
 };
 
-template<int N, typename T>
-void
-DirichletBoundaryVisitor<N, T>::SolveDirichletBoundary() const
+template <int N, typename T>
+void DirichletBoundaryVisitor<N, T>::SolveDirichletBoundary() const
 {
     std::vector<Eigen::Triplet<T>> condensed_gramian;
     std::vector<Eigen::Triplet<T>> condensed_rhs;
@@ -83,9 +81,8 @@ DirichletBoundaryVisitor<N, T>::SolveDirichletBoundary() const
     }
 }
 
-template<int N, typename T>
-void
-DirichletBoundaryVisitor<N, T>::DirichletBoundary(Eigen::SparseMatrix<T> &dirichlet_boundary) const
+template <int N, typename T>
+void DirichletBoundaryVisitor<N, T>::DirichletBoundary(Eigen::SparseMatrix<T> &dirichlet_boundary) const
 {
     if (_dirichlet.size() == 0)
     {
@@ -94,9 +91,8 @@ DirichletBoundaryVisitor<N, T>::DirichletBoundary(Eigen::SparseMatrix<T> &dirich
     this->VectorAssembler(this->_dofMapper.Dof(), _dirichlet, dirichlet_boundary);
 }
 
-template<int N, typename T>
-void
-DirichletBoundaryVisitor<N, T>::CondensedDirichletBoundary(Eigen::SparseMatrix<T> &dirichlet_boundary) const
+template <int N, typename T>
+void DirichletBoundaryVisitor<N, T>::CondensedDirichletBoundary(Eigen::SparseMatrix<T> &dirichlet_boundary) const
 {
     if (_dirichlet.size() == 0)
     {
@@ -118,9 +114,9 @@ DirichletBoundaryVisitor<N, T>::CondensedDirichletBoundary(Eigen::SparseMatrix<T
     this->VectorAssembler(this->_dofMapper.CondensedDof(), condensed_dirichlet, dirichlet_boundary);
 }
 
-template<int N, typename T>
+template <int N, typename T>
 void
-DirichletBoundaryVisitor<N, T>::Visit(Element<1, N, T> *g)
+    DirichletBoundaryVisitor<N, T>::Visit(Element<1, N, T> *g)
 {
     auto edge = dynamic_cast<Edge<N, T> *>(g);
     if (edge->IsDirichlet())
@@ -129,12 +125,12 @@ DirichletBoundaryVisitor<N, T>::Visit(Element<1, N, T> *g)
     }
 }
 
-template<int N, typename T>
+template <int N, typename T>
 void
-DirichletBoundaryVisitor<N, T>::LocalAssemble(Element<1, N, T> *g,
-                                              const QuadratureRule<T> &quadrature_rule,
-                                              const DirichletBoundaryVisitor<N, T>::KnotSpan &knot_span,
-                                              std::mutex &pmutex)
+    DirichletBoundaryVisitor<N, T>::LocalAssemble(Element<1, N, T> *g,
+                                                  const QuadratureRule<T> &quadrature_rule,
+                                                  const DirichletBoundaryVisitor<N, T>::KnotSpan &knot_span,
+                                                  std::mutex &pmutex)
 {
     auto edge = dynamic_cast<Edge<N, T> *>(g);
     QuadList edge_quadrature_points;

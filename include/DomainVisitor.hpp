@@ -119,7 +119,7 @@ class DomainVisitor : public Visitor<d, N, T>
         InitializeQuadratureRule(g, quad_rule);
         InitializeKnotSpans(g, knot_spans);
         std::mutex pmutex;
-        auto n = std::thread::hardware_concurrency();
+        auto n = 1;
         std::vector<std::thread> threads(n);
         const int grainsize = knot_spans.size() / n;
         auto work_iter = knot_spans.begin();
@@ -184,6 +184,7 @@ class DomainVisitor : public Visitor<d, N, T>
         {
             tmp += weight_basis[i].transpose() * quadrature_wegiht[i] * basis[i];
         }
+
         MatrixData<T> res;
         *(res._rowIndices) = std::move(weight_basis_indices);
         *(res._colIndices) = std::move(basis_indices);
@@ -280,7 +281,7 @@ class DomainVisitor : public Visitor<d, N, T>
             for (int j = i; j < matrix._colIndices->size(); ++j)
             {
                 T tmp{(*matrix._matrix)(i, j)};
-                if (std::abs(tmp) > tol)
+                if (abs(tmp) > tol)
                 {
                     triplet.emplace_back(Eigen::Triplet<T>(
                         (*matrix._rowIndices)[i], (*matrix._colIndices)[j], tmp));
@@ -299,7 +300,7 @@ class DomainVisitor : public Visitor<d, N, T>
             for (int j = 0; j < matrix._colIndices->size(); ++j)
             {
                 T tmp{(*matrix._matrix)(i, j)};
-                if (std::abs(tmp) > tol)
+                if (abs(tmp) > tol)
                 {
                     triplet.emplace_back(Eigen::Triplet<T>(
                         (*matrix._rowIndices)[i], (*matrix._colIndices)[j], tmp));
@@ -315,7 +316,7 @@ class DomainVisitor : public Visitor<d, N, T>
         for (int i = 0; i < vector._rowIndices->size(); ++i)
         {
             T tmp{(*vector._vector)(i)};
-            if (std::abs(tmp) > tol)
+            if (abs(tmp) > tol)
             {
                 triplet.emplace_back(
                     Eigen::Triplet<T>((*vector._rowIndices)[i], 0, tmp));

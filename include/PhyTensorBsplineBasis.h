@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include "TensorBsplineBasis.h"
 #include "Utility.hpp"
+#include <eigen3/Eigen/StdVector>
 
 template <int d, int N, typename T>
 struct ComputeJacobian;
@@ -17,7 +18,9 @@ class PhyTensorBsplineBasis : public TensorBsplineBasis<d, T>
   public:
     using Pts = Eigen::Matrix<T, d, 1>;
     using PhyPts = Eigen::Matrix<T, N, 1>;
-    using GeometryVector = std::vector<PhyPts>;
+
+    // aligned_allocator is required by Eigen for fixed-size Eigen types
+    using GeometryVector = Accessory::ContPtsList<T, N>;
     typedef std::vector<int> DiffPattern;
     using vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
     typedef typename TensorBsplineBasis<d, T>::BasisFunValDerAll BasisFunValDerAll;
@@ -87,12 +90,12 @@ class PhyTensorBsplineBasis : public TensorBsplineBasis<d, T>
     bool InversePts(const PhyPts &,
                     Pts &,
                     int = 1e8,
-                    T = std::numeric_limits<T>::digits) const;
+                    T = std::numeric_limits<T>::epsilon() * 1e2) const;
 
     bool InversePts(const vector &,
                     vector &,
                     int = 1e8,
-                    T = std::numeric_limits<T>::digits) const;
+                    T = std::numeric_limits<T>::epsilon() * 1e2) const;
 
     virtual void DegreeElevate(int,
                                int);

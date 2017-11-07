@@ -11,6 +11,7 @@
 #include <map>
 #include <iostream>
 #include <eigen3/Eigen/Sparse>
+#include <eigen3/Eigen/StdVector>
 
 #ifndef NDEBUG
 #define ASSERT(condition, message)                                             \
@@ -39,8 +40,10 @@ class KnotVector;
 namespace Accessory
 {
 using namespace Eigen;
+
+// aligned_allocator is required by Eigen for fixed-size Eigen types
 template <typename T, int N>
-using ContPtsList = std::vector<Eigen::Matrix<T, N, 1>>;
+using ContPtsList = std::vector<Eigen::Matrix<T, N, 1>, aligned_allocator<Matrix<T, N, 1>>>;
 
 using DifferentialPattern = std::vector<int>;
 using DifferentialPatternList = std::vector<DifferentialPattern>;
@@ -86,18 +89,18 @@ void degreeElevate(int t,
     int m = n + p + 1;
     int ph = p + t;
     int ph2 = ph / 2;
-    Matrix<T, Dynamic, Dynamic> bezalfs(p + t + 1, p + 1); // coefficients for degree elevating the Bezier segment
-    std::vector<Matrix<T, N, 1>> bpts(p + 1);     // pth-degree Bezier control points of the current segment
-    std::vector<Matrix<T, N, 1>> ebpts(p + t + 1);         // (p+t)th-degree Bezier control points of the  current segment
-    std::vector<Matrix<T, N, 1>> Nextbpts(p - 1);          // leftmost control points of the next Bezier segment
-    std::vector<T> alphas(p - 1, T(0));                       // knot instertion alphas.
+    Matrix<T, Dynamic, Dynamic> bezalfs(p + t + 1, p + 1);                             // coefficients for degree elevating the Bezier segment
+    std::vector<Matrix<T, N, 1>, aligned_allocator<Matrix<T, N, 1>>> bpts(p + 1);      // pth-degree Bezier control points of the current segment
+    std::vector<Matrix<T, N, 1>, aligned_allocator<Matrix<T, N, 1>>> ebpts(p + t + 1); // (p+t)th-degree Bezier control points of the  current segment
+    std::vector<Matrix<T, N, 1>, aligned_allocator<Matrix<T, N, 1>>> Nextbpts(p - 1);  // leftmost control points of the next Bezier segment
+    std::vector<T> alphas(p - 1, T(0));                                                // knot instertion alphas.
     // Compute the binomial coefficients
     Matrix<T, Dynamic, Dynamic> Bin(ph + 1, ph2 + 1);
     bezalfs.setZero();
     Bin.setZero();
     binomialCoef(Bin);
     // Compute Bezier degree elevation coefficients
-    T inv; 
+    T inv;
     int mpi;
     bezalfs(0, 0) = bezalfs(ph, p) = T(1);
     for (i = 1; i <= ph2; i++)
@@ -110,7 +113,7 @@ void degreeElevate(int t,
             bezalfs(i, j) = inv * Bin(p, j) * Bin(t, i - j);
         }
     }
-    
+
     for (i = ph2 + 1; i < ph; i++)
     {
         mpi = std::min(p, i);
