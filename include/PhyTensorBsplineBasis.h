@@ -26,6 +26,7 @@ class PhyTensorBsplineBasis : public TensorBsplineBasis<d, T>
     using HyperPlane = PhyTensorBsplineBasis<d - 1, N, T>;
     using HyperPlaneSharedPts = std::shared_ptr<PhyTensorBsplineBasis<d - 1, N, T>>;
 
+  public:
     PhyTensorBsplineBasis();
 
     PhyTensorBsplineBasis(const BsplineBasis<T> &,
@@ -57,6 +58,10 @@ class PhyTensorBsplineBasis : public TensorBsplineBasis<d, T>
 
     PhyTensorBsplineBasis(const std::vector<KnotVector<T>> &,
                           const Eigen::Matrix<T, Eigen::Dynamic, 1> &);
+
+    virtual ~PhyTensorBsplineBasis()
+    {
+    }
 
     virtual PhyPts AffineMap(const Pts &,
                              const DiffPattern &i = DiffPattern(d, 0)) const;
@@ -96,8 +101,11 @@ class PhyTensorBsplineBasis : public TensorBsplineBasis<d, T>
                                int,
                                int m = 1);
 
-    virtual void KnotRefine(int,
-                            const KnotVector<T> &);
+    void UniformRefineDof(int,
+                          int);
+
+    void KnotRefine(int,
+                    const KnotVector<T> &);
 
     virtual void KnotInsertion(int,
                                T,
@@ -119,6 +127,8 @@ class PhyTensorBsplineBasis : public TensorBsplineBasis<d, T>
             UniformRefine(i, r);
     }
 
+    virtual void UniformRefineDof(int dof);
+
     void PrintCtrPts() const;
 
     inline PhyPts CtrPtsGetter(const int &i) const
@@ -135,15 +145,15 @@ class PhyTensorBsplineBasis : public TensorBsplineBasis<d, T>
     HyperPlaneSharedPts MakeHyperPlane(const int &orientation,
                                        const int &layer) const;
 
-    virtual ~PhyTensorBsplineBasis()
-    {
-    }
+    // Only defined for 2D domain represented by 2D parametric domain
+    template <int D = d, int n = N>
+    typename std::enable_if<D == 2 && n == 2, BasisFunValDerAllList_ptr>::type Eval1PhyDerAllTensor(const vector &u) const;
 
-    BasisFunValDerAllList_ptr Eval1PhyDerAllTensor(const vector &u) const;
+    template <int D = d, int n = N>
+    typename std::enable_if<D == 2 && n == 2, BasisFunValDerAllList_ptr>::type Eval2PhyDerAllTensor(const vector &u) const;
 
-    BasisFunValDerAllList_ptr Eval2PhyDerAllTensor(const vector &u) const;
-
-    BasisFunValDerAllList_ptr Eval3PhyDerAllTensor(const vector &u) const;
+    template <int D = d, int n = N>
+    typename std::enable_if<D == 2 && n == 2, BasisFunValDerAllList_ptr>::type Eval3PhyDerAllTensor(const vector &u) const;
 
   protected:
     GeometryVector _geometricInfo;

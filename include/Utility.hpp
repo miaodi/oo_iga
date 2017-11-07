@@ -9,6 +9,7 @@
 #include <set>
 #include <vector>
 #include <map>
+#include <iostream>
 #include <eigen3/Eigen/Sparse>
 
 #ifndef NDEBUG
@@ -39,7 +40,7 @@ namespace Accessory
 {
 using namespace Eigen;
 template <typename T, int N>
-using ContPtsList = std::vector<Matrix<T, N, 1>>;
+using ContPtsList = std::vector<Eigen::Matrix<T, N, 1>>;
 
 using DifferentialPattern = std::vector<int>;
 using DifferentialPatternList = std::vector<DifferentialPattern>;
@@ -54,26 +55,18 @@ void binomialCoef(Matrix<T, Dynamic, Dynamic> &Bin)
 {
     int n, k;
     // Setup the first line
-    Bin(0,
-        0) = 1.0;
+    Bin(0, 0) = T(1);
     for (k = static_cast<int>(Bin.cols()) - 1; k > 0; --k)
-        Bin(0,
-            k) = 0.0;
+        Bin(0, k) = T(0);
     // Setup the other lines
     for (n = 0; n < static_cast<int>(Bin.rows()) - 1; n++)
     {
-        Bin(n + 1,
-            0) = 1.0;
+        Bin(n + 1, 0) = T(1);
         for (k = 1; k < static_cast<int>(Bin.cols()); k++)
             if (n + 1 < k)
-                Bin(n,
-                    k) = 0.0;
+                Bin(n, k) = T(0);
             else
-                Bin(n + 1,
-                    k) = Bin(n,
-                             k) +
-                         Bin(n,
-                             k - 1);
+                Bin(n + 1, k) = Bin(n, k) + Bin(n, k - 1);
     }
 }
 
@@ -93,54 +86,36 @@ void degreeElevate(int t,
     int m = n + p + 1;
     int ph = p + t;
     int ph2 = ph / 2;
-    Matrix<T, Dynamic, Dynamic> bezalfs(p + t + 1,
-                                        p + 1);      // coefficients for degree elevating the Bezier segment
-    Matrix<Matrix<T, N, 1>, Dynamic, 1> bpts(p + 1); // pth-degree Bezier control points of the current segment
-    Matrix<Matrix<T, N, 1>, Dynamic, 1> ebpts(
-        p + t + 1);                                      // (p+t)th-degree Bezier control points of the  current segment
-    Matrix<Matrix<T, N, 1>, Dynamic, 1> Nextbpts(p - 1); // leftmost control points of the next Bezier segment
-    Matrix<T, Dynamic, 1> alphas(p - 1);                 // knot instertion alphas.
+    Matrix<T, Dynamic, Dynamic> bezalfs(p + t + 1, p + 1); // coefficients for degree elevating the Bezier segment
+    std::vector<Matrix<T, N, 1>> bpts(p + 1);     // pth-degree Bezier control points of the current segment
+    std::vector<Matrix<T, N, 1>> ebpts(p + t + 1);         // (p+t)th-degree Bezier control points of the  current segment
+    std::vector<Matrix<T, N, 1>> Nextbpts(p - 1);          // leftmost control points of the next Bezier segment
+    std::vector<T> alphas(p - 1, T(0));                       // knot instertion alphas.
     // Compute the binomial coefficients
-    Matrix<T, Dynamic, Dynamic> Bin(ph + 1,
-                                    ph2 + 1);
+    Matrix<T, Dynamic, Dynamic> Bin(ph + 1, ph2 + 1);
     bezalfs.setZero();
-    alphas.setZero();
     Bin.setZero();
     binomialCoef(Bin);
-
     // Compute Bezier degree elevation coefficients
-    T inv, mpi;
-    bezalfs(0,
-            0) = bezalfs(ph,
-                         p) = 1.0;
+    T inv; 
+    int mpi;
+    bezalfs(0, 0) = bezalfs(ph, p) = T(1);
     for (i = 1; i <= ph2; i++)
     {
-        inv = 1.0 / Bin(ph,
-                        i);
-        mpi = std::min(p,
-                       i);
-        for (j = std::max(0,
-                          i - t);
+        inv = T(1) / Bin(ph, i);
+        mpi = std::min(p, i);
+        for (j = std::max(0, i - t);
              j <= mpi; j++)
         {
-            bezalfs(i,
-                    j) = inv * Bin(p,
-                                   j) *
-                         Bin(t,
-                             i - j);
+            bezalfs(i, j) = inv * Bin(p, j) * Bin(t, i - j);
         }
     }
-
+    
     for (i = ph2 + 1; i < ph; i++)
     {
-        mpi = std::min(p,
-                       i);
-        for (j = std::max(0,
-                          i - t);
-             j <= mpi; j++)
-            bezalfs(i,
-                    j) = bezalfs(ph - i,
-                                 p - j);
+        mpi = std::min(p, i);
+        for (j = std::max(0, i - t); j <= mpi; j++)
+            bezalfs(i, j) = bezalfs(ph - i, p - j);
     }
 
     P.resize(cP.size() * t * 3); // Allocate more control points than necessary
@@ -148,7 +123,7 @@ void degreeElevate(int t,
     int mh = ph;
     int kind = ph + 1;
     T ua = U(0);
-    T ub = 0.0;
+    T ub = U(0);
     int r = -1;
     int oldr;
     int a = p;
@@ -168,7 +143,7 @@ void degreeElevate(int t,
 
     // Initialize the first Bezier segment
     for (i = 0; i <= p; i++)
-        bpts(i) = cP[i];
+        bpts[i] = cP[i];
     while (b < m)
     { // Big loop thru knot vector
         i = b;
@@ -192,7 +167,7 @@ void degreeElevate(int t,
             numer = ub - ua;
             for (k = p; k > mul; k--)
             {
-                alphas(k - mul - 1) = numer / (cU(a + k) - ua);
+                alphas[k - mul - 1] = numer / (cU(a + k) - ua);
             }
             for (j = 1; j <= r; j++)
             {
@@ -200,23 +175,18 @@ void degreeElevate(int t,
                 s = mul + j;
                 for (k = p; k >= s; k--)
                 {
-                    bpts(k) = alphas(k - s) * bpts(k) + (1.0 - alphas(k - s)) * bpts(k - 1);
+                    bpts[k] = alphas[k - s] * bpts[k] + (T(1) - alphas[k - s]) * bpts[k - 1];
                 }
-                Nextbpts(save) = bpts(p);
+                Nextbpts[save] = bpts[p];
             }
         }
 
         for (i = lbz; i <= ph; i++)
         { // Degree elevate Bezier,  only the points lbz,...,ph are used
-            ebpts(i) = Matrix<T, Dynamic, 1>::Zero(N);
-            mpi = std::min(p,
-                           i);
-            for (j = std::max(0,
-                              i - t);
-                 j <= mpi; j++)
-                ebpts(i) += bezalfs(i,
-                                    j) *
-                            bpts(j);
+            ebpts[i] = Matrix<T, N, 1>::Zero(N);
+            mpi = std::min(p, i);
+            for (j = std::max(0, i - t); j <= mpi; j++)
+                ebpts[i] += bezalfs(i, j) * bpts[j];
         }
 
         if (oldr > 1)
@@ -237,18 +207,18 @@ void degreeElevate(int t,
                     if (i < cind)
                     {
                         alf = (ub - U(i)) / (ua - U(i));
-                        P[i] = alf * P[i] + (1.0 - alf) * P[i - 1];
+                        P[i] = alf * P[i] + (T(1) - alf) * P[i - 1];
                     }
                     if (j >= lbz)
                     {
                         if (j - tr <= kind - ph + oldr)
                         {
                             gam = (ub - U(j - tr)) / den;
-                            ebpts(kj) = gam * ebpts(kj) + (1.0 - gam) * ebpts(kj + 1);
+                            ebpts[kj] = gam * ebpts[kj] + (T(1) - gam) * ebpts[kj + 1];
                         }
                         else
                         {
-                            ebpts(kj) = bet * ebpts(kj) + (1.0 - bet) * ebpts(kj + 1);
+                            ebpts[kj] = bet * ebpts[kj] + (T(1) - bet) * ebpts[kj + 1];
                         }
                     }
                     ++i;
@@ -267,15 +237,15 @@ void degreeElevate(int t,
             }
         for (j = lbz; j <= rbz; j++)
         { // load control points onto the curve
-            P[cind++] = ebpts(j);
+            P[cind++] = ebpts[j];
         }
 
         if (b < m)
         { // Set up for next pass thru loop
             for (j = 0; j < r; j++)
-                bpts(j) = Nextbpts(j);
+                bpts[j] = Nextbpts[j];
             for (j = r; j <= p; j++)
-                bpts(j) = cP[b - p + j];
+                bpts[j] = cP[b - p + j];
             a = b;
             b++;
             ua = ub;
@@ -330,7 +300,7 @@ void knotInsertion(T u,
         for (i = 0; i <= p - j - s; i++)
         {
             alpha = (u - cU(L + i)) / (cU(i + k + 1) - cU(L + i));
-            R[i] = alpha * R[i + 1] + (1.0 - alpha) * R[i];
+            R[i] = alpha * R[i + 1] + (T(1) - alpha) * R[i];
         }
         P[L] = R[0];
         P[k + r - j - s] = R[p - j - s];
@@ -382,11 +352,11 @@ void refineKnotVectorCurve(const KnotVector<T> &X,
         {
             int ind = k - p + l;
             T alpha = U[k + l] - X[j];
-            if (alpha == 0.0)
+            if (alpha == T(0))
                 P[ind - 1] = P[ind];
             else
                 alpha /= U(k + l) - cU(i - p + l);
-            P[ind - 1] = alpha * P[ind - 1] + (1.0 - alpha) * P[ind];
+            P[ind - 1] = alpha * P[ind - 1] + (T(1) - alpha) * P[ind];
         }
         U(k) = X[j];
         --k;
@@ -491,7 +461,7 @@ std::unique_ptr<ExtractionOperatorContainer<T>> BezierExtraction(const KnotVecto
                 for (int k = p + 1; k >= s + 1; k--)
                 {
                     T alpha = alphas[k - s - 1];
-                    C.col(k - 1) = alpha * C.col(k - 1) + (1.0 - alpha) * C.col(k - 2);
+                    C.col(k - 1) = alpha * C.col(k - 1) + (T(1) - alpha) * C.col(k - 2);
                 }
 
                 if (b < m)

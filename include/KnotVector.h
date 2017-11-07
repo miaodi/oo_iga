@@ -55,6 +55,11 @@ class KnotVector
 
     void UniformRefine(int r = 1, int multi = 1);
 
+    // Uniformly refine the knot vector such that the d.o.f of the new knot vector is close to the given number
+    void RefineToDof(const int &);
+
+    KnotVector RefineToDofKnotVector(const int &) const;
+
     void RefineSpan(std::pair<T, T>, int r = 1, int multi = 1);
 
     Eigen::Matrix<T, Eigen::Dynamic, 1> MapToEigen() const;
@@ -62,6 +67,8 @@ class KnotVector
     int GetDegree() const;
 
     int GetSize() const;
+
+    int GetSpanSize() const;
 
     int GetDOF() const;
 

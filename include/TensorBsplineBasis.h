@@ -72,6 +72,7 @@ class TensorBsplineBasis
     HyperPlaneIndices(const int &, const int &) const;
 
     matrix Support(const int &i) const;
+    
     int NumActive() const;
 
     int NumActive(const int &i) const;

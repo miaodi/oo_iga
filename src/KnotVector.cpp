@@ -87,12 +87,27 @@ int KnotVector<T>::GetDegree() const
 template <typename T>
 void KnotVector<T>::Insert(T r)
 {
+    if (!_multiKnots.size())
+    {
+        _multiKnots.push_back(r);
+        return;
+    }
+    if (r < *_multiKnots.begin())
+    {
+        _multiKnots.insert(_multiKnots.begin(), r);
+        return;
+    }
+    if (r > *(_multiKnots.end()-1))
+    {
+        _multiKnots.push_back(r);
+        return;
+    }
     for (auto it = _multiKnots.begin() + 1; it != _multiKnots.end(); ++it)
     {
         if (r <= *it && r >= *(it - 1))
         {
             _multiKnots.emplace(it, r);
-            break;
+            return;
         }
     }
 }
@@ -154,9 +169,18 @@ KnotVector<T>::MapToEigen() const
 }
 
 template <typename T>
+int KnotVector<T>::GetSpanSize() const
+{
+    uniContainer _uniKnots;
+    UniQue(_uniKnots);
+
+    return _uniKnots.size() - 1;
+}
+
+template <typename T>
 int KnotVector<T>::GetSize() const
 {
-    return static_cast<int>(_multiKnots.size());
+    return _multiKnots.size();
 }
 
 template <typename T>
@@ -190,7 +214,7 @@ void KnotVector<T>::InitClosedUniform(int _dof,
     UniQue(_uniKnots);
     ASSERT(_dof > _deg + 1, "Degree of freedom is too small.");
     InitClosed(_deg, first, last);
-    const T interval = (last - first) / double(_dof - _deg);
+    const T interval = (last - first) / T(_dof - _deg);
     T knot = interval;
     uniContainer tmp;
     for (int i = 1; i < _dof - _deg; ++i)
@@ -318,6 +342,42 @@ void KnotVector<T>::Uniquify(const T &tol)
         else
             ++it;
     }
+}
+
+template <typename T>
+void KnotVector<T>::RefineToDof(const int &i)
+{
+    ASSERT(i > GetDOF(), "Given Dof is too small for refinement.\n");
+    int num_insertion = i - GetDOF();
+    auto knot_spans = KnotSpans();
+    int insertion_per_span = round(1.0 * num_insertion / knot_spans.size());
+    for (const auto &i : knot_spans)
+    {
+        T increment = (i.second - i.first) / (insertion_per_span + 1);
+        for (int j = 1; j <= insertion_per_span; j++)
+        {
+            Insert(i.first + increment * j);
+        }
+    }
+}
+
+template <typename T>
+KnotVector<T> KnotVector<T>::RefineToDofKnotVector(const int &i) const
+{
+    ASSERT(i > GetDOF(), "Given Dof is too small for refinement.\n");
+    int num_insertion = i - GetDOF();
+    auto knot_spans = KnotSpans();
+    int insertion_per_span = round(1.0 * num_insertion / knot_spans.size());
+    KnotVector<T> res;
+    for (const auto &i : knot_spans)
+    {
+        T increment = (i.second - i.first) / (insertion_per_span + 1);
+        for (int j = 1; j <= insertion_per_span; j++)
+        {
+            res.Insert(i.first + increment * j);
+        }
+    }
+    return res;
 }
 
 template class KnotVector<long double>;
