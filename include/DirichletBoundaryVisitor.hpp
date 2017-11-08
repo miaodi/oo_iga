@@ -52,7 +52,7 @@ class DirichletBoundaryVisitor : public DomainVisitor<1, N, T>
                              const Quadrature &u) const = 0;
 
     void
-        LocalAssemble(Element<1, N, T> *, const QuadratureRule<T> &, const KnotSpan &, std::mutex &);
+        LocalAssemble(Element<1, N, T> *, const QuadratureRule<T> &, const KnotSpan &);
 
   protected:
     std::vector<Eigen::Triplet<T>> _gramian;
@@ -129,8 +129,7 @@ template <int N, typename T>
 void
     DirichletBoundaryVisitor<N, T>::LocalAssemble(Element<1, N, T> *g,
                                                   const QuadratureRule<T> &quadrature_rule,
-                                                  const DirichletBoundaryVisitor<N, T>::KnotSpan &knot_span,
-                                                  std::mutex &pmutex)
+                                                  const DirichletBoundaryVisitor<N, T>::KnotSpan &knot_span)
 {
     auto edge = dynamic_cast<Edge<N, T> *>(g);
     QuadList edge_quadrature_points;
@@ -157,7 +156,7 @@ void
     auto stiff = this->LocalStiffness(bilinear_form_test, bilinear_form_test_indices, bilinear_form_trial,
                                       bilinear_form_trial_indices, weights);
     auto load = this->LocalRhs(linear_form_test, linear_form_test_indices, linear_form_value, weights);
-    std::lock_guard<std::mutex> lock(pmutex);
+    std::lock_guard<std::mutex> lock(this->_mutex);
     this->SymmetricTriplet(stiff, _gramian);
     this->Triplet(load, _rhs);
 }

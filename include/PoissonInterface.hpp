@@ -40,8 +40,7 @@ class PoissonInterface : public InterfaceVisitor<N, T>
     void
         LocalAssemble(Element<1, N, T> *,
                       const QuadratureRule<T> &,
-                      const KnotSpan &,
-                      std::mutex &);
+                      const KnotSpan &);
 
     void
     C0IntegralElementAssembler(Matrix &slave_constraint_basis,
@@ -156,14 +155,13 @@ template <int N, typename T>
 void
     PoissonInterface<N, T>::LocalAssemble(Element<1, N, T> *g,
                                           const QuadratureRule<T> &quadrature_rule,
-                                          const KnotSpan &knot_span,
-                                          std::mutex &pmutex)
+                                          const KnotSpan &knot_span)
 {
     // non-static member function take this pointer.
     using namespace std::placeholders;
     auto c0_function =
         std::bind(&PoissonInterface<N, T>::C0IntegralElementAssembler, this, _1, _2, _3, _4, _5, _6, _7, _8, _9);
-    this->ConstraintLocalAssemble(g, quadrature_rule, knot_span, pmutex, c0_function, _c0ConstraintsEquationElements);
+    this->ConstraintLocalAssemble(g, quadrature_rule, knot_span, c0_function, _c0ConstraintsEquationElements);
 }
 
 template <int N, typename T>

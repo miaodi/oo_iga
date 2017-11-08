@@ -23,8 +23,7 @@ class PostProcess : public DomainVisitor<2, N, T>
   protected:
     void LocalAssemble(Element<2, N, T> *,
                        const QuadratureRule<T> &,
-                       const KnotSpan &,
-                       std::mutex &);
+                       const KnotSpan &);
 
   protected:
     const LoadFunctor &_analyticalSolution;
@@ -35,16 +34,19 @@ class PostProcess : public DomainVisitor<2, N, T>
 template <int N, typename T>
 void PostProcess<N, T>::LocalAssemble(Element<2, N, T> *g,
                                       const QuadratureRule<T> &quadrature_rule,
-                                      const KnotSpan &knot_span,
-                                      std::mutex &pmutex)
+                                      const KnotSpan &knot_span)
 {
+
     auto domain = g->GetDomain();
     QuadList quadrature_points;
+
     quadrature_rule.MapToQuadrature(knot_span, quadrature_points);
+
     auto index = domain->ActiveIndex(quadrature_points[0].first);
     this->_dofMapper.IndicesToGlobal(domain, index);
     auto num_of_quadrature = quadrature_points.size();
     T relative{0}, denominator{0};
+
     for (int i = 0; i < quadrature_points.size(); ++i)
     {
         T analytical = _analyticalSolution(domain->AffineMap(quadrature_points[i].first))[0];
@@ -59,7 +61,7 @@ void PostProcess<N, T>::LocalAssemble(Element<2, N, T> *g,
     }
 
     auto it = _normContainer.find(domain);
-    std::lock_guard<std::mutex> lock(pmutex);
+    std::lock_guard<std::mutex> lock(this->_mutex);
     if (it != _normContainer.end())
     {
         (*it).second.first += relative;

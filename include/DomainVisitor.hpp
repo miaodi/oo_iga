@@ -60,9 +60,10 @@ struct MatrixData
         std::cout << "Matrix: \n";
         std::cout << *_matrix;
         std::cout << std::endl;
+        std::cout << std::endl;
     }
-    bool
-    Check() const
+
+    bool Check() const
     {
         if (_rowIndices->size() == _matrix->rows() && _colIndices->size() == _matrix->cols())
             return true;
@@ -87,6 +88,21 @@ struct VectorData
         *_rowIndices = std::move(row);
         Check();
     }
+
+    void Print() const
+    {
+        std::cout << "Row indices: ";
+        for (const auto &i : *_rowIndices)
+        {
+            std::cout << i << ", ";
+        }
+        std::cout << std::endl;
+        std::cout << "Vector: \n";
+        std::cout <<std::setprecision(16)<< *_vector;
+        std::cout << std::endl;
+        std::cout << std::endl;
+    }
+
     bool Check() const
     {
         if (_rowIndices->size() == _vector->rows())
@@ -118,8 +134,8 @@ class DomainVisitor : public Visitor<d, N, T>
         KnotSpanlist knot_spans;
         InitializeQuadratureRule(g, quad_rule);
         InitializeKnotSpans(g, knot_spans);
-        std::mutex pmutex;
-        auto n = 1;
+        auto n = std::thread::hardware_concurrency();
+
         std::vector<std::thread> threads(n);
         const int grainsize = knot_spans.size() / n;
         auto work_iter = knot_spans.begin();
@@ -127,7 +143,7 @@ class DomainVisitor : public Visitor<d, N, T>
                           typename KnotSpanlist::iterator end) -> void {
             for (auto i = begin; i != end; ++i)
             {
-                LocalAssemble(g, quad_rule, *i, pmutex);
+                LocalAssemble(g, quad_rule, *i);
             }
         };
         for (auto it = std::begin(threads); it != std::end(threads) - 1; ++it)
@@ -169,8 +185,7 @@ class DomainVisitor : public Visitor<d, N, T>
     //    here
     virtual void LocalAssemble(Element<d, N, T> *,
                                const QuadratureRule<T> &,
-                               const KnotSpan &,
-                               std::mutex &) = 0;
+                               const KnotSpan &) = 0;
 
     virtual MatrixData<T> LocalStiffness(const std::vector<Matrix> &weight_basis,
                                          std::vector<int> &weight_basis_indices,
@@ -483,4 +498,5 @@ class DomainVisitor : public Visitor<d, N, T>
 
   protected:
     const DofMapper<N, T> &_dofMapper;
+    std::mutex _mutex;
 };

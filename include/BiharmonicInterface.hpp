@@ -32,8 +32,7 @@ class BiharmonicInterface : public PoissonInterface<N, T>
     void
         LocalAssemble(Element<1, N, T> *,
                       const QuadratureRule<T> &,
-                      const KnotSpan &,
-                      std::mutex &);
+                      const KnotSpan &);
 
     void SolveConstraint(Edge<N, T> *);
 
@@ -152,15 +151,14 @@ template <int N, typename T>
 void
     BiharmonicInterface<N, T>::LocalAssemble(Element<1, N, T> *g,
                                              const QuadratureRule<T> &quadrature_rule,
-                                             const KnotSpan &knot_span,
-                                             std::mutex &pmutex)
+                                             const KnotSpan &knot_span)
 {
-    PoissonInterface<N, T>::LocalAssemble(g, quadrature_rule, knot_span, pmutex);
+    PoissonInterface<N, T>::LocalAssemble(g, quadrature_rule, knot_span);
     // non-static member function take this pointer.
     using namespace std::placeholders;
     auto c1_function =
         std::bind(&BiharmonicInterface<N, T>::C1IntegralElementAssembler, this, _1, _2, _3, _4, _5, _6, _7, _8, _9);
-    this->ConstraintLocalAssemble(g, quadrature_rule, knot_span, pmutex, c1_function, _c1ConstraintsEquationElements);
+    this->ConstraintLocalAssemble(g, quadrature_rule, knot_span, c1_function, _c1ConstraintsEquationElements);
 }
 
 template <int N, typename T>

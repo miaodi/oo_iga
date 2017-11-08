@@ -62,7 +62,6 @@ class InterfaceVisitor : public DomainVisitor<1, N, T>
         ConstraintLocalAssemble(Element<1, N, T> *,
                                 const QuadratureRule<T> &,
                                 const KnotSpan &,
-                                std::mutex &,
                                 ConstraintIntegralElementAssembler,
                                 std::vector<Eigen::Triplet<T>> &);
 
@@ -129,7 +128,6 @@ void
     InterfaceVisitor<N, T>::ConstraintLocalAssemble(Element<1, N, T> *g,
                                                     const QuadratureRule<T> &quadrature_rule,
                                                     const KnotSpan &knot_span,
-                                                    std::mutex &pmutex,
                                                     ConstraintIntegralElementAssembler IntegralElementAssembler,
                                                     std::vector<Eigen::Triplet<T>> &constraintsEquationElements)
 {
@@ -166,7 +164,7 @@ void
                                      master_constraint_basis_indices,
                                      weights);
 
-    std::lock_guard<std::mutex> lock(pmutex);
+    std::lock_guard<std::mutex> lock(this->_mutex);
     this->Triplet(stiff, constraintsEquationElements);
     this->Triplet(load, constraintsEquationElements);
 }

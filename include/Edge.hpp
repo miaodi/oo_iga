@@ -156,14 +156,21 @@ class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N
         std::cout << endPts(N - 1) << ")" << std::endl;
         if (IsDirichlet())
         {
-            std::cout << "Dirichlet boundary." << std::endl;
+            std::cout << "Dirichlet boundary.";
         }
         else
         {
-            std::cout << "Neumann boundary." << std::endl;
+            std::cout << "Neumann boundary.";
+        }
+        if (IsSlave())
+        {
+            std::cout << "Slave edge." << std::endl;
+        }
+        else
+        {
+            std::cout << "Master edge." << std::endl;
         }
         std::cout << std::endl;
-        ;
     }
 
     //! Return the element coordinates in parametric domain. (Each element in the vector is composed with two points,
@@ -323,15 +330,13 @@ class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N
     bool
     Match(std::shared_ptr<Edge<N, T>> &counterpart)
     {
-
+        T tol = std::numeric_limits<T>::epsilon() * 1e3;
         if (_matched == true || counterpart->_matched == true)
         {
             return true;
         }
-        if (((GetStartCoordinate() == counterpart->GetStartCoordinate()) &&
-             (GetEndCoordinate() == counterpart->GetEndCoordinate())) ||
-            ((GetStartCoordinate() == counterpart->GetEndCoordinate()) &&
-             (GetEndCoordinate() == counterpart->GetStartCoordinate())))
+        if (((GetStartCoordinate() - counterpart->GetStartCoordinate()).norm() < tol && (GetEndCoordinate() - counterpart->GetEndCoordinate()).norm() < tol) ||
+            ((GetStartCoordinate() - counterpart->GetEndCoordinate()).norm() < tol && (GetEndCoordinate() - counterpart->GetStartCoordinate()).norm() < tol))
         {
             _pair = counterpart;
             _matched = true;

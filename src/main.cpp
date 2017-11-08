@@ -20,24 +20,29 @@
 using namespace Eigen;
 using namespace std;
 using namespace boost::multiprecision;
-using GeometryVector = PhyTensorBsplineBasis<2, 2, mpf_float_100>::GeometryVector;
+using GeometryVector = PhyTensorBsplineBasis<2, 2, double>::GeometryVector;
 using Vector2mpf = Matrix<mpf_float_100, 2, 1>;
 using VectorXmpf = Matrix<mpf_float_100, Dynamic, 1>;
 using MatrixXmpf = Matrix<mpf_float_100, Dynamic, Dynamic>;
 int main()
 {
-    KnotVector<mpf_float_100> a;
+    KnotVector<double> a;
     a.InitClosed(1, 0, 1);
-    Vector2mpf point1(0, 0), point2(0, 2), point3(1, 1), point4(1, 2), point5(2, 0), point6(2, 1), point7(2, 2);
+    Vector2d point1(0, 0), point2(0, 2), point3(1, 1), point4(1, 2), point5(2, 0), point6(2, 1), point7(2, 2);
 
     GeometryVector point{point1, point2, point3, point4};
     GeometryVector pointt{point1, point3, point5, point6};
     GeometryVector pointtt{point3, point4, point6, point7};
 
-    auto domain1 = make_shared<PhyTensorBsplineBasis<2, 2, mpf_float_100>>(a, a, point);
-    auto domain2 = make_shared<PhyTensorBsplineBasis<2, 2, mpf_float_100>>(a, a, pointt);
-    auto domain3 = make_shared<PhyTensorBsplineBasis<2, 2, mpf_float_100>>(a, a, pointtt);
+    auto domain1 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(vector<KnotVector<double>>{a, a}, point);
+    auto domain2 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(vector<KnotVector<double>>{a, a}, pointt);
+    auto domain3 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(vector<KnotVector<double>>{a, a}, pointtt);
 
+    int degree, refine;
+    cin >> degree >> refine;
+    domain1->DegreeElevate(degree);
+    domain2->DegreeElevate(degree);
+    domain3->DegreeElevate(degree);
     domain1->UniformRefine(1);
     domain2->UniformRefine(1);
     domain3->KnotInsertion(0, 1.0 / 3);
@@ -45,13 +50,16 @@ int main()
     domain3->KnotInsertion(1, 1.0 / 3);
     domain3->KnotInsertion(1, 2.0 / 3);
 
-    auto surface1 = make_shared<Surface<2, mpf_float_100>>(domain1, array<bool, 4>{false, false, true, true});
+    domain1->UniformRefine(refine);
+    domain2->UniformRefine(refine);
+    domain3->UniformRefine(refine);
+    auto surface1 = make_shared<Surface<2, double>>(domain1, array<bool, 4>{false, false, true, true});
     surface1->SurfaceInitialize();
-    auto surface2 = make_shared<Surface<2, mpf_float_100>>(domain2, array<bool, 4>{true, true, false, false});
+    auto surface2 = make_shared<Surface<2, double>>(domain2, array<bool, 4>{true, true, false, false});
     surface2->SurfaceInitialize();
-    auto surface3 = make_shared<Surface<2, mpf_float_100>>(domain3, array<bool, 4>{false, true, true, false});
+    auto surface3 = make_shared<Surface<2, double>>(domain3, array<bool, 4>{false, true, true, false});
     surface3->SurfaceInitialize();
-    vector<shared_ptr<Surface<2, mpf_float_100>>> cells(3);
+    vector<shared_ptr<Surface<2, double>>> cells(3);
     cells[0] = surface1;
     cells[1] = surface2;
     cells[2] = surface3;
@@ -59,66 +67,74 @@ int main()
     surface1->Match(surface3);
     surface2->Match(surface3);
 
-    const mpf_float_100 pi = 3.14159265358979323846264338327;
-    function<vector<mpf_float_100>(const VectorXmpf &)> body_force = [&pi](const VectorXmpf &u) {
-        return vector<mpf_float_100>{72 * sin(6 * u(0)) * sin(6 * u(1))};
+    const double pi = 3.14159265358979323846264338327;
+    function<vector<double>(const VectorXd &)> body_force = [&pi](const VectorXd &u) {
+        return vector<double>{72 * sin(6 * u(0)) * sin(6 * u(1))};
     };
 
-    function<vector<mpf_float_100>(const VectorXmpf &)> analytical_solution = [&pi](const VectorXmpf &u) {
-        return vector<mpf_float_100>{sin(6 * u(0)) * sin(6 * u(1)), cos(u(0)) * sin(u(1)), sin(u(0)) * cos(u(1))};
+    function<vector<double>(const VectorXd &)> analytical_solution = [&pi](const VectorXd &u) {
+        return vector<double>{sin(6 * u(0)) * sin(6 * u(1)), cos(u(0)) * sin(u(1)), sin(u(0)) * cos(u(1))};
     };
 
-    DofMapper<2, mpf_float_100> dof_map;
-    PoissonMapper<2, mpf_float_100> mapper(dof_map);
+    DofMapper<2, double> dof_map;
+    PoissonMapper<2, double> mapper(dof_map);
     surface1->Accept(mapper);
     surface2->Accept(mapper);
     surface3->Accept(mapper);
 
-    SparseMatrix<mpf_float_100> global_to_condensed, condensed_to_free, global_to_free;
+    SparseMatrix<double> global_to_condensed, condensed_to_free, global_to_free;
     dof_map.CondensedIndexMap(global_to_condensed);
     dof_map.FreeIndexMap(global_to_free);
     dof_map.FreeToCondensedIndexMap(condensed_to_free);
 
-    PoissonStiffnessVisitor<2, mpf_float_100> stiffness(dof_map, body_force);
+    PoissonStiffnessVisitor<2, double> stiffness(dof_map, body_force);
     surface1->Accept(stiffness);
     surface2->Accept(stiffness);
     surface3->Accept(stiffness);
-    SparseMatrix<mpf_float_100> stiffness_matrix_triangle_view, load_vector;
+    SparseMatrix<double> stiffness_matrix_triangle_view, load_vector;
     stiffness.StiffnessAssembler(stiffness_matrix_triangle_view);
     stiffness.LoadAssembler(load_vector);
-    SparseMatrix<mpf_float_100> stiffness_matrix = stiffness_matrix_triangle_view.template selfadjointView<Eigen::Upper>();
+    SparseMatrix<double> stiffness_matrix = stiffness_matrix_triangle_view.template selfadjointView<Eigen::Upper>();
 
-    PoissonDirichletBoundaryVisitor<2, mpf_float_100> boundary(dof_map, analytical_solution);
+    PoissonDirichletBoundaryVisitor<2, double> boundary(dof_map, analytical_solution);
     surface1->EdgeAccept(boundary);
     surface2->EdgeAccept(boundary);
     surface3->EdgeAccept(boundary);
-    SparseMatrix<mpf_float_100> boundary_value, edge_constraint, vertex_constraint, constraint;
+    SparseMatrix<double> boundary_value, edge_constraint, vertex_constraint, constraint;
     boundary.CondensedDirichletBoundary(boundary_value);
-    PoissonInterface<2, mpf_float_100> interface(dof_map);
+    PoissonInterface<2, double> interface(dof_map);
     surface1->EdgeAccept(interface);
     surface2->EdgeAccept(interface);
     surface3->EdgeAccept(interface);
-    PoissonVertexVisitor<2, mpf_float_100> vertex(dof_map);
+    PoissonVertexVisitor<2, double> vertex(dof_map);
     surface1->VertexAccept(vertex);
     surface2->VertexAccept(vertex);
     surface3->VertexAccept(vertex);
     interface.ConstraintMatrix(edge_constraint);
     vertex.ConstraintMatrix(vertex_constraint);
-    constraint = edge_constraint * vertex_constraint;
-    SparseMatrix<mpf_float_100> condensed_stiffness_matrix = global_to_condensed * constraint.transpose() * stiffness_matrix * constraint * global_to_condensed.transpose();
-    SparseMatrix<mpf_float_100> free_stiffness_matrix = condensed_to_free * condensed_stiffness_matrix * condensed_to_free.transpose();
-    SparseMatrix<mpf_float_100> condensed_rhs = global_to_condensed * constraint.transpose() * load_vector - condensed_stiffness_matrix * boundary_value;
-    SparseMatrix<mpf_float_100> free_rhs = condensed_to_free * condensed_rhs;
+    constraint = (edge_constraint * vertex_constraint).pruned(1e-10);
+    SparseMatrix<double> condensed_stiffness_matrix = global_to_condensed * constraint.transpose() * stiffness_matrix * constraint * global_to_condensed.transpose();
+    SparseMatrix<double> free_stiffness_matrix = condensed_to_free * condensed_stiffness_matrix * condensed_to_free.transpose();
+    SparseMatrix<double> condensed_rhs = global_to_condensed * constraint.transpose() * load_vector - condensed_stiffness_matrix * boundary_value;
+    SparseMatrix<double> free_rhs = condensed_to_free * condensed_rhs;
 
-    ConjugateGradient<Eigen::SparseMatrix<mpf_float_100>, Eigen::Lower | Eigen::Upper> cg;
+    ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower | Eigen::Upper> cg;
     cg.compute(free_stiffness_matrix);
-    VectorXmpf Solution = cg.solve(free_rhs);
-    ofstream myfile;
+    VectorXd Solution = cg.solve(free_rhs);
+
+    ofstream myfile, myfile1, myfile2;
     myfile.open("example.txt");
-    myfile << MatrixXmpf(free_stiffness_matrix) << endl;
+    myfile << setprecision(10) << MatrixXd(load_vector) << endl;
     myfile.close();
-    VectorXmpf solution = constraint * global_to_condensed.transpose() * (condensed_to_free.transpose() * Solution + boundary_value);
-    PostProcess<2, mpf_float_100> post_process(dof_map, solution, analytical_solution);
+    myfile.open("example1.txt");
+    myfile << setprecision(10) << MatrixXd(boundary_value) << endl;
+    myfile.close();
+    myfile.open("example2.txt");
+    myfile << setprecision(10) << MatrixXd(free_stiffness_matrix) << endl;
+    myfile.close();
+
+    VectorXd solution = constraint * global_to_condensed.transpose() * (condensed_to_free.transpose() * Solution + boundary_value);
+    PostProcess<2, double> post_process(dof_map, solution, analytical_solution);
     surface1->Accept(post_process);
     surface2->Accept(post_process);
     surface3->Accept(post_process);

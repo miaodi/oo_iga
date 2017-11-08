@@ -31,7 +31,7 @@ public:
 protected:
     //    Assemble stiffness matrix and rhs
     void
-    LocalAssemble(Element<2, N, T>*, const QuadratureRule<T>&, const KnotSpan&, std::mutex&);
+    LocalAssemble(Element<2, N, T>*, const QuadratureRule<T>&, const KnotSpan&);
 
     virtual void
     IntegralElementAssembler(Matrix& bilinear_form_trail, Matrix& bilinear_form_test, Matrix& linear_form_value,
@@ -48,8 +48,7 @@ template<int N, typename T>
 void
 StiffnessVisitor<N, T>::LocalAssemble(Element<2, N, T>* g,
         const QuadratureRule<T>& quadrature_rule,
-        const KnotSpan& knot_span,
-        std::mutex& pmutex)
+        const KnotSpan& knot_span)
 {
     auto domain = g->GetDomain();
     QuadList quadrature_points;
@@ -63,6 +62,7 @@ StiffnessVisitor<N, T>::LocalAssemble(Element<2, N, T>* g,
     std::vector<Matrix> bilinear_form_test(num_of_quadrature), bilinear_form_trial(
             num_of_quadrature), linear_form_test(num_of_quadrature), linear_form_value(num_of_quadrature);
     std::vector<T> weights;
+
     for (int i = 0; i<quadrature_points.size(); ++i)
     {
         weights.push_back(quadrature_points[i].second*domain->Jacobian(quadrature_points[i].first));
@@ -73,9 +73,9 @@ StiffnessVisitor<N, T>::LocalAssemble(Element<2, N, T>* g,
     auto stiff = this->LocalStiffness(bilinear_form_test, bilinear_form_test_indices, bilinear_form_trial,
             bilinear_form_trial_indices, weights);
     auto load = this->LocalRhs(linear_form_test, linear_form_test_indices, linear_form_value, weights);
-    std::lock_guard<std::mutex> lock(pmutex);
-    this->SymmetricTriplet(stiff, _stiffnees);
+    std::lock_guard<std::mutex> lock(this->_mutex);
     this->Triplet(load, _rhs);
+    this->SymmetricTriplet(stiff, _stiffnees);
 }
 
 template<int N, typename T>
