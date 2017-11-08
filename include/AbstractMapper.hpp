@@ -9,6 +9,7 @@
 #include "Edge.hpp"
 #include "Surface.hpp"
 #include "Vertex.hpp"
+#include "Utility.hpp"
 
 template <int layer, int N, typename T>
 class AbstractMapper : public Visitor<2, N, T>, Visitor<1, N, T>, Visitor<0, N, T>
@@ -55,15 +56,20 @@ class AbstractMapper : public Visitor<2, N, T>, Visitor<1, N, T>, Visitor<0, N, 
         Visit(Element<0, N, T> *g)
     {
         auto vertex = dynamic_cast<Vertex<N, T> *>(g);
-        _dofMap.VertexIndicesInserter(vertex, *vertex->ExclusiveIndices(_numOfLayer));
+
         //        If it is not Dirichlet and is slave push d.o.f associated with this vertex to slave d.o.f
         if (!vertex->IsDirichlet() && vertex->IsSlave())
         {
-            auto tmp = vertex->ExclusiveIndices(_numOfLayer);
-            for (const auto &i : *tmp)
+            auto vertex_indices = vertex->ExclusiveIndices(_numOfLayer);
+            if (layer == 1)
+            {
+                *vertex_indices = *(vertex->IndicesForBiharmonic());
+            }
+            for (const auto &i : *vertex_indices)
             {
                 _dofMap.SlaveDofInserter(vertex->Parent(0).lock()->Parent(0).lock()->GetDomain(), i);
             }
+            _dofMap.VertexIndicesInserter(vertex, *vertex_indices);
         }
 
         //            If It is Dirichlet push d.o.f associated with this vertex to Dirichlet.
@@ -74,6 +80,7 @@ class AbstractMapper : public Visitor<2, N, T>, Visitor<1, N, T>, Visitor<0, N, 
             {
                 _dofMap.DirichletDofInserter(vertex->Parent(0).lock()->Parent(0).lock()->GetDomain(), i);
             }
+            _dofMap.VertexIndicesInserter(vertex, *tmp);
         }
     }
 

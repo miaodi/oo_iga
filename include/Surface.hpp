@@ -165,13 +165,13 @@ class Surface : public Element<2, N, T>, public std::enable_shared_from_this<Sur
                 i->Match(j);
             }
         }
-        // for (auto &i : _vertices)
-        // {
-        //     for (auto &j : counterpart->_vertices)
-        //     {
-        //         i->Match(j);
-        //     }
-        // }
+        for (auto &i : _vertices)
+        {
+            for (auto &j : counterpart->_vertices)
+            {
+                i->Match(j);
+            }
+        }
     }
 
     void PrintEdgeInfo() const

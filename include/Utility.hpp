@@ -604,6 +604,12 @@ bool MapParametricPoint(const PhyTensorBsplineBasis<d_from, N, T> *const from_do
 
 std::map<int, int> IndicesInverseMap(const std::vector<int> &forward_map);
 
+std::vector<int> IndicesIntersection(const std::vector<int> &indices_a, const std::vector<int> &indices_b);
+
+std::vector<int> IndicesDifferentiation(const std::vector<int> &indices_a, const std::vector<int> &indices_b);
+
+std::vector<int> IndicesUnion(const std::vector<int> &indices_a, const std::vector<int> &indices_b);
+
 template <typename T>
 std::set<int> ColIndicesSet(const std::vector<Eigen::Triplet<T>> &triplet)
 {

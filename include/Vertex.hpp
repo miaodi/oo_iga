@@ -51,6 +51,19 @@ class Vertex : public Element<0, N, T>, public std::enable_shared_from_this<Vert
         return Indices(layer);
     }
 
+    std::unique_ptr<std::vector<int>> IndicesForBiharmonic() const
+    {
+        auto vertex_indices = ExclusiveIndices(1);
+        auto parent_edge1 = Parent(0).lock();
+        auto parent_edge2 = Parent(1).lock();
+        auto edge1_indices = parent_edge1->Indices(0);
+        auto edge2_indices = parent_edge2->Indices(0);
+        auto vertex_edge1_intersection = Accessory::IndicesIntersection(*vertex_indices, *edge1_indices);
+        auto vertex_edge2_intersection = Accessory::IndicesIntersection(*vertex_indices, *edge2_indices);
+        *vertex_indices = Accessory::IndicesUnion(vertex_edge1_intersection, vertex_edge2_intersection);
+        return vertex_indices;
+    }
+
     void MasterSetter(const bool &master)
     {
         _master = master;

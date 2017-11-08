@@ -315,7 +315,7 @@ class DofMapper
 
     void
     VertexIndicesInserter(Vertex<N, T> *g,
-                        const std::vector<int> &indices)
+                          const std::vector<int> &indices)
     {
         for (const auto &i : indices)
         {

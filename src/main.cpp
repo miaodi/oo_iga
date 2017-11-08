@@ -1,6 +1,7 @@
 #include <iostream>
 #include <eigen3/Eigen/Dense>
 #include "Surface.hpp"
+#include "Utility.hpp"
 #include "Vertex.hpp"
 #include "DofMapper.hpp"
 #include "PoissonMapper.hpp"
@@ -10,6 +11,7 @@
 #include "PoissonDirichletBoundaryVisitor.hpp"
 #include "BiharmonicDirichletBoundaryVisitor.hpp"
 #include "PoissonVertexVisitor.hpp"
+#include "BiharmonicVertexVisitor.hpp"
 #include "PoissonInterface.hpp"
 #include "BiharmonicInterface.hpp"
 #include "PostProcess.hpp"
@@ -69,76 +71,64 @@ int main()
 
     const double pi = 3.14159265358979323846264338327;
     function<vector<double>(const VectorXd &)> body_force = [&pi](const VectorXd &u) {
-        return vector<double>{72 * sin(6 * u(0)) * sin(6 * u(1))};
+        return vector<double>{4 * pow(pi, 4) * sin(pi * u(0)) * sin(pi * u(1))};
     };
 
     function<vector<double>(const VectorXd &)> analytical_solution = [&pi](const VectorXd &u) {
-        return vector<double>{sin(6 * u(0)) * sin(6 * u(1)), cos(u(0)) * sin(u(1)), sin(u(0)) * cos(u(1))};
+        return vector<double>{sin(pi * u(0)) * sin(pi * u(1)), pi * cos(pi * u(0)) * sin(pi * u(1)), pi * sin(pi * u(0)) * cos(pi * u(1))};
     };
 
     DofMapper<2, double> dof_map;
-    PoissonMapper<2, double> mapper(dof_map);
+    BiharmonicMapper<2, double> mapper(dof_map);
     surface1->Accept(mapper);
     surface2->Accept(mapper);
     surface3->Accept(mapper);
 
-    SparseMatrix<double> global_to_condensed, condensed_to_free, global_to_free;
-    dof_map.CondensedIndexMap(global_to_condensed);
-    dof_map.FreeIndexMap(global_to_free);
-    dof_map.FreeToCondensedIndexMap(condensed_to_free);
+    // SparseMatrix<double> global_to_condensed, condensed_to_free, global_to_free;
+    // dof_map.CondensedIndexMap(global_to_condensed);
+    // dof_map.FreeIndexMap(global_to_free);
+    // dof_map.FreeToCondensedIndexMap(condensed_to_free);
 
-    PoissonStiffnessVisitor<2, double> stiffness(dof_map, body_force);
-    surface1->Accept(stiffness);
-    surface2->Accept(stiffness);
-    surface3->Accept(stiffness);
-    SparseMatrix<double> stiffness_matrix_triangle_view, load_vector;
-    stiffness.StiffnessAssembler(stiffness_matrix_triangle_view);
-    stiffness.LoadAssembler(load_vector);
-    SparseMatrix<double> stiffness_matrix = stiffness_matrix_triangle_view.template selfadjointView<Eigen::Upper>();
+    // BiharmonicStiffnessVisitor<2, double> stiffness(dof_map, body_force);
+    // surface1->Accept(stiffness);
+    // surface2->Accept(stiffness);
+    // surface3->Accept(stiffness);
+    // SparseMatrix<double> stiffness_matrix_triangle_view, load_vector;
+    // stiffness.StiffnessAssembler(stiffness_matrix_triangle_view);
+    // stiffness.LoadAssembler(load_vector);
+    // SparseMatrix<double> stiffness_matrix = stiffness_matrix_triangle_view.template selfadjointView<Eigen::Upper>();
 
-    PoissonDirichletBoundaryVisitor<2, double> boundary(dof_map, analytical_solution);
-    surface1->EdgeAccept(boundary);
-    surface2->EdgeAccept(boundary);
-    surface3->EdgeAccept(boundary);
-    SparseMatrix<double> boundary_value, edge_constraint, vertex_constraint, constraint;
-    boundary.CondensedDirichletBoundary(boundary_value);
-    PoissonInterface<2, double> interface(dof_map);
-    surface1->EdgeAccept(interface);
-    surface2->EdgeAccept(interface);
-    surface3->EdgeAccept(interface);
-    PoissonVertexVisitor<2, double> vertex(dof_map);
+    // BiharmonicDirichletBoundaryVisitor<2, double> boundary(dof_map, analytical_solution);
+    // surface1->EdgeAccept(boundary);
+    // surface2->EdgeAccept(boundary);
+    // surface3->EdgeAccept(boundary);
+    // SparseMatrix<double> boundary_value, edge_constraint, vertex_constraint, constraint;
+    // boundary.CondensedDirichletBoundary(boundary_value);
+    // BiharmonicInterface<2, double> interface(dof_map);
+    // surface1->EdgeAccept(interface);
+    // surface2->EdgeAccept(interface);
+    // surface3->EdgeAccept(interface);
+    // interface.ConstraintMatrix(edge_constraint);
+    BiharmonicVertexVisitor<2, double> vertex(dof_map);
     surface1->VertexAccept(vertex);
     surface2->VertexAccept(vertex);
     surface3->VertexAccept(vertex);
-    interface.ConstraintMatrix(edge_constraint);
-    vertex.ConstraintMatrix(vertex_constraint);
-    constraint = (edge_constraint * vertex_constraint).pruned(1e-10);
-    SparseMatrix<double> condensed_stiffness_matrix = global_to_condensed * constraint.transpose() * stiffness_matrix * constraint * global_to_condensed.transpose();
-    SparseMatrix<double> free_stiffness_matrix = condensed_to_free * condensed_stiffness_matrix * condensed_to_free.transpose();
-    SparseMatrix<double> condensed_rhs = global_to_condensed * constraint.transpose() * load_vector - condensed_stiffness_matrix * boundary_value;
-    SparseMatrix<double> free_rhs = condensed_to_free * condensed_rhs;
+    // vertex.ConstraintMatrix(vertex_constraint);
+    // constraint = (edge_constraint).pruned(1e-10);
+    // SparseMatrix<double> condensed_stiffness_matrix = global_to_condensed * constraint.transpose() * stiffness_matrix * constraint * global_to_condensed.transpose();
+    // SparseMatrix<double> free_stiffness_matrix = condensed_to_free * condensed_stiffness_matrix * condensed_to_free.transpose();
+    // SparseMatrix<double> condensed_rhs = global_to_condensed * constraint.transpose() * load_vector - condensed_stiffness_matrix * boundary_value;
+    // SparseMatrix<double> free_rhs = condensed_to_free * condensed_rhs;
 
-    ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower | Eigen::Upper> cg;
-    cg.compute(free_stiffness_matrix);
-    VectorXd Solution = cg.solve(free_rhs);
+    // ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower | Eigen::Upper> cg;
+    // cg.compute(free_stiffness_matrix);
+    // VectorXd Solution = cg.solve(free_rhs);
 
-    ofstream myfile, myfile1, myfile2;
-    myfile.open("example.txt");
-    myfile << setprecision(10) << MatrixXd(load_vector) << endl;
-    myfile.close();
-    myfile.open("example1.txt");
-    myfile << setprecision(10) << MatrixXd(boundary_value) << endl;
-    myfile.close();
-    myfile.open("example2.txt");
-    myfile << setprecision(10) << MatrixXd(free_stiffness_matrix) << endl;
-    myfile.close();
-
-    VectorXd solution = constraint * global_to_condensed.transpose() * (condensed_to_free.transpose() * Solution + boundary_value);
-    PostProcess<2, double> post_process(dof_map, solution, analytical_solution);
-    surface1->Accept(post_process);
-    surface2->Accept(post_process);
-    surface3->Accept(post_process);
-    cout << post_process.L2Norm() << endl;
-
+    // VectorXd solution = constraint * global_to_condensed.transpose() * (condensed_to_free.transpose() * Solution + boundary_value);
+    // PostProcess<2, double> post_process(dof_map, solution, analytical_solution);
+    // surface1->Accept(post_process);
+    // surface2->Accept(post_process);
+    // surface3->Accept(post_process);
+    // cout << post_process.L2Norm() << endl;
     return 0;
 }
