@@ -98,7 +98,7 @@ struct VectorData
         }
         std::cout << std::endl;
         std::cout << "Vector: \n";
-        std::cout <<std::setprecision(16)<< *_vector;
+        std::cout << std::setprecision(16) << *_vector;
         std::cout << std::endl;
         std::cout << std::endl;
     }
@@ -134,10 +134,8 @@ class DomainVisitor : public Visitor<d, N, T>
         KnotSpanlist knot_spans;
         InitializeQuadratureRule(g, quad_rule);
         InitializeKnotSpans(g, knot_spans);
-        auto n = std::thread::hardware_concurrency();
-
-        std::vector<std::thread> threads(n);
-        const int grainsize = knot_spans.size() / n;
+        std::vector<std::thread> threads(_num_of_threads);
+        const int grainsize = knot_spans.size() / _num_of_threads;
         auto work_iter = knot_spans.begin();
         auto lambda = [&](typename KnotSpanlist::iterator begin,
                           typename KnotSpanlist::iterator end) -> void {
@@ -496,7 +494,13 @@ class DomainVisitor : public Visitor<d, N, T>
         ;
     }
 
+    inline void ThreadSetter(const u_int &threads)
+    {
+        _num_of_threads = threads;
+    }
+
   protected:
     const DofMapper<N, T> &_dofMapper;
     std::mutex _mutex;
+    u_int _num_of_threads{std::thread::hardware_concurrency()};
 };

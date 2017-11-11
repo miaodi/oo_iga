@@ -13,6 +13,24 @@ class BiharmonicVertexVisitor : public VertexVisitor<N, T>
   public:
     BiharmonicVertexVisitor(const DofMapper<N, T> &dof_mapper) : VertexVisitor<N, T>(dof_mapper) {}
 
+    void Triplet(const MatrixData<T> &matrix,
+                 std::vector<Eigen::Triplet<T>> &triplet,
+                 const T &tol = 1e-11) const
+    {
+        for (int i = 0; i < matrix._rowIndices->size(); ++i)
+        {
+            for (int j = 0; j < matrix._colIndices->size(); ++j)
+            {
+                T tmp{(*matrix._matrix)(i, j)};
+                if (abs(tmp) > tol)
+                {
+                    triplet.emplace_back(Eigen::Triplet<T>(
+                        (*matrix._rowIndices)[i], (*matrix._colIndices)[j], tmp));
+                }
+            }
+        }
+    }
+
   protected:
     void VertexConstraint(Vertex<N, T> *, Vertex<N, T> *);
 };
@@ -32,8 +50,9 @@ void BiharmonicVertexVisitor<N, T>::VertexConstraint(Vertex<N, T> *master_vertex
     {
         std::cerr << "Inverse mapping for vertex visitor error." << std::endl;
     }
-    auto master_eval = master_domain->EvalDerAllTensor(master_parametric, 1);
-    auto slave_eval = slave_domain->EvalDerAllTensor(slave_parametric, 1);
+    auto master_eval = master_domain->Eval2PhyDerAllTensor(master_parametric);
+    auto slave_eval = slave_domain->Eval2PhyDerAllTensor(slave_parametric);
+
     auto master_indices = master_vertex->IndicesForBiharmonic();
     auto slave_indices = slave_vertex->IndicesForBiharmonic();
     master_eval->erase(std::remove_if(master_eval->begin(), master_eval->end(), [&master_indices](decltype(*(master_eval->begin())) &val) {
@@ -65,7 +84,9 @@ void BiharmonicVertexVisitor<N, T>::VertexConstraint(Vertex<N, T> *master_vertex
         slave_matrix(1, it - (*slave_eval).begin()) = it->second[1];
         slave_matrix(2, it - (*slave_eval).begin()) = it->second[2];
     }
-    std::cout << master_matrix << std::endl
-              << slave_matrix << std::endl
-              << std::endl;
+    this->_dofMapper.IndicesToGlobal(master_domain, *master_indices);
+    this->_dofMapper.IndicesToGlobal(slave_domain, *slave_indices);
+    Matrix constraint = slave_matrix.partialPivLu().solve(master_matrix);
+    MatrixData<T> constraint_matrixdata(constraint, *slave_indices, *master_indices);
+    Triplet(constraint_matrixdata, this->_constraint);
 }

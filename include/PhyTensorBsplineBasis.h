@@ -162,19 +162,19 @@ class PhyTensorBsplineBasis : public TensorBsplineBasis<d, T>
     GeometryVector _geometricInfo;
 };
 
-// template <>
-// PhyTensorBsplineBasis<2, 1, double>::PhyTensorBsplineBasis(const std::vector<KnotVector<double>> &base,
-//                                                            const Eigen::Matrix<double, Eigen::Dynamic, 1> &geometry)
-//     : TensorBsplineBasis<2, double>(
-//           base)
-// {
-//     ASSERT(geometry.rows() == (this->TensorBsplineBasis<2, double>::GetDof()),
-//            "Invalid geometrical information input, check size bro.");
-//     for (int i = 0; i != geometry.rows(); ++i)
-//     {
-//         _geometricInfo.push_back(Eigen::Matrix<double, 1, 1>(geometry(i)));
-//     }
-// }
+template <>
+PhyTensorBsplineBasis<2, 1, double>::PhyTensorBsplineBasis(const std::vector<KnotVector<double>> &base,
+                                                           const Eigen::Matrix<double, Eigen::Dynamic, 1> &geometry)
+    : TensorBsplineBasis<2, double>(
+          base)
+{
+    ASSERT(geometry.rows() == (this->TensorBsplineBasis<2, double>::GetDof()),
+           "Invalid geometrical information input, check size bro.");
+    for (int i = 0; i != geometry.rows(); ++i)
+    {
+        _geometricInfo.push_back(Eigen::Matrix<double, 1, 1>(geometry(i)));
+    }
+}
 
 template <int N, typename T>
 class PhyTensorBsplineBasis<0, N, T> : public TensorBsplineBasis<0, T>
