@@ -102,7 +102,7 @@ class PhyTensorBsplineBasis : public TensorBsplineBasis<d, T>
 
     virtual void UniformRefine(int,
                                int,
-                               int m = 1);
+                               int);
 
     void UniformRefineDof(int,
                           int);
@@ -122,12 +122,12 @@ class PhyTensorBsplineBasis : public TensorBsplineBasis<d, T>
             DegreeElevate(i, p);
     }
 
-    inline virtual void UniformRefine(int r)
+    inline virtual void UniformRefine(int r, int m)
     {
         if (r == 0)
             return;
         for (int i = 0; i != d; ++i)
-            UniformRefine(i, r);
+            UniformRefine(i, r, m);
     }
 
     virtual void UniformRefineDof(int dof);
