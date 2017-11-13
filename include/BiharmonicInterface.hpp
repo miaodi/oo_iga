@@ -25,6 +25,9 @@ class BiharmonicInterface : public PoissonInterface<N, T>
     BiharmonicInterface(const DofMapper<N, T> &dof_mapper)
         : PoissonInterface<N, T>(dof_mapper) {}
 
+    void
+    ConstraintMatrix(Matrix &);
+
   protected:
     void
     InitializeTripletContainer();
@@ -52,6 +55,7 @@ class BiharmonicInterface : public PoissonInterface<N, T>
 
   protected:
     std::vector<Eigen::Triplet<T>> _c1ConstraintsEquationElements;
+    std::map<Edge<N, T> *, Matrix> _c1Constraint;
 };
 
 template <int N, typename T>
@@ -64,7 +68,7 @@ void BiharmonicInterface<N, T>::InitializeTripletContainer()
 template <int N, typename T>
 void BiharmonicInterface<N, T>::SolveConstraint(Edge<N, T> *edge)
 {
-    PoissonInterface<N, T>::SolveC0Constraint(edge, 2);
+    PoissonInterface<N, T>::SolveC0Constraint(edge);
     SolveC1Constraint(edge);
 }
 
@@ -72,79 +76,27 @@ void BiharmonicInterface<N, T>::SolveConstraint(Edge<N, T> *edge)
 template <int N, typename T>
 void BiharmonicInterface<N, T>::SolveC1Constraint(Edge<N, T> *edge)
 {
-    // iterate across the constraint equation container and obtain activated global indices and lagrange multiplier indices
-    std::vector<int> activated_indices = Accessory::ColIndicesVector(_c1ConstraintsEquationElements);
-    std::vector<int> multiplier_indices = Accessory::RowIndicesVector(_c1ConstraintsEquationElements);
+    this->MoveToRhs(edge->Parent(0).lock()->GetDomain(), _c1ConstraintsEquationElements);
 
-    // get all the slave indices on the edge
-    std::vector<int> slave_indices = this->_dofMapper.GlobalEdgeIndicesGetter(edge);
+    auto max_row = std::max_element(_c1ConstraintsEquationElements.begin(), _c1ConstraintsEquationElements.end(), [](Eigen::Triplet<T> lhs, Eigen::Triplet<T> rhs) {
+        return lhs.row() < rhs.row();
+    });
 
-    // Get the slave indices that used for C0 constraint
-    std::vector<int> c0_slave_indices = this->_slaveIndices[edge];
+    Eigen::SparseMatrix<T> constraint;
+    constraint.resize(max_row->row() + 1, this->_dofMapper.Dof());
 
-    // find slave indices and master indices
-    std::vector<int> activated_slave_indices, activated_master_indices;
-    std::set_difference(slave_indices.begin(), slave_indices.end(), c0_slave_indices.begin(),
-                        c0_slave_indices.end(), std::back_inserter(activated_slave_indices));
-    std::set_difference(activated_indices.begin(), activated_indices.end(), slave_indices.begin(),
-                        slave_indices.end(), std::back_inserter(activated_master_indices));
+    constraint.setFromTriplets(_c1ConstraintsEquationElements.begin(), _c1ConstraintsEquationElements.end());
 
-    // Inverse map used for creating condensed matrix
-    auto activated_slave_indices_inverse_map = Accessory::IndicesInverseMap(activated_slave_indices);
-    auto c0_slave_indices_inverse_map = Accessory::IndicesInverseMap(c0_slave_indices);
-    auto activated_master_indices_inverse_map = Accessory::IndicesInverseMap(activated_master_indices);
-    auto multiplier_indices_inverse_map = Accessory::IndicesInverseMap(multiplier_indices);
+    Matrix dense_constraint = Matrix(constraint);
+    dense_constraint.row(2) = dense_constraint.row(0) + dense_constraint.row(1) + dense_constraint.row(2);
+    dense_constraint.row(dense_constraint.rows() - 3) = dense_constraint.row(dense_constraint.rows() - 3) + dense_constraint.row(dense_constraint.rows() - 2) + dense_constraint.row(dense_constraint.rows() - 1);
 
-    std::vector<Eigen::Triplet<T>> condensed_gramian, condensed_rhs_c1, condensed_rhs_c0_slave;
-    this->CondensedTripletVia(multiplier_indices_inverse_map, activated_slave_indices_inverse_map,
-                              _c1ConstraintsEquationElements, condensed_gramian);
-    this->MoveToRhs(edge->Counterpart().lock()->Parent(0).lock()->GetDomain(), _c1ConstraintsEquationElements);
-    this->CondensedTripletVia(multiplier_indices_inverse_map, activated_master_indices_inverse_map,
-                              _c1ConstraintsEquationElements, condensed_rhs_c1);
-    this->CondensedTripletVia(multiplier_indices_inverse_map, c0_slave_indices_inverse_map,
-                              _c1ConstraintsEquationElements, condensed_rhs_c0_slave);
-    Matrix gramian_matrix, rhs_matrix_c1, rhs_matrix_c0_slave;
-    this->MatrixAssembler(multiplier_indices_inverse_map.size(), activated_slave_indices_inverse_map.size(),
-                          condensed_gramian, gramian_matrix);
-    this->MatrixAssembler(multiplier_indices_inverse_map.size(), activated_master_indices_inverse_map.size(),
-                          condensed_rhs_c1, rhs_matrix_c1);
-    this->MatrixAssembler(multiplier_indices_inverse_map.size(), c0_slave_indices_inverse_map.size(),
-                          condensed_rhs_c0_slave, rhs_matrix_c0_slave);
+    Accessory::removeRow<T>(dense_constraint, 0);
+    Accessory::removeRow<T>(dense_constraint, 0);
+    Accessory::removeRow<T>(dense_constraint, dense_constraint.rows() - 1);
+    Accessory::removeRow<T>(dense_constraint, dense_constraint.rows() - 1);
 
-    // Codimension 2 Lagrange multiplier
-    gramian_matrix.row(2) = gramian_matrix.row(0) + gramian_matrix.row(1) + gramian_matrix.row(2);
-    gramian_matrix.row(gramian_matrix.rows() - 3) = gramian_matrix.row(gramian_matrix.rows() - 3) + gramian_matrix.row(gramian_matrix.rows() - 2) + gramian_matrix.row(gramian_matrix.rows() - 1);
-
-    rhs_matrix_c1.row(2) = rhs_matrix_c1.row(0) + rhs_matrix_c1.row(1) + rhs_matrix_c1.row(2);
-    rhs_matrix_c1.row(rhs_matrix_c1.rows() - 3) = rhs_matrix_c1.row(rhs_matrix_c1.rows() - 3) + rhs_matrix_c1.row(rhs_matrix_c1.rows() - 2) + rhs_matrix_c1.row(rhs_matrix_c1.rows() - 1);
-
-    rhs_matrix_c0_slave.row(2) = rhs_matrix_c0_slave.row(0) + rhs_matrix_c0_slave.row(1) + rhs_matrix_c0_slave.row(2);
-    rhs_matrix_c0_slave.row(rhs_matrix_c0_slave.rows() - 3) = rhs_matrix_c0_slave.row(rhs_matrix_c0_slave.rows() - 3) + rhs_matrix_c0_slave.row(rhs_matrix_c0_slave.rows() - 2) + rhs_matrix_c0_slave.row(rhs_matrix_c0_slave.rows() - 1);
-
-    Accessory::removeRow<T>(gramian_matrix, 0);
-    Accessory::removeRow<T>(gramian_matrix, 0);
-    Accessory::removeRow<T>(gramian_matrix, gramian_matrix.rows() - 1);
-    Accessory::removeRow<T>(gramian_matrix, gramian_matrix.rows() - 1);
-    Accessory::removeRow<T>(rhs_matrix_c1, 0);
-    Accessory::removeRow<T>(rhs_matrix_c1, 0);
-    Accessory::removeRow<T>(rhs_matrix_c1, rhs_matrix_c1.rows() - 1);
-    Accessory::removeRow<T>(rhs_matrix_c1, rhs_matrix_c1.rows() - 1);
-    Accessory::removeRow<T>(rhs_matrix_c0_slave, 0);
-    Accessory::removeRow<T>(rhs_matrix_c0_slave, 0);
-    Accessory::removeRow<T>(rhs_matrix_c0_slave, rhs_matrix_c0_slave.rows() - 1);
-    Accessory::removeRow<T>(rhs_matrix_c0_slave, rhs_matrix_c0_slave.rows() - 1);
-
-    Matrix c1_constraint = this->SolveNonSymmetric(gramian_matrix, rhs_matrix_c1);
-    Matrix c0_c1_constraint = this->SolveNonSymmetric(gramian_matrix, rhs_matrix_c0_slave);
-
-    auto activated_slave_indices_copy = activated_slave_indices;
-    MatrixData<T> c1_constraint_data(c1_constraint, activated_slave_indices, activated_master_indices);
-    MatrixData<T> c0_c1constraint_data(c0_c1_constraint, activated_slave_indices_copy, c0_slave_indices);
-    MatrixData<T> c0_constraint_data = this->ToMatrixData(this->_Constraint[edge]);
-    auto c0_slave_c1_constraint_data = c0_c1constraint_data * c0_constraint_data;
-
-    this->Triplet(c1_constraint_data, this->_Constraint[edge]);
-    this->Triplet(c0_slave_c1_constraint_data, this->_Constraint[edge]);
+    _c1Constraint[edge] = std::move(dense_constraint);
 }
 
 template <int N, typename T>
@@ -159,6 +111,20 @@ void
     auto c1_function =
         std::bind(&BiharmonicInterface<N, T>::C1IntegralElementAssembler, this, _1, _2, _3, _4, _5, _6, _7, _8, _9);
     this->ConstraintLocalAssemble(g, quadrature_rule, knot_span, c1_function, _c1ConstraintsEquationElements);
+}
+
+template <int N, typename T>
+void BiharmonicInterface<N, T>::ConstraintMatrix(Matrix &dense_constraint)
+{
+    PoissonInterface<N, T>::ConstraintMatrix(dense_constraint);
+    for (const auto &i : _c1Constraint)
+    {
+        int row_size = i.second.rows();
+        int col_size = i.second.cols();
+        int current_row_size = dense_constraint.rows();
+        dense_constraint.conservativeResize(row_size + current_row_size, col_size);
+        dense_constraint.block(current_row_size, 0, row_size, col_size) = i.second;
+    }
 }
 
 template <int N, typename T>
@@ -209,7 +175,7 @@ void BiharmonicInterface<N, T>::C1IntegralElementAssembler(Matrix &slave_constra
     // +-----------+-----------+
     Matrix slave_jacobian = (slave_domain->JacobianMatrix(slave_quadrature_abscissa)).transpose();
     Matrix master_jacobian = (master_domain->JacobianMatrix(master_quadrature_abscissa)).transpose();
-    // Matrix master_to_slave = slave_jacobian * master_jacobian.inverse(); 
+    // Matrix master_to_slave = slave_jacobian * master_jacobian.inverse();
 
     // Substitute master coordinate of master basis by slave coordinate
     for (auto &i : *master_evals)
@@ -252,67 +218,67 @@ void BiharmonicInterface<N, T>::C1IntegralElementAssembler(Matrix &slave_constra
     }
     }
 
-    #pragma region
-    // switch (edge->GetOrient())
-    // {
-    // // For south and north edge derivative w.r.t η_s should be consistent
-    // case south:
-    // case north:
-    // {
-    //     for (int j = 0; j < slave_evals->size(); ++j)
-    //     {
-    //         slave_constraint_basis(0, j) = (*slave_evals)[j].second[2];
-    //     }
-    //     break;
-    // }
-    // // For south and north edge derivative w.r.t ξ_s should be consistent
-    // case east:
-    // case west:
-    // {
-    //     for (int j = 0; j < slave_evals->size(); ++j)
-    //     {
-    //         slave_constraint_basis(0, j) = (*slave_evals)[j].second[1];
-    //     }
-    //     break;
-    // }
-    // }
-    // T alpha, beta, gamma;
-    // switch (edge->GetOrient())
-    // {
-    // // For south and north edge derivative w.r.t η_s should be consistent
-    // case south:
-    // case north:
-    // {
-    //     auto geomDriXi = master_domain->AffineMap(master_quadrature_abscissa, {1, 0});
-    //     auto geomDriEta = master_domain->AffineMap(master_quadrature_abscissa, {0, 1});
-    //     auto geomDriEtaSlave = slave_domain->AffineMap(slave_quadrature_abscissa, {0, 1});
-    //     alpha = geomDriEtaSlave(0) * geomDriXi(1) - geomDriXi(0) * geomDriEtaSlave(1);
-    //     beta = geomDriEta(0) * geomDriEtaSlave(1) - geomDriEtaSlave(0) * geomDriEta(1);
-    //     gamma = geomDriEta(0) * geomDriXi(1) - geomDriXi(0) * geomDriEta(1);
-    //     for (int j = 0; j < master_evals->size(); ++j)
-    //     {
-    //         master_constraint_basis(0, j) = (*master_evals)[j].second[1] * beta / gamma + (*master_evals)[j].second[2] * alpha / gamma;
-    //     }
-    //     break;
-    // }
-    // // For south and north edge derivative w.r.t ξ_s should be consistent
-    // case east:
-    // case west:
-    // {
-    //     auto geomDriXi = master_domain->AffineMap(master_quadrature_abscissa, {1, 0});
-    //     auto geomDriEta = master_domain->AffineMap(master_quadrature_abscissa, {0, 1});
-    //     auto geomDriXiSlave = slave_domain->AffineMap(slave_quadrature_abscissa, {1, 0});
-    //     alpha = geomDriXiSlave(0) * geomDriXi(1) - geomDriXi(0) * geomDriXiSlave(1);
-    //     beta = geomDriEta(0) * geomDriXiSlave(1) - geomDriXiSlave(0) * geomDriEta(1);
-    //     gamma = geomDriEta(0) * geomDriXi(1) - geomDriXi(0) * geomDriEta(1);
-    //     for (int j = 0; j < slave_evals->size(); ++j)
-    //     {
-    //         master_constraint_basis(0, j) = (*master_evals)[j].second[1] * beta / gamma + (*master_evals)[j].second[2] * alpha / gamma;
-    //     }
-    //     break;
-    // }
-    // }
-    #pragma endregion
+#pragma region
+        // switch (edge->GetOrient())
+        // {
+        // // For south and north edge derivative w.r.t η_s should be consistent
+        // case south:
+        // case north:
+        // {
+        //     for (int j = 0; j < slave_evals->size(); ++j)
+        //     {
+        //         slave_constraint_basis(0, j) = (*slave_evals)[j].second[2];
+        //     }
+        //     break;
+        // }
+        // // For south and north edge derivative w.r.t ξ_s should be consistent
+        // case east:
+        // case west:
+        // {
+        //     for (int j = 0; j < slave_evals->size(); ++j)
+        //     {
+        //         slave_constraint_basis(0, j) = (*slave_evals)[j].second[1];
+        //     }
+        //     break;
+        // }
+        // }
+        // T alpha, beta, gamma;
+        // switch (edge->GetOrient())
+        // {
+        // // For south and north edge derivative w.r.t η_s should be consistent
+        // case south:
+        // case north:
+        // {
+        //     auto geomDriXi = master_domain->AffineMap(master_quadrature_abscissa, {1, 0});
+        //     auto geomDriEta = master_domain->AffineMap(master_quadrature_abscissa, {0, 1});
+        //     auto geomDriEtaSlave = slave_domain->AffineMap(slave_quadrature_abscissa, {0, 1});
+        //     alpha = geomDriEtaSlave(0) * geomDriXi(1) - geomDriXi(0) * geomDriEtaSlave(1);
+        //     beta = geomDriEta(0) * geomDriEtaSlave(1) - geomDriEtaSlave(0) * geomDriEta(1);
+        //     gamma = geomDriEta(0) * geomDriXi(1) - geomDriXi(0) * geomDriEta(1);
+        //     for (int j = 0; j < master_evals->size(); ++j)
+        //     {
+        //         master_constraint_basis(0, j) = (*master_evals)[j].second[1] * beta / gamma + (*master_evals)[j].second[2] * alpha / gamma;
+        //     }
+        //     break;
+        // }
+        // // For south and north edge derivative w.r.t ξ_s should be consistent
+        // case east:
+        // case west:
+        // {
+        //     auto geomDriXi = master_domain->AffineMap(master_quadrature_abscissa, {1, 0});
+        //     auto geomDriEta = master_domain->AffineMap(master_quadrature_abscissa, {0, 1});
+        //     auto geomDriXiSlave = slave_domain->AffineMap(slave_quadrature_abscissa, {1, 0});
+        //     alpha = geomDriXiSlave(0) * geomDriXi(1) - geomDriXi(0) * geomDriXiSlave(1);
+        //     beta = geomDriEta(0) * geomDriXiSlave(1) - geomDriXiSlave(0) * geomDriEta(1);
+        //     gamma = geomDriEta(0) * geomDriXi(1) - geomDriXi(0) * geomDriEta(1);
+        //     for (int j = 0; j < slave_evals->size(); ++j)
+        //     {
+        //         master_constraint_basis(0, j) = (*master_evals)[j].second[1] * beta / gamma + (*master_evals)[j].second[2] * alpha / gamma;
+        //     }
+        //     break;
+        // }
+        // }
+#pragma endregion
 
     // Lagrange multiplier basis
     for (int j = 0; j < multiplier_evals->size(); ++j)

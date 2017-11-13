@@ -25,8 +25,8 @@ class PoissonInterface : public InterfaceVisitor<N, T>
     PoissonInterface(const DofMapper<N, T> &dof_mapper)
         : InterfaceVisitor<N, T>(dof_mapper) {}
 
-    void
-    ConstraintMatrix(Eigen::SparseMatrix<T> &);
+    virtual void
+    ConstraintMatrix(Matrix &);
 
   protected:
     void
@@ -35,7 +35,7 @@ class PoissonInterface : public InterfaceVisitor<N, T>
     void SolveConstraint(Edge<N, T> *);
 
     void
-    SolveC0Constraint(Edge<N, T> *, const int &);
+    SolveC0Constraint(Edge<N, T> *);
 
     void
         LocalAssemble(Element<1, N, T> *,
@@ -55,8 +55,7 @@ class PoissonInterface : public InterfaceVisitor<N, T>
 
   protected:
     std::vector<Eigen::Triplet<T>> _c0ConstraintsEquationElements;
-    std::map<Edge<N, T> *, std::vector<Eigen::Triplet<T>>> _Constraint;
-    std::map<Edge<N, T> *, std::vector<int>> _slaveIndices;
+    std::map<Edge<N, T> *, Matrix> _c0Constraint;
 };
 
 template <int N, typename T>
@@ -68,87 +67,34 @@ void PoissonInterface<N, T>::InitializeTripletContainer()
 template <int N, typename T>
 void PoissonInterface<N, T>::SolveConstraint(Edge<N, T> *edge)
 {
-    SolveC0Constraint(edge, 1);
+    SolveC0Constraint(edge);
 }
 
 // Solve the C0 constraint matrix and store it into the _c0Constraint;
 template <int N, typename T>
-void PoissonInterface<N, T>::SolveC0Constraint(Edge<N, T> *edge, const int &codimension)
+void PoissonInterface<N, T>::SolveC0Constraint(Edge<N, T> *edge)
 {
-    // iterate across the constraint equation container and obtain activated global indices and lagrange multiplier indices
-    std::vector<int> activated_indices = Accessory::ColIndicesVector(_c0ConstraintsEquationElements);
-    std::vector<int> multiplier_indices = Accessory::RowIndicesVector(_c0ConstraintsEquationElements);
 
-    // get all the slave indices on the edge
-    std::vector<int> slave_indices = this->_dofMapper.GlobalEdgeIndicesGetter(edge);
+    this->MoveToRhs(edge->Parent(0).lock()->GetDomain(), _c0ConstraintsEquationElements);
 
-    // find slave indices and master indices
-    std::vector<int> activated_slave_indices, activated_master_indices;
-    std::set_intersection(activated_indices.begin(), activated_indices.end(), slave_indices.begin(),
-                          slave_indices.end(), std::back_inserter(activated_slave_indices));
-    std::set_difference(activated_indices.begin(), activated_indices.end(), slave_indices.begin(),
-                        slave_indices.end(), std::back_inserter(activated_master_indices));
-    _slaveIndices[edge] = activated_slave_indices;
+    auto max_row = std::max_element(_c0ConstraintsEquationElements.begin(), _c0ConstraintsEquationElements.end(), [](Eigen::Triplet<T> lhs, Eigen::Triplet<T> rhs) {
+        return lhs.row() < rhs.row();
+    });
 
-    ASSERT(multiplier_indices.size() > 0, "Lagrange multiplier size is zero, needs more refines.\n");
-    auto activated_slave_indices_inverse_map = Accessory::IndicesInverseMap(activated_slave_indices);
-    auto activated_master_indices_inverse_map = Accessory::IndicesInverseMap(activated_master_indices);
-    auto multiplier_indices_inverse_map = Accessory::IndicesInverseMap(multiplier_indices);
-    std::vector<Eigen::Triplet<T>> condensed_gramian, condensed_rhs;
-    this->CondensedTripletVia(multiplier_indices_inverse_map, activated_slave_indices_inverse_map,
-                              _c0ConstraintsEquationElements, condensed_gramian);
-    this->MoveToRhs(edge->Counterpart().lock()->Parent(0).lock()->GetDomain(), _c0ConstraintsEquationElements);
-    this->CondensedTripletVia(multiplier_indices_inverse_map, activated_master_indices_inverse_map,
-                              _c0ConstraintsEquationElements, condensed_rhs);
-    Matrix gramian_matrix, rhs_matrix;
-    this->MatrixAssembler(multiplier_indices_inverse_map.size(), activated_slave_indices_inverse_map.size(),
-                          condensed_gramian, gramian_matrix);
-    this->MatrixAssembler(multiplier_indices_inverse_map.size(), activated_master_indices_inverse_map.size(),
-                          condensed_rhs, rhs_matrix);
+    Eigen::SparseMatrix<T> constraint;
+    constraint.resize(max_row->row() + 1, this->_dofMapper.Dof());
 
-    switch (codimension)
-    {
-    case 1:
-    {
-        gramian_matrix.row(1) = gramian_matrix.row(0) + gramian_matrix.row(1);
-        gramian_matrix.row(gramian_matrix.rows() - 2) = gramian_matrix.row(gramian_matrix.rows() - 2) + gramian_matrix.row(gramian_matrix.rows() - 1);
+    constraint.setFromTriplets(_c0ConstraintsEquationElements.begin(), _c0ConstraintsEquationElements.end());
+    Matrix dense_constraint = Matrix(constraint);
+    dense_constraint.row(2) = dense_constraint.row(0) + dense_constraint.row(1) + dense_constraint.row(2);
+    dense_constraint.row(dense_constraint.rows() - 3) = dense_constraint.row(dense_constraint.rows() - 3) + dense_constraint.row(dense_constraint.rows() - 2) + dense_constraint.row(dense_constraint.rows() - 1);
 
-        rhs_matrix.row(1) = rhs_matrix.row(0) + rhs_matrix.row(1);
-        rhs_matrix.row(rhs_matrix.rows() - 2) = rhs_matrix.row(rhs_matrix.rows() - 2) + rhs_matrix.row(rhs_matrix.rows() - 1);
+    Accessory::removeRow<T>(dense_constraint, 0);
+    Accessory::removeRow<T>(dense_constraint, 0);
+    Accessory::removeRow<T>(dense_constraint, dense_constraint.rows() - 1);
+    Accessory::removeRow<T>(dense_constraint, dense_constraint.rows() - 1);
 
-        Accessory::removeRow<T>(gramian_matrix, 0);
-        Accessory::removeRow<T>(gramian_matrix, gramian_matrix.rows() - 1);
-        Accessory::removeRow<T>(rhs_matrix, 0);
-        Accessory::removeRow<T>(rhs_matrix, rhs_matrix.rows() - 1);
-        break;
-    }
-    case 2:
-    {
-        gramian_matrix.row(2) = gramian_matrix.row(0) + gramian_matrix.row(1) + gramian_matrix.row(2);
-        gramian_matrix.row(gramian_matrix.rows() - 3) = gramian_matrix.row(gramian_matrix.rows() - 3) + gramian_matrix.row(gramian_matrix.rows() - 2) + gramian_matrix.row(gramian_matrix.rows() - 1);
-
-        rhs_matrix.row(2) = rhs_matrix.row(0) + rhs_matrix.row(1) + rhs_matrix.row(2);
-        rhs_matrix.row(rhs_matrix.rows() - 3) = rhs_matrix.row(rhs_matrix.rows() - 3) + rhs_matrix.row(rhs_matrix.rows() - 2) + rhs_matrix.row(rhs_matrix.rows() - 1);
-
-        Accessory::removeRow<T>(gramian_matrix, 0);
-        Accessory::removeRow<T>(gramian_matrix, 0);
-        Accessory::removeRow<T>(gramian_matrix, gramian_matrix.rows() - 1);
-        Accessory::removeRow<T>(gramian_matrix, gramian_matrix.rows() - 1);
-        Accessory::removeRow<T>(rhs_matrix, 0);
-        Accessory::removeRow<T>(rhs_matrix, 0);
-        Accessory::removeRow<T>(rhs_matrix, rhs_matrix.rows() - 1);
-        Accessory::removeRow<T>(rhs_matrix, rhs_matrix.rows() - 1);
-        break;
-    }
-        std::cerr << "Undefined behavior.\n"
-                  << std::endl;
-    }
-
-    Matrix constraint = this->SolveNonSymmetric(gramian_matrix, rhs_matrix);
-    MatrixData<T> constraint_data(constraint, activated_slave_indices, activated_master_indices);
-    std::vector<Eigen::Triplet<T>> temp;
-    this->Triplet(constraint_data, temp);
-    _Constraint[edge] = std::move(temp);
+    _c0Constraint[edge] = std::move(dense_constraint);
 }
 
 template <int N, typename T>
@@ -165,19 +111,17 @@ void
 }
 
 template <int N, typename T>
-void PoissonInterface<N, T>::ConstraintMatrix(Eigen::SparseMatrix<T> &sparse_constraint)
+void PoissonInterface<N, T>::ConstraintMatrix(Matrix &dense_constraint)
 {
-    std::vector<Eigen::Triplet<T>> constraint_triplet;
-    for (int i = 0; i < this->_dofMapper.Dof(); ++i)
+    dense_constraint.resize(0, 0);
+    for (const auto &i : _c0Constraint)
     {
-        constraint_triplet.push_back(Eigen::Triplet<T>(i, i, 1));
+        int row_size = i.second.rows();
+        int col_size = i.second.cols();
+        int current_row_size = dense_constraint.rows();
+        dense_constraint.conservativeResize(row_size + current_row_size, col_size);
+        dense_constraint.block(current_row_size, 0, row_size, col_size) = i.second;
     }
-    for (const auto &i : _Constraint)
-    {
-        constraint_triplet.insert(constraint_triplet.end(), i.second.begin(), i.second.end());
-    }
-    sparse_constraint.resize(this->_dofMapper.Dof(), this->_dofMapper.Dof());
-    sparse_constraint.setFromTriplets(constraint_triplet.begin(), constraint_triplet.end());
 }
 
 template <int N, typename T>
