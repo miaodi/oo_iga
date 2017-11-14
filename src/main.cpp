@@ -19,11 +19,8 @@
 #include <fstream>
 #include <time.h>
 #include <boost/multiprecision/gmp.hpp>
-#include <spectra/GenEigsSolver.h>
-#include <spectra/MatOp/SparseGenMatProd.h>
 
 using namespace Eigen;
-using namespace Spectra;
 using namespace std;
 using namespace boost::multiprecision;
 using GeometryVector = PhyTensorBsplineBasis<2, 2, double>::GeometryVector;
@@ -89,11 +86,6 @@ int main()
         cells[i]->Accept(mapper);
     }
 
-    SparseMatrix<double> global_to_condensed, condensed_to_free, global_to_free;
-    dof_map.CondensedIndexMap(global_to_condensed);
-    dof_map.FreeIndexMap(global_to_free);
-    dof_map.FreeToCondensedIndexMap(condensed_to_free);
-
     BiharmonicStiffnessVisitor<2, double> stiffness(dof_map, body_force);
     for (int i = 0; i < 3; i++)
     {
@@ -110,9 +102,9 @@ int main()
     {
         cells[i]->EdgeAccept(boundary);
     }
-    MatrixXd boundary_matrix;
-    VectorXd boundary_vector;
-    boundary.DirichletBoundary(boundary_matrix, boundary_vector);
+    SparseMatrix<double> boundary_vector;
+    boundary.DirichletBoundary(boundary_vector);
+    MatrixXd dense_boundary_vector = MatrixXd(boundary_vector);
     BiharmonicInterface<2, double> interface(dof_map);
     for (int i = 0; i < 3; i++)
     {
@@ -121,16 +113,38 @@ int main()
     MatrixXd edge_constraint;
     interface.ConstraintMatrix(edge_constraint);
 
-    stiffness_matrix.conservativeResize(dof_map.Dof() + boundary_matrix.rows(), dof_map.Dof() + boundary_matrix.rows());
-    load_vector.conservativeResize(dof_map.Dof() + boundary_matrix.rows() + edge_constraint.rows());
+    // stiffness_matrix.conservativeResizeLike(MatrixXd::Zero(dof_map.Dof() + edge_constraint.rows(), dof_map.Dof() + edge_constraint.rows()));
 
-    stiffness_matrix.block(dof_map.Dof(), 0, boundary_matrix.rows(), dof_map.Dof()) = boundary_matrix;
-    // load_vector.segment(dof_map.Dof(), boundary_matrix.rows()) = boundary_vector;
-    // stiffness_matrix.block(dof_map.Dof() + boundary_matrix.rows(), 0, edge_constraint.rows(), dof_map.Dof()) = edge_constraint;
-    // load_vector.segment(dof_map.Dof() + boundary_matrix.rows(), edge_constraint.rows()) = VectorXd::Zero(edge_constraint.rows());
-    stiffness_matrix = stiffness_matrix.selfadjointView<Eigen::Lower>();
-    EigenSolver<MatrixXd> es(stiffness_matrix);
-    cout << es.eigenvalues() << endl;
+    // load_vector.conservativeResizeLike(VectorXd::Zero(dof_map.Dof() + edge_constraint.rows()));
+    // dense_boundary_vector.conservativeResizeLike(VectorXd::Zero(dof_map.Dof() + edge_constraint.rows()));
+    // stiffness_matrix.block(dof_map.Dof(), 0, edge_constraint.rows(), dof_map.Dof()) = edge_constraint;
+
+    // stiffness_matrix = stiffness_matrix.selfadjointView<Eigen::Lower>();
+    // load_vector -= stiffness_matrix * dense_boundary_vector;
+    auto dirichlet_indices = dof_map.GlobalDirichletIndices();
+    sort(dirichlet_indices.begin(), dirichlet_indices.end());
+    MatrixXd condensed_to_free = MatrixXd::Identity(dof_map.Dof() + edge_constraint.rows(), dof_map.Dof() + edge_constraint.rows());
+    MatrixXd condensed_to_free_constraint = MatrixXd::Identity(dof_map.Dof(), dof_map.Dof());
+    for (auto it = dirichlet_indices.rbegin(); it != dirichlet_indices.rend(); it++)
+    {
+        Accessory::removeRow(condensed_to_free, *it);
+        Accessory::removeRow(condensed_to_free_constraint, *it);
+    }
+    MatrixXd condensed_constraint = edge_constraint * condensed_to_free_constraint.transpose();
+    FullPivLU<MatrixXd> lu_decomp(condensed_constraint);
+    lu_decomp.setThreshold(1e-11);
+    MatrixXd stiffness_matrix_for_kernel = condensed_to_free_constraint * stiffness_matrix * condensed_to_free_constraint.transpose();
+    VectorXd load_vector_for_kernel = condensed_to_free_constraint * load_vector;
+    int free_dof = stiffness_matrix_for_kernel.rows();
+    MatrixXd constraint_basis = lu_decomp.kernel();
+    MatrixXd stiffness_matrix_for_kernel_sol = constraint_basis.transpose() * stiffness_matrix_for_kernel * constraint_basis;
+    VectorXd load_vector_for_kernel_sol = constraint_basis.transpose() * load_vector_for_kernel;
+    VectorXd Solution_sol = stiffness_matrix_for_kernel_sol.partialPivLu().solve(load_vector_for_kernel_sol);
+    VectorXd solution = condensed_to_free_constraint.transpose() * constraint_basis * Solution_sol;
+
+    // MatrixXd stiffness_matrix_sol = condensed_to_free * stiffness_matrix * condensed_to_free.transpose();
+    // VectorXd load_vector_sol = condensed_to_free * load_vector;
+    // VectorXd Solution_sol = stiffness_matrix_sol.partialPivLu().solve(load_vector_sol);
     // BiharmonicVertexVisitor<2, double> vertex(dof_map);
     // for (int i = 0; i < 3; i++)
     // {
@@ -147,14 +161,20 @@ int main()
     // cg.compute(free_stiffness_matrix);
     // VectorXd Solution = cg.solve(free_rhs);
 
+    // VectorXd Solution = condensed_to_free.transpose() * Solution_sol + dense_boundary_vector;
     // VectorXd solution = Solution.segment(0, dof_map.Dof());
+    // ofstream myfile;
+    // myfile.open("example.txt");
+    // myfile << stiffness_matrix;
+    // myfile.close();
 
-    // PostProcess<2, double> post_process(dof_map, solution, analytical_solution);
-    // for (int i = 0; i < 3; i++)
-    // {
-    //     cells[i]->Accept(post_process);
-    // }
-    // cout << post_process.L2Norm() << endl;
+    PostProcess<2, double> post_process(dof_map, solution, analytical_solution);
+    for (int i = 0; i < 3; i++)
+    {
+        cells[i]->Accept(post_process);
+    }
+    cout << post_process.L2Norm() << endl;
+
     // vector<KnotVector<double>> solutionDomain1, solutionDomain2, solutionDomain3;
     // solutionDomain1.push_back(domain1->KnotVectorGetter(0));
     // solutionDomain1.push_back(domain1->KnotVectorGetter(1));
