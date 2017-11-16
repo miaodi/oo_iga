@@ -15,13 +15,13 @@ public:
   void Visit(Element<0, N, T> *);
 
   void
-  ConstraintMatrix(Eigen::SparseMatrix<T> &);
+  ConstraintMatrix(Matrix &);
 
 protected:
   virtual void VertexConstraint(Vertex<N, T> *, Vertex<N, T> *) = 0;
 
 protected:
-  std::vector<Eigen::Triplet<T>> _constraint;
+  std::vector<Matrix> _constraint;
   const DofMapper<N, T> &_dofMapper;
 };
 
@@ -39,17 +39,12 @@ void VertexVisitor<N, T>::Visit(Element<0, N, T> *g)
 }
 
 template <int N, typename T>
-void VertexVisitor<N, T>::ConstraintMatrix(Eigen::SparseMatrix<T> &sparse_constraint)
+void VertexVisitor<N, T>::ConstraintMatrix(Matrix &vertex_constraint)
 {
-  std::vector<Eigen::Triplet<T>> constraint_triplet;
-  for (int i = 0; i < this->_dofMapper.Dof(); ++i)
+  for (const auto &i : _constraint)
   {
-    constraint_triplet.push_back(Eigen::Triplet<T>(i, i, 1));
+    int current_rows = vertex_constraint.rows();
+    vertex_constraint.conservativeResize(current_rows + i.rows(), i.cols());
+    vertex_constraint.block(current_rows, 0, i.rows(), i.cols()) = i;
   }
-  if (_constraint.size())
-  {
-    constraint_triplet.insert(constraint_triplet.end(), _constraint.begin(), _constraint.end());
-  }
-  sparse_constraint.resize(this->_dofMapper.Dof(), this->_dofMapper.Dof());
-  sparse_constraint.setFromTriplets(constraint_triplet.begin(), constraint_triplet.end());
 }

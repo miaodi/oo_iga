@@ -13,24 +13,6 @@ class BiharmonicVertexVisitor : public VertexVisitor<N, T>
   public:
     BiharmonicVertexVisitor(const DofMapper<N, T> &dof_mapper) : VertexVisitor<N, T>(dof_mapper) {}
 
-    void Triplet(const MatrixData<T> &matrix,
-                 std::vector<Eigen::Triplet<T>> &triplet,
-                 const T &tol = 1e-11) const
-    {
-        for (int i = 0; i < matrix._rowIndices->size(); ++i)
-        {
-            for (int j = 0; j < matrix._colIndices->size(); ++j)
-            {
-                T tmp{(*matrix._matrix)(i, j)};
-                if (abs(tmp) > tol)
-                {
-                    triplet.emplace_back(Eigen::Triplet<T>(
-                        (*matrix._rowIndices)[i], (*matrix._colIndices)[j], tmp));
-                }
-            }
-        }
-    }
-
   protected:
     void VertexConstraint(Vertex<N, T> *, Vertex<N, T> *);
 };
@@ -52,41 +34,27 @@ void BiharmonicVertexVisitor<N, T>::VertexConstraint(Vertex<N, T> *master_vertex
     }
     auto master_eval = master_domain->Eval2PhyDerAllTensor(master_parametric);
     auto slave_eval = slave_domain->Eval2PhyDerAllTensor(slave_parametric);
-
-    auto master_indices = master_vertex->IndicesForBiharmonic();
-    auto slave_indices = slave_vertex->IndicesForBiharmonic();
-    master_eval->erase(std::remove_if(master_eval->begin(), master_eval->end(), [&master_indices](decltype(*(master_eval->begin())) &val) {
-                           if (std::find(master_indices->begin(), master_indices->end(), val.first) == master_indices->end())
-                           {
-                               return true;
-                           }
-                           return false;
-                       }),
-                       master_eval->end());
-    slave_eval->erase(std::remove_if(slave_eval->begin(), slave_eval->end(), [&slave_indices](decltype(*(slave_eval->begin())) &val) {
-                          if (std::find(slave_indices->begin(), slave_indices->end(), val.first) == slave_indices->end())
-                          {
-                              return true;
-                          }
-                          return false;
-                      }),
-                      slave_eval->end());
-    Matrix master_matrix(3, master_eval->size()), slave_matrix(3, slave_eval->size());
+    Matrix vertex_constraint(6, this->_dofMapper.Dof());
+    vertex_constraint.setZero();
+    int start_index_master = this->_dofMapper.StartingIndex(master_domain);
     for (auto it = (*master_eval).begin(); it != (*master_eval).end(); ++it)
     {
-        master_matrix(0, it - (*master_eval).begin()) = it->second[0];
-        master_matrix(1, it - (*master_eval).begin()) = it->second[1];
-        master_matrix(2, it - (*master_eval).begin()) = it->second[2];
+        vertex_constraint(0, start_index_master + it->first) = it->second[0];
+        vertex_constraint(1, start_index_master + it->first) = it->second[1];
+        vertex_constraint(2, start_index_master + it->first) = it->second[2];
+        vertex_constraint(3, start_index_master + it->first) = it->second[3];
+        vertex_constraint(4, start_index_master + it->first) = it->second[4];
+        vertex_constraint(5, start_index_master + it->first) = it->second[5];
     }
+    int start_index_slave = this->_dofMapper.StartingIndex(slave_domain);
     for (auto it = (*slave_eval).begin(); it != (*slave_eval).end(); ++it)
     {
-        slave_matrix(0, it - (*slave_eval).begin()) = it->second[0];
-        slave_matrix(1, it - (*slave_eval).begin()) = it->second[1];
-        slave_matrix(2, it - (*slave_eval).begin()) = it->second[2];
+        vertex_constraint(0, start_index_slave + it->first) = -it->second[0];
+        vertex_constraint(1, start_index_slave + it->first) = -it->second[1];
+        vertex_constraint(2, start_index_slave + it->first) = -it->second[2];
+        vertex_constraint(3, start_index_slave + it->first) = -it->second[3];
+        vertex_constraint(4, start_index_slave + it->first) = -it->second[4];
+        vertex_constraint(5, start_index_slave + it->first) = -it->second[5];
     }
-    this->_dofMapper.IndicesToGlobal(master_domain, *master_indices);
-    this->_dofMapper.IndicesToGlobal(slave_domain, *slave_indices);
-    Matrix constraint = slave_matrix.partialPivLu().solve(master_matrix);
-    MatrixData<T> constraint_matrixdata(constraint, *slave_indices, *master_indices);
-    Triplet(constraint_matrixdata, this->_constraint);
+    this->_constraint.push_back(vertex_constraint);
 }
