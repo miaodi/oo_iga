@@ -40,7 +40,7 @@ class PoissonDirichletBoundaryVisitor : public DirichletBoundaryVisitor<N, T>
 
 template <int N, typename T>
 void PoissonDirichletBoundaryVisitor<N, T>::IntegralElementAssembler(Matrix &bilinear_form_trail,
-                                                                     std::vector<int> &bilinear_form_trail_indices,
+                                                                     std::vector<int> &bilinear_form_trial_indices,
                                                                      Matrix &bilinear_form_test,
                                                                      std::vector<int> &bilinear_form_test_indices,
                                                                      Matrix &linear_form_value,
@@ -62,27 +62,34 @@ void PoissonDirichletBoundaryVisitor<N, T>::IntegralElementAssembler(Matrix &bil
         std::cout << "MapParametericPoint failed" << std::endl;
     }
     auto evals = trial_domain->EvalDerAllTensor(trial_quadrature_abscissa, 0);
+    auto multiplier_evals = edge_domain->EvalDerAllTensor(u.first, 0);
     linear_form_value.resize(1, 1);
     linear_form_value(0, 0) = this->_dirichletFunctor(trial_domain->AffineMap(trial_quadrature_abscissa))[0];
-    linear_form_test.resize(1, evals->size());
     bilinear_form_trail.resize(1, evals->size());
+    bilinear_form_test.resize(1, multiplier_evals->size());
     for (int j = 0; j < evals->size(); ++j)
     {
-        linear_form_test(0, j) = (*evals)[j].second[0];
+        bilinear_form_trail(0, j) = (*evals)[j].second[0];
     }
-    bilinear_form_trail = linear_form_test;
-    bilinear_form_test = bilinear_form_trail;
+
+    for (int j = 0; j < multiplier_evals->size(); ++j)
+    {
+        bilinear_form_test(0, j) = (*multiplier_evals)[j].second[0];
+    }
+    linear_form_test = bilinear_form_test;
 
     // set up indices cooresponding to test basis functions and trial basis functions
+    if (bilinear_form_trial_indices.size() == 0)
+    {
+        bilinear_form_trial_indices = trial_domain->ActiveIndex(trial_quadrature_abscissa);
+        this->_dofMapper.IndicesToGlobal(trial_domain, bilinear_form_trial_indices);
+    }
+
     if (bilinear_form_test_indices.size() == 0)
     {
-        bilinear_form_test_indices = trial_domain->ActiveIndex(trial_quadrature_abscissa);
-        this->_dofMapper.IndicesToGlobal(trial_domain, bilinear_form_test_indices);
+        bilinear_form_test_indices = edge_domain->ActiveIndex(u.first);
     }
-    if (bilinear_form_trail_indices.size() == 0)
-    {
-        bilinear_form_trail_indices = bilinear_form_test_indices;
-    }
+
     if (linear_form_test_indices.size() == 0)
     {
         linear_form_test_indices = bilinear_form_test_indices;
