@@ -97,7 +97,6 @@ void BiharmonicInterfaceH1<N, T>::SolveConstraint(Edge<N, T> *edge)
                           condensed_rhs, rhs_matrix);
     Matrix constraint = this->SolveNonSymmetric(gramian_matrix, rhs_matrix);
     MatrixData<T> constraint_data(constraint, activated_slave_indices, activated_master_indices);
-    constraint_data.Print();
     std::vector<Eigen::Triplet<T>> temp;
     this->Triplet(constraint_data, temp);
     _constraint[edge] = std::move(temp);
