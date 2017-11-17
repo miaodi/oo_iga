@@ -54,13 +54,13 @@ class Surface : public Element<2, N, T>, public std::enable_shared_from_this<Sur
         _vertices[1]->ParentSetter(_edges[1]);
         _vertices[2]->ParentSetter(_edges[1]);
 
-        _edges[2] = std::make_shared<Edge<N, T>>(MakeEdge(north), north, _vertices[2], _vertices[3], _Dirichlet[2]);
+        _edges[2] = std::make_shared<Edge<N, T>>(MakeEdge(north), north, _vertices[3], _vertices[2], _Dirichlet[2]);
         _edges[2]->ParentSetter(this->shared_from_this());
 
         _vertices[2]->ParentSetter(_edges[2]);
         _vertices[3]->ParentSetter(_edges[2]);
 
-        _edges[3] = std::make_shared<Edge<N, T>>(MakeEdge(west), west, _vertices[3], _vertices[0], _Dirichlet[3]);
+        _edges[3] = std::make_shared<Edge<N, T>>(MakeEdge(west), west, _vertices[0], _vertices[3], _Dirichlet[3]);
         _edges[3]->ParentSetter(this->shared_from_this());
 
         _vertices[3]->ParentSetter(_edges[3]);
