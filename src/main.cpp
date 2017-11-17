@@ -32,7 +32,7 @@ int main()
 {
     KnotVector<double> a;
     a.InitClosed(1, 0, 1);
-    Vector2d point1(0, 0), point2(0, 1), point3(0, 2), point4(1.1, 0), point5(.8, .95), point6(2, 1.9), point7(2, 0);
+    Vector2d point1(-sqrt(3), -1), point2(-sqrt(3) / 2, .5), point3(0, 2), point4(0, -1), point5(.3, -.1), point6(sqrt(3) / 2, .5), point7(sqrt(3), -1);
 
     GeometryVector point{point1, point2, point4, point5};
     GeometryVector pointt{point2, point3, point5, point6};
@@ -48,17 +48,11 @@ int main()
     domain1->DegreeElevate(degree);
     domain2->DegreeElevate(degree);
     domain3->DegreeElevate(degree);
-    for (int i = 0; i < 1; i++)
-    {
-        domain2->KnotInsertion(0, 1.0 / 3);
-        domain2->KnotInsertion(0, 2.0 / 3);
-        domain2->KnotInsertion(1, 1.0 / 3);
-        domain2->KnotInsertion(1, 2.0 / 3);
-    }
 
-    domain1->UniformRefine(refine + 1, 1);
-    domain2->UniformRefine(refine, 1);
-    domain3->UniformRefine(refine, 1);
+
+    domain1->UniformRefine(refine, degree - 1);
+    domain2->UniformRefine(refine, degree - 1);
+    domain3->UniformRefine(refine, degree - 1);
     array<shared_ptr<Surface<2, double>>, 3> cells;
     cells[0] = make_shared<Surface<2, double>>(domain1, array<bool, 4>{true, false, false, true});
     cells[0]->SurfaceInitialize();
@@ -75,12 +69,17 @@ int main()
 
     const double pi = 3.14159265358979323846264338327;
     function<vector<double>(const VectorXd &)> body_force = [&pi](const VectorXd &u) {
-        return vector<double>{4 * pow(pi, 4) * sin(pi * u(0)) * sin(pi * u(1))};
+        return vector<double>{144 * pow(-3 * u(0) + sqrt(3) * (u(1) - 2), 2) + 144 * pow(3 * u(0) + sqrt(3) * (u(1) - 2), 2) + 1728 * pow(u(1) + 1, 2)};
     };
 
     function<vector<double>(const VectorXd &)> analytical_solution = [&pi](const VectorXd &u) {
-        return vector<double>{sin(pi * u(0)) * sin(pi * u(1)), pi * cos(pi * u(0)) * sin(pi * u(1)), pi * sin(pi * u(0)) * cos(pi * u(1))};
+        double x = u(0);
+        double y = u(1);
+        return vector<double>{pow((u(1) + 1) * (sqrt(3) * (u(1) - 2) - 3 * u(0)) * (sqrt(3) * (u(1) - 2) + 3 * u(0)), 2),
+                              36 * x * (3 * x - sqrt(3) * (y - 2)) * (3 * x + sqrt(3) * (y - 2)) * pow(1 + y, 2),
+                              18 * (3 * x - sqrt(3) * (y - 2)) * (3 * x + sqrt(3) * (y - 2)) * (1 + y) * (x * x - (y - 2) * y)};
     };
+
 
     DofMapper<2, double> dof_map;
     BiharmonicMapper<2, double> mapper(dof_map);
@@ -116,10 +115,10 @@ int main()
     BiharmonicInterface<2, double> interface1(dof_map);
     for (int i = 0; i < 3; i++)
     {
-        cells[i]->EdgeAccept(interface);
+        // cells[i]->EdgeAccept(interface);
         cells[i]->EdgeAccept(interface1);
     }
-    interface.ConstraintMatrix(edge_constraint);
+    // interface.ConstraintMatrix(edge_constraint);
     interface1.ConstraintMatrix(edge_constraint1);
     BiharmonicVertexVisitor<2, double> vertex(dof_map);
     for (int i = 0; i < 3; i++)
@@ -128,7 +127,7 @@ int main()
     }
 
     vertex.ConstraintMatrix(vertex_constraint);
-    constraint = (edge_constraint * vertex_constraint).pruned(1e-12);
+    constraint = (edge_constraint1 * vertex_constraint).pruned(1e-8);
     SparseMatrix<double> condensed_stiffness_matrix = global_to_condensed * constraint.transpose() * stiffness_matrix * constraint * global_to_condensed.transpose();
     SparseMatrix<double> free_stiffness_matrix = condensed_to_free * condensed_stiffness_matrix * condensed_to_free.transpose();
     SparseMatrix<double> condensed_rhs = global_to_condensed * constraint.transpose() * load_vector - condensed_stiffness_matrix * boundary_value;

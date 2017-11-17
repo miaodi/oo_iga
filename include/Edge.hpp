@@ -433,9 +433,11 @@ class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N
             if (this->GetDomain()->GetDof(0) > counterpart->GetDomain()->GetDof(0))
             {
                 _slave = true;
+                counterpart->_slave = false;
             }
             else
             {
+                _slave = false;
                 counterpart->_slave = true;
             }
             return true;
