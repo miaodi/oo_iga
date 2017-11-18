@@ -49,10 +49,10 @@ int main()
 
     domain1->DegreeElevate(degree);
     domain2->DegreeElevate(degree);
-    domain1->KnotInsertion(1, 1.0 / 3);
-    domain1->KnotInsertion(1, 2.0 / 3);
-    domain1->UniformRefine(refine, 1);
-    domain2->UniformRefine(refine + 1, 1);
+    domain2->KnotInsertion(1, 1.0 / 3);
+    domain2->KnotInsertion(1, 2.0 / 3);
+    domain2->UniformRefine(refine, 1);
+    domain1->UniformRefine(refine + 1, 1);
     array<shared_ptr<Surface<2, double>>, 3> cells;
     cells[0] = make_shared<Surface<2, double>>(domain1, array<bool, 4>{true, false, true, true});
     cells[0]->SurfaceInitialize();
