@@ -124,11 +124,16 @@ void PoissonInterface<N, T>::SolveC0Constraint(Edge<N, T> *edge, const int &codi
     }
     case 2:
     {
-        gramian_matrix.row(2) = gramian_matrix.row(0) + gramian_matrix.row(1) + gramian_matrix.row(2);
-        gramian_matrix.row(gramian_matrix.rows() - 3) = gramian_matrix.row(gramian_matrix.rows() - 3) + gramian_matrix.row(gramian_matrix.rows() - 2) + gramian_matrix.row(gramian_matrix.rows() - 1);
 
-        rhs_matrix.row(2) = rhs_matrix.row(0) + rhs_matrix.row(1) + rhs_matrix.row(2);
-        rhs_matrix.row(rhs_matrix.rows() - 3) = rhs_matrix.row(rhs_matrix.rows() - 3) + rhs_matrix.row(rhs_matrix.rows() - 2) + rhs_matrix.row(rhs_matrix.rows() - 1);
+        {
+            gramian_matrix.row(2) = gramian_matrix.row(0) + gramian_matrix.row(1) + gramian_matrix.row(2);
+            rhs_matrix.row(2) = rhs_matrix.row(0) + rhs_matrix.row(1) + rhs_matrix.row(2);
+        }
+
+        {
+            gramian_matrix.row(gramian_matrix.rows() - 3) = gramian_matrix.row(gramian_matrix.rows() - 3) + gramian_matrix.row(gramian_matrix.rows() - 2) + gramian_matrix.row(gramian_matrix.rows() - 1);
+            rhs_matrix.row(rhs_matrix.rows() - 3) = rhs_matrix.row(rhs_matrix.rows() - 3) + rhs_matrix.row(rhs_matrix.rows() - 2) + rhs_matrix.row(rhs_matrix.rows() - 1);
+        }
 
         Accessory::removeRow<T>(gramian_matrix, 0);
         Accessory::removeRow<T>(gramian_matrix, 0);

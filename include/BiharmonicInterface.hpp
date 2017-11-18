@@ -112,14 +112,20 @@ void BiharmonicInterface<N, T>::SolveC1Constraint(Edge<N, T> *edge)
                           condensed_rhs_c0_slave, rhs_matrix_c0_slave);
 
     // Codimension 2 Lagrange multiplier
-    gramian_matrix.row(2) = gramian_matrix.row(0) + gramian_matrix.row(1) + gramian_matrix.row(2);
-    gramian_matrix.row(gramian_matrix.rows() - 3) = gramian_matrix.row(gramian_matrix.rows() - 3) + gramian_matrix.row(gramian_matrix.rows() - 2) + gramian_matrix.row(gramian_matrix.rows() - 1);
 
-    rhs_matrix_c1.row(2) = rhs_matrix_c1.row(0) + rhs_matrix_c1.row(1) + rhs_matrix_c1.row(2);
-    rhs_matrix_c1.row(rhs_matrix_c1.rows() - 3) = rhs_matrix_c1.row(rhs_matrix_c1.rows() - 3) + rhs_matrix_c1.row(rhs_matrix_c1.rows() - 2) + rhs_matrix_c1.row(rhs_matrix_c1.rows() - 1);
+    {
+        gramian_matrix.row(2) = gramian_matrix.row(0) + gramian_matrix.row(1) + gramian_matrix.row(2);
+        rhs_matrix_c1.row(2) = rhs_matrix_c1.row(0) + rhs_matrix_c1.row(1) + rhs_matrix_c1.row(2);
+        rhs_matrix_c0_slave.row(2) = rhs_matrix_c0_slave.row(0) + rhs_matrix_c0_slave.row(1) + rhs_matrix_c0_slave.row(2);
+    }
 
-    rhs_matrix_c0_slave.row(2) = rhs_matrix_c0_slave.row(0) + rhs_matrix_c0_slave.row(1) + rhs_matrix_c0_slave.row(2);
-    rhs_matrix_c0_slave.row(rhs_matrix_c0_slave.rows() - 3) = rhs_matrix_c0_slave.row(rhs_matrix_c0_slave.rows() - 3) + rhs_matrix_c0_slave.row(rhs_matrix_c0_slave.rows() - 2) + rhs_matrix_c0_slave.row(rhs_matrix_c0_slave.rows() - 1);
+    {
+        gramian_matrix.row(gramian_matrix.rows() - 3) = gramian_matrix.row(gramian_matrix.rows() - 3) + gramian_matrix.row(gramian_matrix.rows() - 2) + gramian_matrix.row(gramian_matrix.rows() - 1);
+
+        rhs_matrix_c1.row(rhs_matrix_c1.rows() - 3) = rhs_matrix_c1.row(rhs_matrix_c1.rows() - 3) + rhs_matrix_c1.row(rhs_matrix_c1.rows() - 2) + rhs_matrix_c1.row(rhs_matrix_c1.rows() - 1);
+
+        rhs_matrix_c0_slave.row(rhs_matrix_c0_slave.rows() - 3) = rhs_matrix_c0_slave.row(rhs_matrix_c0_slave.rows() - 3) + rhs_matrix_c0_slave.row(rhs_matrix_c0_slave.rows() - 2) + rhs_matrix_c0_slave.row(rhs_matrix_c0_slave.rows() - 1);
+    }
 
     Accessory::removeRow<T>(gramian_matrix, 0);
     Accessory::removeRow<T>(gramian_matrix, 0);

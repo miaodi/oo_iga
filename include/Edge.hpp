@@ -400,6 +400,12 @@ class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N
         return _parents[i];
     }
 
+    auto
+    Vertices(const int &i) const
+    {
+        return _vertices[i];
+    }
+
     void
     PrintIndices(const int &layerNum) const
     {

@@ -49,7 +49,6 @@ int main()
     domain2->DegreeElevate(degree);
     domain3->DegreeElevate(degree);
 
-
     domain1->UniformRefine(refine, degree - 1);
     domain2->UniformRefine(refine, degree - 1);
     domain3->UniformRefine(refine, degree - 1);
@@ -79,7 +78,6 @@ int main()
                               36 * x * (3 * x - sqrt(3) * (y - 2)) * (3 * x + sqrt(3) * (y - 2)) * pow(1 + y, 2),
                               18 * (3 * x - sqrt(3) * (y - 2)) * (3 * x + sqrt(3) * (y - 2)) * (1 + y) * (x * x - (y - 2) * y)};
     };
-
 
     DofMapper<2, double> dof_map;
     BiharmonicMapper<2, double> mapper(dof_map);
@@ -111,7 +109,7 @@ int main()
     }
     SparseMatrix<double> boundary_value, edge_constraint, edge_constraint1, vertex_constraint, constraint;
     boundary.CondensedDirichletBoundary(boundary_value);
-    BiharmonicInterfaceH1<2, double> interface(dof_map);
+    // BiharmonicInterfaceH1<2, double> interface(dof_map);
     BiharmonicInterface<2, double> interface1(dof_map);
     for (int i = 0; i < 3; i++)
     {
