@@ -125,7 +125,7 @@ int main()
     }
 
     vertex.ConstraintMatrix(vertex_constraint);
-    constraint = (edge_constraint1 * vertex_constraint).pruned(1e-8);
+    constraint = (edge_constraint1 * vertex_constraint).pruned(1e-11);
     SparseMatrix<double> condensed_stiffness_matrix = global_to_condensed * constraint.transpose() * stiffness_matrix * constraint * global_to_condensed.transpose();
     SparseMatrix<double> free_stiffness_matrix = condensed_to_free * condensed_stiffness_matrix * condensed_to_free.transpose();
     SparseMatrix<double> condensed_rhs = global_to_condensed * constraint.transpose() * load_vector - condensed_stiffness_matrix * boundary_value;
