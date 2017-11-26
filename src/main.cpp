@@ -32,7 +32,7 @@ int main()
 {
     KnotVector<double> a;
     a.InitClosed(1, 0, 1);
-    Vector2d point1(-sqrt(3), -1), point2(-sqrt(3) / 2, .5), point3(0, 2), point4(0, -1), point5(.3, -.1), point6(sqrt(3) / 2, .5), point7(sqrt(3), -1);
+    Vector2d point1(-sqrt(3), -1), point2(-sqrt(3) / 2, .5), point3(0, 2), point4(0, -1), point5(.2, -.13), point6(sqrt(3) / 2, .5), point7(sqrt(3), -1);
 
     GeometryVector point{point1, point2, point4, point5};
     GeometryVector pointt{point2, point3, point5, point6};
@@ -49,10 +49,17 @@ int main()
     domain2->DegreeElevate(degree);
     domain3->DegreeElevate(degree);
 
+    for (int i = 0; i < degree; i++)
+    {
+        // domain1->KnotInsertion(0, 1.0 / 3);
+        // domain1->KnotInsertion(0, 2.0 / 3);
+        // domain1->KnotInsertion(1, 1.0 / 3);
+        // domain1->KnotInsertion(1, 2.0 / 3);
+    }
 
-    domain1->UniformRefine(refine, degree - 1);
-    domain2->UniformRefine(refine, degree - 1);
-    domain3->UniformRefine(refine, degree - 1);
+    domain1->UniformRefine(refine, degree);
+    domain2->UniformRefine(refine, degree);
+    domain3->UniformRefine(refine, degree);
     array<shared_ptr<Surface<2, double>>, 3> cells;
     cells[0] = make_shared<Surface<2, double>>(domain1, array<bool, 4>{true, false, false, true});
     cells[0]->SurfaceInitialize();
@@ -79,7 +86,6 @@ int main()
                               36 * x * (3 * x - sqrt(3) * (y - 2)) * (3 * x + sqrt(3) * (y - 2)) * pow(1 + y, 2),
                               18 * (3 * x - sqrt(3) * (y - 2)) * (3 * x + sqrt(3) * (y - 2)) * (1 + y) * (x * x - (y - 2) * y)};
     };
-
 
     DofMapper<2, double> dof_map;
     BiharmonicMapper<2, double> mapper(dof_map);
@@ -127,7 +133,7 @@ int main()
     }
 
     vertex.ConstraintMatrix(vertex_constraint);
-    constraint = (edge_constraint1 * vertex_constraint).pruned(1e-8);
+    constraint = (edge_constraint1 * vertex_constraint).pruned(1e-11);
     SparseMatrix<double> condensed_stiffness_matrix = global_to_condensed * constraint.transpose() * stiffness_matrix * constraint * global_to_condensed.transpose();
     SparseMatrix<double> free_stiffness_matrix = condensed_to_free * condensed_stiffness_matrix * condensed_to_free.transpose();
     SparseMatrix<double> condensed_rhs = global_to_condensed * constraint.transpose() * load_vector - condensed_stiffness_matrix * boundary_value;
