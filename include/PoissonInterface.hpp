@@ -91,6 +91,7 @@ void PoissonInterface<N, T>::SolveC0Constraint(Edge<N, T> *edge)
 
     Accessory::removeRow<T>(dense_constraint, 0);
     Accessory::removeRow<T>(dense_constraint, 0);
+
     Accessory::removeRow<T>(dense_constraint, dense_constraint.rows() - 1);
     Accessory::removeRow<T>(dense_constraint, dense_constraint.rows() - 1);
 

@@ -33,6 +33,8 @@ class KnotVector
   public:
     using knotContainer = std::vector<T>;
     using uniContainer = std::map<T, int>;
+    using iterator = typename knotContainer::iterator;
+    using const_iterator = typename knotContainer::const_iterator;
 
     //methods
     KnotVector(){};
@@ -93,6 +95,18 @@ class KnotVector
 
     // leave the knot vector with unique knots, difference within tolerance will not be considered.
     void Uniquify(const T &tol = 1e-14);
+
+    inline iterator begin() { return _multiKnots.begin(); }
+
+    inline iterator end() { return _multiKnots.end(); }
+
+    inline const_iterator cbegin() { return _multiKnots.cbegin(); }
+
+    inline const_iterator cend() { return _multiKnots.cend(); }
+
+    inline iterator erase(iterator pos) { return _multiKnots.erase(pos); }
+
+    inline iterator insert(const_iterator position, const T &val) { return _multiKnots.insert(position, val); }
 
   private:
     //Knots with repetitions {0,0,0,.5,1,1,1}

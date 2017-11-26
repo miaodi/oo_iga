@@ -25,15 +25,9 @@ using namespace std;
 using namespace boost::multiprecision;
 using GeometryVector = PhyTensorBsplineBasis<2, 2, double>::GeometryVector;
 
-template <typename T>
-T operator^(T x, T y)
-{
-    return std::pow(x, y);
-}
-
 int main()
 {
-    double b = 1;
+    double b = 1.5;
     KnotVector<double> a;
     a.InitClosed(1, 0, 1);
     Vector2d point1(-1, b), point2(-1, b + 1), point3(0, 0), point4(0, 1), point5(1, 0), point6(1, 1);
@@ -49,6 +43,8 @@ int main()
 
     domain1->DegreeElevate(degree);
     domain2->DegreeElevate(degree);
+    domain2->KnotInsertion(0, 1.0 / 3);
+    domain2->KnotInsertion(0, 2.0 / 3);
     domain2->KnotInsertion(1, 1.0 / 3);
     domain2->KnotInsertion(1, 2.0 / 3);
     domain2->UniformRefine(refine, 1);
@@ -80,6 +76,19 @@ int main()
                                                 9 * pow(x, 4) * (-11 + 20 * y + 130 * pow(y, 2) - 300 * pow(y, 3) + 150 * pow(y, 4)) +
                                                 9 * pow(x, 2) * (5 + 2 * y - 117 * pow(y, 2) + 200 * pow(y, 3) - 25 * pow(y, 4) - 90 * pow(y, 5) + 30 * pow(y, 6))))};
     };
+
+    // function<vector<double>(const VectorXd &)> body_force = [&b](const VectorXd &u) {
+    //     double x = u(0);
+    //     double y = u(1);
+
+    //     return vector<double>{-(2 * (2 * pow(-1 + y, 2) * pow(y, 2) * (3 - 14 * y + 13 * pow(y, 2) + 2 * pow(y, 3) - pow(y, 4) + pow(x, 4) * (3 - 14 * y + 14 * pow(y, 2)) + pow(x, 2) * (-6 + 28 * y - 25 * pow(y, 2) - 6 * pow(y, 3) + 3 * pow(y, 4))) +
+    //                                  2 * b * x * y * (1 - 3 * y + 2 * pow(y, 2)) * (3 * pow(x, 4) * (1 - 7 * y + 7 * pow(y, 2)) + 3 * (1 - 7 * y + 5 * pow(y, 2) + 4 * pow(y, 3) - 2 * pow(y, 4)) + 2 * pow(x, 2) * (-3 + 21 * y - 16 * pow(y, 2) - 10 * pow(y, 3) + 5 * pow(y, 4))) +
+    //                                  pow(b, 4) * pow(x, 2) * (6 * pow(-1 + y, 2) * pow(y, 2) + pow(x, 6) * (1 - 6 * y + 6 * pow(y, 2)) + pow(x, 2) * (1 - 6 * y - 24 * pow(y, 2) + 60 * pow(y, 3) - 30 * pow(y, 4)) + 2 * pow(x, 4) * (-1 + 6 * y + 8 * pow(y, 2) - 28 * pow(y, 3) + 14 * pow(y, 4))) +
+    //                                  2 * pow(b, 3) * x * (3 * pow(-1 + y, 2) * pow(y, 2) * (-1 + 2 * y) + pow(x, 6) * (-1 + 12 * y - 30 * pow(y, 2) + 20 * pow(y, 3)) - pow(x, 2) * (1 - 12 * y + 10 * pow(y, 2) + 60 * pow(y, 3) - 100 * pow(y, 4) + 40 * pow(y, 5)) + pow(x, 4) * (2 - 24 * y + 39 * pow(y, 2) + 44 * pow(y, 3) - 105 * pow(y, 4) + 42 * pow(y, 5))) +
+    //                                  pow(b, 2) * (pow(-1 + y, 2) * pow(y, 2) * (1 - 6 * y + 6 * pow(y, 2)) + pow(x, 6) * (1 - 24 * y + 114 * pow(y, 2) - 180 * pow(y, 3) + 90 * pow(y, 4)) +
+    //                                               pow(x, 2) * (1 - 24 * y + 102 * pow(y, 2) - 84 * pow(y, 3) - 138 * pow(y, 4) + 216 * pow(y, 5) - 72 * pow(y, 6)) +
+    //                                               pow(x, 4) * (-2 + 48 * y - 213 * pow(y, 2) + 240 * pow(y, 3) + 105 * pow(y, 4) - 270 * pow(y, 5) + 90 * pow(y, 6)))))};
+    // };
 
     function<vector<double>(const VectorXd &)> analytical_solution = [&b](const VectorXd &u) {
         double x = u(0);
@@ -124,7 +133,7 @@ int main()
     VectorXd free_load = global_to_free * load_vector;
     MatrixXd free_constraint = constraint * global_to_free.transpose();
     FullPivLU<MatrixXd> lu(free_constraint);
-    lu.setThreshold(1e-10);
+    lu.setThreshold(1e-8);
     MatrixXd ker = lu.kernel();
     SparseMatrix<double> ker_sparse = ker.sparseView();
 
@@ -172,6 +181,5 @@ int main()
             file2 << position2(0) << " " << position2(1) << " " << result2 << endl;
         }
     }
-
     return 0;
 }
