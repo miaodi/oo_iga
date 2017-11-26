@@ -32,7 +32,7 @@ int main()
 {
     KnotVector<double> a;
     a.InitClosed(1, 0, 1);
-    Vector2d point1(-sqrt(3), -1), point2(-sqrt(3) / 2, .5), point3(0, 2), point4(0, -1), point5(.3, -.1), point6(sqrt(3) / 2, .5), point7(sqrt(3), -1);
+    Vector2d point1(-sqrt(3), -1), point2(-sqrt(3) / 2, .5), point3(0, 2), point4(0, -1), point5(.2, -.13), point6(sqrt(3) / 2, .5), point7(sqrt(3), -1);
 
     GeometryVector point{point1, point2, point4, point5};
     GeometryVector pointt{point2, point3, point5, point6};
@@ -49,9 +49,23 @@ int main()
     domain2->DegreeElevate(degree);
     domain3->DegreeElevate(degree);
 
+<<<<<<< HEAD
     domain1->UniformRefine(refine, degree - 1);
     domain2->UniformRefine(refine, degree - 1);
     domain3->UniformRefine(refine, degree - 1);
+=======
+    for (int i = 0; i < degree; i++)
+    {
+        // domain1->KnotInsertion(0, 1.0 / 3);
+        // domain1->KnotInsertion(0, 2.0 / 3);
+        // domain1->KnotInsertion(1, 1.0 / 3);
+        // domain1->KnotInsertion(1, 2.0 / 3);
+    }
+
+    domain1->UniformRefine(refine, degree);
+    domain2->UniformRefine(refine, degree);
+    domain3->UniformRefine(refine, degree);
+>>>>>>> 6b8d04a0a854fc21351afb6a4ec820f8f274586d
     array<shared_ptr<Surface<2, double>>, 3> cells;
     cells[0] = make_shared<Surface<2, double>>(domain1, array<bool, 4>{true, false, false, true});
     cells[0]->SurfaceInitialize();
