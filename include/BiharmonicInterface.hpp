@@ -88,11 +88,13 @@ void BiharmonicInterface<N, T>::SolveC1Constraint(Edge<N, T> *edge)
     constraint.setFromTriplets(_c1ConstraintsEquationElements.begin(), _c1ConstraintsEquationElements.end());
 
     Matrix dense_constraint = Matrix(constraint);
-    dense_constraint.row(1) = dense_constraint.row(0) + dense_constraint.row(1);
-    dense_constraint.row(dense_constraint.rows() - 2) = dense_constraint.row(dense_constraint.rows() - 2) + dense_constraint.row(dense_constraint.rows() - 1);
+    // dense_constraint.row(2) = dense_constraint.row(0) + dense_constraint.row(1) + dense_constraint.row(2);
+    // dense_constraint.row(dense_constraint.rows() - 3) = dense_constraint.row(dense_constraint.rows() - 3) + dense_constraint.row(dense_constraint.rows() - 2) + dense_constraint.row(dense_constraint.rows() - 1);
 
     Accessory::removeRow<T>(dense_constraint, 0);
+    Accessory::removeRow<T>(dense_constraint, 0);
 
+    Accessory::removeRow<T>(dense_constraint, dense_constraint.rows() - 1);
     Accessory::removeRow<T>(dense_constraint, dense_constraint.rows() - 1);
 
     _c1Constraint[edge] = std::move(dense_constraint);
@@ -144,11 +146,7 @@ void BiharmonicInterface<N, T>::C1IntegralElementAssembler(Matrix &slave_constra
     // auto multiplier_domain = edge_domain;
 
     auto edge_knot = edge_domain->KnotVectorGetter(0);
-    edge_knot.erase(edge_knot.begin());
-    edge_knot.erase(edge_knot.begin());
 
-    edge_knot.erase(edge_knot.end() - 1);
-    edge_knot.erase(edge_knot.end() - 1);
     auto multiplier_domain = std::make_shared<TensorBsplineBasis<1, double>>(edge_knot);
 
     // Set up integration weights

@@ -15,6 +15,7 @@
 #include "BiharmonicVertexVisitor.hpp"
 #include "PoissonInterface.hpp"
 #include "BiharmonicInterface.hpp"
+#include "BiharmonicInterfaceH1.h"
 #include "PostProcess.hpp"
 #include <fstream>
 #include <time.h>
@@ -27,87 +28,66 @@ using GeometryVector = PhyTensorBsplineBasis<2, 2, double>::GeometryVector;
 
 int main()
 {
-    double b = 1.5;
     KnotVector<double> a;
     a.InitClosed(1, 0, 1);
-    Vector2d point1(-1, b), point2(-1, b + 1), point3(0, 0), point4(0, 1), point5(1, 0), point6(1, 1);
+    Vector2d point1(-sqrt(3), -1), point2(-sqrt(3) / 2, .5), point3(0, 2), point4(0, -1), point5(.2, -.2252211), point6(sqrt(3) / 2, .5), point7(sqrt(3), -1);
 
-    GeometryVector point{point1, point2, point3, point4};
-    GeometryVector pointt{point3, point4, point5, point6};
+    GeometryVector point{point1, point2, point4, point5};
+    GeometryVector pointt{point2, point3, point5, point6};
+    GeometryVector pointtt{point4, point5, point7, point6};
 
     int degree, refine;
     cin >> degree >> refine;
 
     auto domain1 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(a, a, point);
     auto domain2 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(a, a, pointt);
+    auto domain3 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(a, a, pointtt);
 
     domain1->DegreeElevate(degree);
     domain2->DegreeElevate(degree);
+    domain3->DegreeElevate(degree);
     domain2->KnotInsertion(0, 1.0 / 3);
     domain2->KnotInsertion(0, 2.0 / 3);
     domain2->KnotInsertion(1, 1.0 / 3);
     domain2->KnotInsertion(1, 2.0 / 3);
+    domain1->UniformRefine(refine, 1);
     domain2->UniformRefine(refine, 1);
-    domain1->UniformRefine(refine + 1, 1);
+    domain3->UniformRefine(refine + 1, 1);
     array<shared_ptr<Surface<2, double>>, 3> cells;
-    cells[0] = make_shared<Surface<2, double>>(domain1, array<bool, 4>{true, false, true, true});
+    cells[0] = make_shared<Surface<2, double>>(domain1, array<bool, 4>{true, false, false, true});
     cells[0]->SurfaceInitialize();
-    cells[1] = make_shared<Surface<2, double>>(domain2, array<bool, 4>{true, true, true, false});
+    cells[1] = make_shared<Surface<2, double>>(domain2, array<bool, 4>{false, false, true, true});
     cells[1]->SurfaceInitialize();
-
-    for (int i = 0; i < 1; i++)
+    cells[2] = make_shared<Surface<2, double>>(domain3, array<bool, 4>{true, true, false, false});
+    cells[2]->SurfaceInitialize();
+    for (int i = 0; i < 2; i++)
     {
-        for (int j = i + 1; j < 2; j++)
+        for (int j = i + 1; j < 3; j++)
             cells[i]->Match(cells[j]);
     }
 
-    function<vector<double>(const VectorXd &)> body_force = [&b](const VectorXd &u) {
-        double x = u(0);
-        double y = u(1);
-
-        return vector<double>{8 * (3 - 60 * y + 258 * pow(y, 2) - 340 * pow(y, 3) + 33 * pow(y, 4) + 156 * pow(y, 5) - 38 * pow(y, 6) - 12 * pow(y, 7) + 3 * pow(y, 8) +
-                                   3 * pow(x, 4) * (1 - 20 * y + 90 * pow(y, 2) - 140 * pow(y, 3) + 70 * pow(y, 4)) +
-                                   6 * pow(x, 2) * (-1 + 20 * y - 84 * pow(y, 2) + 100 * pow(y, 3) + 20 * pow(y, 4) - 84 * pow(y, 5) + 28 * pow(y, 6)) +
-                                   6 * b * x * (-1 + 2 * y) * (5 - 29 * y - 13 * pow(y, 2) + 79 * pow(y, 3) - 27 * pow(y, 4) - 15 * pow(y, 5) + 5 * pow(y, 6) + 5 * pow(x, 4) * (1 - 7 * y + 7 * pow(y, 2)) + 10 * pow(x, 2) * (-1 + 6 * y + pow(y, 2) - 14 * pow(y, 3) + 7 * pow(y, 4))) +
-                                   pow(b, 4) * (3 * pow(x, 8) + 3 * pow(-1 + y, 2) * pow(y, 2) + 2 * pow(x, 6) * (11 - 84 * y + 84 * pow(y, 2)) - 6 * pow(x, 2) * (-1 + 6 * y + 9 * pow(y, 2) - 30 * pow(y, 3) + 15 * pow(y, 4)) +
-                                                3 * pow(x, 4) * (-9 + 60 * y + 10 * pow(y, 2) - 140 * pow(y, 3) + 70 * pow(y, 4))) +
-                                   2 * pow(b, 3) * x * (15 * pow(x, 6) * (-1 + 2 * y) + 3 * pow(x, 4) * (3 + 64 * y - 210 * pow(y, 2) + 140 * pow(y, 3)) - 3 * (1 - 12 * y + 20 * pow(y, 2) + 20 * pow(y, 3) - 50 * pow(y, 4) + 20 * pow(y, 5)) + 5 * pow(x, 2) * (1 - 42 * y + 99 * pow(y, 2) + 4 * pow(y, 3) - 105 * pow(y, 4) + 42 * pow(y, 5))) +
-                                   pow(b, 2) * (1 - 24 * y + 108 * pow(y, 2) - 132 * pow(y, 3) - 24 * pow(y, 4) + 108 * pow(y, 5) - 36 * pow(y, 6) + 3 * pow(x, 6) * (19 - 90 * y + 90 * pow(y, 2)) +
-                                                9 * pow(x, 4) * (-11 + 20 * y + 130 * pow(y, 2) - 300 * pow(y, 3) + 150 * pow(y, 4)) +
-                                                9 * pow(x, 2) * (5 + 2 * y - 117 * pow(y, 2) + 200 * pow(y, 3) - 25 * pow(y, 4) - 90 * pow(y, 5) + 30 * pow(y, 6))))};
+    function<vector<double>(const VectorXd &)> body_force = [](const VectorXd &u) {
+        return vector<double>{144 * pow(-3 * u(0) + sqrt(3) * (u(1) - 2), 2) + 144 * pow(3 * u(0) + sqrt(3) * (u(1) - 2), 2) + 1728 * pow(u(1) + 1, 2)};
     };
 
-    // function<vector<double>(const VectorXd &)> body_force = [&b](const VectorXd &u) {
-    //     double x = u(0);
-    //     double y = u(1);
-
-    //     return vector<double>{-(2 * (2 * pow(-1 + y, 2) * pow(y, 2) * (3 - 14 * y + 13 * pow(y, 2) + 2 * pow(y, 3) - pow(y, 4) + pow(x, 4) * (3 - 14 * y + 14 * pow(y, 2)) + pow(x, 2) * (-6 + 28 * y - 25 * pow(y, 2) - 6 * pow(y, 3) + 3 * pow(y, 4))) +
-    //                                  2 * b * x * y * (1 - 3 * y + 2 * pow(y, 2)) * (3 * pow(x, 4) * (1 - 7 * y + 7 * pow(y, 2)) + 3 * (1 - 7 * y + 5 * pow(y, 2) + 4 * pow(y, 3) - 2 * pow(y, 4)) + 2 * pow(x, 2) * (-3 + 21 * y - 16 * pow(y, 2) - 10 * pow(y, 3) + 5 * pow(y, 4))) +
-    //                                  pow(b, 4) * pow(x, 2) * (6 * pow(-1 + y, 2) * pow(y, 2) + pow(x, 6) * (1 - 6 * y + 6 * pow(y, 2)) + pow(x, 2) * (1 - 6 * y - 24 * pow(y, 2) + 60 * pow(y, 3) - 30 * pow(y, 4)) + 2 * pow(x, 4) * (-1 + 6 * y + 8 * pow(y, 2) - 28 * pow(y, 3) + 14 * pow(y, 4))) +
-    //                                  2 * pow(b, 3) * x * (3 * pow(-1 + y, 2) * pow(y, 2) * (-1 + 2 * y) + pow(x, 6) * (-1 + 12 * y - 30 * pow(y, 2) + 20 * pow(y, 3)) - pow(x, 2) * (1 - 12 * y + 10 * pow(y, 2) + 60 * pow(y, 3) - 100 * pow(y, 4) + 40 * pow(y, 5)) + pow(x, 4) * (2 - 24 * y + 39 * pow(y, 2) + 44 * pow(y, 3) - 105 * pow(y, 4) + 42 * pow(y, 5))) +
-    //                                  pow(b, 2) * (pow(-1 + y, 2) * pow(y, 2) * (1 - 6 * y + 6 * pow(y, 2)) + pow(x, 6) * (1 - 24 * y + 114 * pow(y, 2) - 180 * pow(y, 3) + 90 * pow(y, 4)) +
-    //                                               pow(x, 2) * (1 - 24 * y + 102 * pow(y, 2) - 84 * pow(y, 3) - 138 * pow(y, 4) + 216 * pow(y, 5) - 72 * pow(y, 6)) +
-    //                                               pow(x, 4) * (-2 + 48 * y - 213 * pow(y, 2) + 240 * pow(y, 3) + 105 * pow(y, 4) - 270 * pow(y, 5) + 90 * pow(y, 6)))))};
-    // };
-
-    function<vector<double>(const VectorXd &)> analytical_solution = [&b](const VectorXd &u) {
+    function<vector<double>(const VectorXd &)> analytical_solution = [](const VectorXd &u) {
         double x = u(0);
         double y = u(1);
-        return vector<double>{pow(-1 + x, 2) * pow(1 + x, 2) * pow(-1 + y, 2) * pow(y, 2) * pow(-1 + b * x + y, 2) * pow(b * x + y, 2),
-                              2 * (-1 + x) * (1 + x) * pow(-1 + y, 2) * pow(y, 2) * (-1 + b * x + y) * (b * x + y) * (pow(b, 2) * (-2 * x + 4 * pow(x, 3)) + 2 * x * (-1 + y) * y + b * (-1 + 3 * pow(x, 2)) * (-1 + 2 * y)),
-                              2 * (-1 + x) * (1 + x) * pow(-1 + y, 2) * pow(y, 2) * (-1 + b * x + y) * (b * x + y) * (pow(b, 2) * (-2 * x + 4 * pow(x, 3)) + 2 * x * (-1 + y) * y + b * (-1 + 3 * pow(x, 2)) * (-1 + 2 * y))};
+        return vector<double>{pow((u(1) + 1) * (sqrt(3) * (u(1) - 2) - 3 * u(0)) * (sqrt(3) * (u(1) - 2) + 3 * u(0)), 2),
+                              36 * x * (3 * x - sqrt(3) * (y - 2)) * (3 * x + sqrt(3) * (y - 2)) * pow(1 + y, 2),
+                              18 * (3 * x - sqrt(3) * (y - 2)) * (3 * x + sqrt(3) * (y - 2)) * (1 + y) * (x * x - (y - 2) * y)};
     };
 
     DofMapper<2, double> dof_map;
     BiharmonicMapper<2, double> mapper(dof_map);
 
-    for (int i = 0; i < 2; i++)
+    for (int i = 0; i < 3; i++)
     {
         cells[i]->Accept(mapper);
     }
 
     BiharmonicStiffnessVisitor<2, double> stiffness(dof_map, body_force);
-    for (int i = 0; i < 2; i++)
+    for (int i = 0; i < 3; i++)
     {
         cells[i]->Accept(stiffness);
     }
@@ -116,12 +96,13 @@ int main()
     stiffness.LoadAssembler(load_vector);
     SparseMatrix<double> stiffness_matrix = stiffness_matrix_triangle_view.template selfadjointView<Eigen::Upper>();
     BiharmonicInterface<2, double> interface(dof_map);
-    for (int i = 0; i < 2; i++)
+    for (int i = 0; i < 3; i++)
     {
         cells[i]->EdgeAccept(interface);
     }
     MatrixXd constraint;
     interface.ConstraintMatrix(constraint);
+
     MatrixXd global_to_free = MatrixXd::Identity(dof_map.Dof(), dof_map.Dof());
     auto dirichlet_indices = dof_map.GlobalDirichletIndices();
     sort(dirichlet_indices.begin(), dirichlet_indices.end());
@@ -146,27 +127,32 @@ int main()
     VectorXd solution = global_to_free.transpose() * ker_sparse * Solution;
 
     PostProcess<2, double> post_process(dof_map, solution, analytical_solution);
-    for (int i = 0; i < 2; i++)
+    for (int i = 0; i < 3; i++)
     {
         cells[i]->Accept(post_process);
     }
     cout << post_process.L2Norm() << endl;
 
-    vector<KnotVector<double>> solutionDomain1, solutionDomain2;
+    vector<KnotVector<double>> solutionDomain1, solutionDomain2, solutionDomain3;
     solutionDomain1.push_back(domain1->KnotVectorGetter(0));
     solutionDomain1.push_back(domain1->KnotVectorGetter(1));
     solutionDomain2.push_back(domain2->KnotVectorGetter(0));
     solutionDomain2.push_back(domain2->KnotVectorGetter(1));
+    solutionDomain3.push_back(domain3->KnotVectorGetter(0));
+    solutionDomain3.push_back(domain3->KnotVectorGetter(1));
     VectorXd controlDomain1 = solution.segment(dof_map.StartingIndex(domain1), domain1->GetDof());
     VectorXd controlDomain2 = solution.segment(dof_map.StartingIndex(domain2), domain2->GetDof());
-    vector<shared_ptr<PhyTensorBsplineBasis<2, 1, double>>> solutions(2);
+    VectorXd controlDomain3 = solution.segment(dof_map.StartingIndex(domain3), domain3->GetDof());
+    vector<shared_ptr<PhyTensorBsplineBasis<2, 1, double>>> solutions(5);
     solutions[0] = make_shared<PhyTensorBsplineBasis<2, 1, double>>(solutionDomain1, controlDomain1);
     solutions[1] = make_shared<PhyTensorBsplineBasis<2, 1, double>>(solutionDomain2, controlDomain2);
+    solutions[2] = make_shared<PhyTensorBsplineBasis<2, 1, double>>(solutionDomain3, controlDomain3);
 
     double x, y;
-    ofstream file1, file2;
+    ofstream file1, file2, file3;
     file1.open("domain1.txt");
     file2.open("domain2.txt");
+    file3.open("domain3.txt");
     for (int i = 0; i <= 100; i++)
     {
         for (int j = 0; j <= 100; j++)
@@ -175,10 +161,13 @@ int main()
             Vector2d u(xi, eta);
             VectorXd position1 = domain1->AffineMap(u);
             VectorXd position2 = domain2->AffineMap(u);
+            VectorXd position3 = domain3->AffineMap(u);
             auto result1 = (solutions[0]->AffineMap(u)(0) - analytical_solution(position1)[0]);
             auto result2 = (solutions[1]->AffineMap(u)(0) - analytical_solution(position2)[0]);
+            auto result3 = (solutions[2]->AffineMap(u)(0) - analytical_solution(position3)[0]);
             file1 << position1(0) << " " << position1(1) << " " << result1 << endl;
             file2 << position2(0) << " " << position2(1) << " " << result2 << endl;
+            file3 << position3(0) << " " << position3(1) << " " << result3 << endl;
         }
     }
     return 0;

@@ -41,6 +41,94 @@ class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N
         _vertices[1] = end;
     };
 
+    // Generate a mapping that moves all the vertex indices to the nearest indices in the edge
+    std::map<int, int> IndicesMover(const int &layer) const
+    {
+        auto start_vertex_indices = *_vertices[0]->ExclusiveIndices(layer);
+        auto end_vertex_indices = *_vertices[1]->ExclusiveIndices(layer);
+        auto edge_indices = *ExclusiveIndices(layer);
+        int edge_dof{0};
+        if (&*(_vertices[0]->Parent(0).lock()) != this)
+        {
+            edge_dof = _vertices[0]->Parent(0).lock()->GetDomain()->GetDof();
+        }
+        else
+        {
+            edge_dof = _vertices[0]->Parent(1).lock()->GetDomain()->GetDof();
+        }
+        std::map<int, int> res;
+        switch (_position)
+        {
+        case east:
+        case west:
+        {
+            for (auto i : start_vertex_indices)
+            {
+                int n = 1;
+                while (1)
+                {
+                    auto it = std::find(edge_indices.begin(), edge_indices.end(), i + n);
+                    if (it != edge_indices.end())
+                    {
+                        res[i] = *it;
+                        break;
+                    }
+                    n++;
+                }
+            }
+            for (auto i : end_vertex_indices)
+            {
+                int n = 1;
+                while (1)
+                {
+                    auto it = std::find(edge_indices.begin(), edge_indices.end(), i - n);
+                    if (it != edge_indices.end())
+                    {
+                        res[i] = *it;
+                        break;
+                    }
+                    n++;
+                }
+            }
+            break;
+        }
+        case north:
+        case south:
+        {
+            for (auto i : start_vertex_indices)
+            {
+                int n = 1;
+                while (1)
+                {
+                    auto it = std::find(edge_indices.begin(), edge_indices.end(), i + edge_dof * n);
+                    if (it != edge_indices.end())
+                    {
+                        res[i] = *it;
+                        break;
+                    }
+                    n++;
+                }
+            }
+            for (auto i : end_vertex_indices)
+            {
+                int n = 1;
+                while (1)
+                {
+                    auto it = std::find(edge_indices.begin(), edge_indices.end(), i - edge_dof * n);
+                    if (it != edge_indices.end())
+                    {
+                        res[i] = *it;
+                        break;
+                    }
+                    n++;
+                }
+            }
+            break;
+        }
+        }
+        return res;
+    }
+
     std::unique_ptr<std::vector<int>>
     Indices(const int &layer) const
     {
@@ -312,6 +400,12 @@ class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N
         return _parents[i];
     }
 
+    auto
+    Vertices(const int &i) const
+    {
+        return _vertices[i];
+    }
+
     void
     PrintIndices(const int &layerNum) const
     {
@@ -345,9 +439,11 @@ class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N
             if (this->GetDomain()->GetDof(0) > counterpart->GetDomain()->GetDof(0))
             {
                 _slave = true;
+                counterpart->_slave = false;
             }
             else
             {
+                _slave = false;
                 counterpart->_slave = true;
             }
             return true;
