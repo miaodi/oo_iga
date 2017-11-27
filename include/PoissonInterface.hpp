@@ -86,14 +86,6 @@ void PoissonInterface<N, T>::SolveC0Constraint(Edge<N, T> *edge)
 
     constraint.setFromTriplets(_c0ConstraintsEquationElements.begin(), _c0ConstraintsEquationElements.end());
     Matrix dense_constraint = Matrix(constraint);
-    // dense_constraint.row(2) = dense_constraint.row(0) + dense_constraint.row(1) + dense_constraint.row(2);
-    // dense_constraint.row(dense_constraint.rows() - 3) = dense_constraint.row(dense_constraint.rows() - 3) + dense_constraint.row(dense_constraint.rows() - 2) + dense_constraint.row(dense_constraint.rows() - 1);
-
-    Accessory::removeRow<T>(dense_constraint, 0);
-    Accessory::removeRow<T>(dense_constraint, 0);
-
-    Accessory::removeRow<T>(dense_constraint, dense_constraint.rows() - 1);
-    Accessory::removeRow<T>(dense_constraint, dense_constraint.rows() - 1);
 
     _c0Constraint[edge] = std::move(dense_constraint);
 }

@@ -46,13 +46,17 @@ int main()
     domain1->DegreeElevate(degree);
     domain2->DegreeElevate(degree);
     domain3->DegreeElevate(degree);
-    domain2->KnotInsertion(0, 1.0 / 3);
-    domain2->KnotInsertion(0, 2.0 / 3);
-    domain2->KnotInsertion(1, 1.0 / 3);
-    domain2->KnotInsertion(1, 2.0 / 3);
+    for (int i = 0; i < 1; i++)
+    {
+        domain1->KnotInsertion(0, 1.0 / 3);
+        domain1->KnotInsertion(0, 2.0 / 3);
+        domain1->KnotInsertion(1, 1.0 / 3);
+        domain1->KnotInsertion(1, 2.0 / 3);
+    }
+
     domain1->UniformRefine(refine, 1);
-    domain2->UniformRefine(refine, 1);
-    domain3->UniformRefine(refine + 1, 1);
+    domain2->UniformRefine(refine + 1, 1);
+    domain3->UniformRefine(refine, 1);
     array<shared_ptr<Surface<2, double>>, 3> cells;
     cells[0] = make_shared<Surface<2, double>>(domain1, array<bool, 4>{true, false, false, true});
     cells[0]->SurfaceInitialize();
@@ -95,14 +99,23 @@ int main()
     stiffness.StiffnessAssembler(stiffness_matrix_triangle_view);
     stiffness.LoadAssembler(load_vector);
     SparseMatrix<double> stiffness_matrix = stiffness_matrix_triangle_view.template selfadjointView<Eigen::Upper>();
-    BiharmonicInterface<2, double> interface(dof_map);
+    BiharmonicInterfaceH1<2, double> interface(dof_map);
+    BiharmonicInterface<2, double> interface1(dof_map);
     for (int i = 0; i < 3; i++)
     {
         cells[i]->EdgeAccept(interface);
+        cells[i]->EdgeAccept(interface1);
     }
-    MatrixXd constraint;
+    MatrixXd constraint, constraint1;
     interface.ConstraintMatrix(constraint);
-
+    interface1.ConstraintMatrix(constraint1);
+    ofstream myfile;
+    myfile.open("example.txt");
+    myfile << constraint;
+    myfile.close();
+    myfile.open("example1.txt");
+    myfile << constraint1;
+    myfile.close();
     MatrixXd global_to_free = MatrixXd::Identity(dof_map.Dof(), dof_map.Dof());
     auto dirichlet_indices = dof_map.GlobalDirichletIndices();
     sort(dirichlet_indices.begin(), dirichlet_indices.end());
@@ -112,9 +125,9 @@ int main()
     }
     SparseMatrix<double> free_stiffness = SparseMatrix<double>(global_to_free.sparseView()) * stiffness_matrix * SparseMatrix<double>(global_to_free.transpose().sparseView());
     VectorXd free_load = global_to_free * load_vector;
-    MatrixXd free_constraint = constraint * global_to_free.transpose();
+    MatrixXd free_constraint = constraint1 * global_to_free.transpose();
     FullPivLU<MatrixXd> lu(free_constraint);
-    lu.setThreshold(1e-8);
+    lu.setThreshold(1e-11);
     MatrixXd ker = lu.kernel();
     SparseMatrix<double> ker_sparse = ker.sparseView();
 
