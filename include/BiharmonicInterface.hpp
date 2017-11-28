@@ -200,7 +200,7 @@ void BiharmonicInterface<N, T>::C1IntegralElementAssembler(Matrix &slave_constra
     auto master_evals = master_domain->EvalDerAllTensor(master_quadrature_abscissa, 1);
 
     //  Evaluate Lagrange multiplier basis
-    auto multiplier_evals = multiplier_domain->EvalDerAllTensor(u.first, 0);
+    auto multiplier_evals = multiplier_domain->EvalDualAllTensor(u.first);
 
     // Resize integration matrices
     slave_constraint_basis.resize(1, slave_evals->size());
@@ -215,7 +215,7 @@ void BiharmonicInterface<N, T>::C1IntegralElementAssembler(Matrix &slave_constra
     // +-----------+-----------+
     Matrix slave_jacobian = (slave_domain->JacobianMatrix(slave_quadrature_abscissa)).transpose();
     Matrix master_jacobian = (master_domain->JacobianMatrix(master_quadrature_abscissa)).transpose();
-    // Matrix master_to_slave = slave_jacobian * master_jacobian.inverse(); 
+    // Matrix master_to_slave = slave_jacobian * master_jacobian.inverse();
 
     // Substitute master coordinate of master basis by slave coordinate
     for (auto &i : *master_evals)
@@ -258,67 +258,67 @@ void BiharmonicInterface<N, T>::C1IntegralElementAssembler(Matrix &slave_constra
     }
     }
 
-    #pragma region
-    // switch (edge->GetOrient())
-    // {
-    // // For south and north edge derivative w.r.t η_s should be consistent
-    // case south:
-    // case north:
-    // {
-    //     for (int j = 0; j < slave_evals->size(); ++j)
-    //     {
-    //         slave_constraint_basis(0, j) = (*slave_evals)[j].second[2];
-    //     }
-    //     break;
-    // }
-    // // For south and north edge derivative w.r.t ξ_s should be consistent
-    // case east:
-    // case west:
-    // {
-    //     for (int j = 0; j < slave_evals->size(); ++j)
-    //     {
-    //         slave_constraint_basis(0, j) = (*slave_evals)[j].second[1];
-    //     }
-    //     break;
-    // }
-    // }
-    // T alpha, beta, gamma;
-    // switch (edge->GetOrient())
-    // {
-    // // For south and north edge derivative w.r.t η_s should be consistent
-    // case south:
-    // case north:
-    // {
-    //     auto geomDriXi = master_domain->AffineMap(master_quadrature_abscissa, {1, 0});
-    //     auto geomDriEta = master_domain->AffineMap(master_quadrature_abscissa, {0, 1});
-    //     auto geomDriEtaSlave = slave_domain->AffineMap(slave_quadrature_abscissa, {0, 1});
-    //     alpha = geomDriEtaSlave(0) * geomDriXi(1) - geomDriXi(0) * geomDriEtaSlave(1);
-    //     beta = geomDriEta(0) * geomDriEtaSlave(1) - geomDriEtaSlave(0) * geomDriEta(1);
-    //     gamma = geomDriEta(0) * geomDriXi(1) - geomDriXi(0) * geomDriEta(1);
-    //     for (int j = 0; j < master_evals->size(); ++j)
-    //     {
-    //         master_constraint_basis(0, j) = (*master_evals)[j].second[1] * beta / gamma + (*master_evals)[j].second[2] * alpha / gamma;
-    //     }
-    //     break;
-    // }
-    // // For south and north edge derivative w.r.t ξ_s should be consistent
-    // case east:
-    // case west:
-    // {
-    //     auto geomDriXi = master_domain->AffineMap(master_quadrature_abscissa, {1, 0});
-    //     auto geomDriEta = master_domain->AffineMap(master_quadrature_abscissa, {0, 1});
-    //     auto geomDriXiSlave = slave_domain->AffineMap(slave_quadrature_abscissa, {1, 0});
-    //     alpha = geomDriXiSlave(0) * geomDriXi(1) - geomDriXi(0) * geomDriXiSlave(1);
-    //     beta = geomDriEta(0) * geomDriXiSlave(1) - geomDriXiSlave(0) * geomDriEta(1);
-    //     gamma = geomDriEta(0) * geomDriXi(1) - geomDriXi(0) * geomDriEta(1);
-    //     for (int j = 0; j < slave_evals->size(); ++j)
-    //     {
-    //         master_constraint_basis(0, j) = (*master_evals)[j].second[1] * beta / gamma + (*master_evals)[j].second[2] * alpha / gamma;
-    //     }
-    //     break;
-    // }
-    // }
-    #pragma endregion
+#pragma region
+// switch (edge->GetOrient())
+// {
+// // For south and north edge derivative w.r.t η_s should be consistent
+// case south:
+// case north:
+// {
+//     for (int j = 0; j < slave_evals->size(); ++j)
+//     {
+//         slave_constraint_basis(0, j) = (*slave_evals)[j].second[2];
+//     }
+//     break;
+// }
+// // For south and north edge derivative w.r.t ξ_s should be consistent
+// case east:
+// case west:
+// {
+//     for (int j = 0; j < slave_evals->size(); ++j)
+//     {
+//         slave_constraint_basis(0, j) = (*slave_evals)[j].second[1];
+//     }
+//     break;
+// }
+// }
+// T alpha, beta, gamma;
+// switch (edge->GetOrient())
+// {
+// // For south and north edge derivative w.r.t η_s should be consistent
+// case south:
+// case north:
+// {
+//     auto geomDriXi = master_domain->AffineMap(master_quadrature_abscissa, {1, 0});
+//     auto geomDriEta = master_domain->AffineMap(master_quadrature_abscissa, {0, 1});
+//     auto geomDriEtaSlave = slave_domain->AffineMap(slave_quadrature_abscissa, {0, 1});
+//     alpha = geomDriEtaSlave(0) * geomDriXi(1) - geomDriXi(0) * geomDriEtaSlave(1);
+//     beta = geomDriEta(0) * geomDriEtaSlave(1) - geomDriEtaSlave(0) * geomDriEta(1);
+//     gamma = geomDriEta(0) * geomDriXi(1) - geomDriXi(0) * geomDriEta(1);
+//     for (int j = 0; j < master_evals->size(); ++j)
+//     {
+//         master_constraint_basis(0, j) = (*master_evals)[j].second[1] * beta / gamma + (*master_evals)[j].second[2] * alpha / gamma;
+//     }
+//     break;
+// }
+// // For south and north edge derivative w.r.t ξ_s should be consistent
+// case east:
+// case west:
+// {
+//     auto geomDriXi = master_domain->AffineMap(master_quadrature_abscissa, {1, 0});
+//     auto geomDriEta = master_domain->AffineMap(master_quadrature_abscissa, {0, 1});
+//     auto geomDriXiSlave = slave_domain->AffineMap(slave_quadrature_abscissa, {1, 0});
+//     alpha = geomDriXiSlave(0) * geomDriXi(1) - geomDriXi(0) * geomDriXiSlave(1);
+//     beta = geomDriEta(0) * geomDriXiSlave(1) - geomDriXiSlave(0) * geomDriEta(1);
+//     gamma = geomDriEta(0) * geomDriXi(1) - geomDriXi(0) * geomDriEta(1);
+//     for (int j = 0; j < slave_evals->size(); ++j)
+//     {
+//         master_constraint_basis(0, j) = (*master_evals)[j].second[1] * beta / gamma + (*master_evals)[j].second[2] * alpha / gamma;
+//     }
+//     break;
+// }
+// }
+#pragma endregion
 
     // Lagrange multiplier basis
     for (int j = 0; j < multiplier_evals->size(); ++j)
