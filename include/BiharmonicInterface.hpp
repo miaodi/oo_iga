@@ -138,10 +138,10 @@ void BiharmonicInterface<N, T>::C1IntegralElementAssembler(Matrix &slave_constra
     // auto multiplier_domain = edge_domain;
 
     auto edge_knot = edge_domain->KnotVectorGetter(0);
-    // edge_knot.erase(edge_knot.begin());
-    // edge_knot.erase(edge_knot.end() - 1);
-    // edge_knot.erase(edge_knot.begin());
-    // edge_knot.erase(edge_knot.end() - 1);
+    edge_knot.erase(edge_knot.begin());
+    edge_knot.erase(edge_knot.end() - 1);
+    edge_knot.erase(edge_knot.begin());
+    edge_knot.erase(edge_knot.end() - 1);
 
     auto multiplier_domain = std::make_shared<TensorBsplineBasis<1, double>>(edge_knot);
 
