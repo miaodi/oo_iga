@@ -135,15 +135,15 @@ void BiharmonicInterface<N, T>::C1IntegralElementAssembler(Matrix &slave_constra
     auto slave_domain = edge->Parent(0).lock()->GetDomain();
     auto master_domain = edge->Counterpart().lock()->Parent(0).lock()->GetDomain();
 
-    // auto multiplier_domain = edge_domain;
+    auto multiplier_domain = edge_domain;
 
     auto edge_knot = edge_domain->KnotVectorGetter(0);
-    edge_knot.erase(edge_knot.begin());
-    edge_knot.erase(edge_knot.end() - 1);
-    edge_knot.erase(edge_knot.begin());
-    edge_knot.erase(edge_knot.end() - 1);
+    // edge_knot.erase(edge_knot.begin());
+    // edge_knot.erase(edge_knot.end() - 1);
+    // edge_knot.erase(edge_knot.begin());
+    // edge_knot.erase(edge_knot.end() - 1);
 
-    auto multiplier_domain = std::make_shared<TensorBsplineBasis<1, double>>(edge_knot);
+    // auto multiplier_domain = std::make_shared<TensorBsplineBasis<1, double>>(edge_knot);
 
     // Set up integration weights
     integral_weight = u.second;
@@ -164,7 +164,7 @@ void BiharmonicInterface<N, T>::C1IntegralElementAssembler(Matrix &slave_constra
     auto master_evals = master_domain->EvalDerAllTensor(master_quadrature_abscissa, 1);
 
     //  Evaluate Lagrange multiplier basis
-    auto multiplier_evals = multiplier_domain->EvalDerAllTensor(u.first, 0);
+    auto multiplier_evals = multiplier_domain->EvalDualAllTensor(u.first);
 
     // Resize integration matrices
     slave_constraint_basis.resize(1, slave_evals->size());

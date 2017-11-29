@@ -28,9 +28,10 @@ using GeometryVector = PhyTensorBsplineBasis<2, 2, double>::GeometryVector;
 
 int main()
 {
+    double b = 1.0;
     KnotVector<double> a;
     a.InitClosed(1, 0, 1);
-    Vector2d point1(-sqrt(3), -1), point2(-sqrt(3) / 2, .5), point3(0, 2), point4(0, -1), point5(.2, -.2252211), point6(sqrt(3) / 2, .5), point7(sqrt(3), -1);
+    Vector2d point1(0, 1), point2(.5, (1 + b) / 2.0), point3(1, b), point4(0, 0), point5(.4, .57), point6(1, .5), point7(1, 0);
 
     GeometryVector point{point1, point2, point4, point5};
     GeometryVector pointt{point2, point3, point5, point6};
@@ -74,16 +75,23 @@ int main()
                     cells[i]->Match(cells[j]);
             }
 
-            function<vector<double>(const VectorXd &)> body_force = [](const VectorXd &u) {
-                return vector<double>{144 * pow(-3 * u(0) + sqrt(3) * (u(1) - 2), 2) + 144 * pow(3 * u(0) + sqrt(3) * (u(1) - 2), 2) + 1728 * pow(u(1) + 1, 2)};
-            };
-
-            function<vector<double>(const VectorXd &)> analytical_solution = [](const VectorXd &u) {
+            function<vector<double>(const VectorXd &)> body_force = [&b](const VectorXd &u) {
                 double x = u(0);
                 double y = u(1);
-                return vector<double>{pow((u(1) + 1) * (sqrt(3) * (u(1) - 2) - 3 * u(0)) * (sqrt(3) * (u(1) - 2) + 3 * u(0)), 2),
-                                      36 * x * (3 * x - sqrt(3) * (y - 2)) * (3 * x + sqrt(3) * (y - 2)) * pow(1 + y, 2),
-                                      18 * (3 * x - sqrt(3) * (y - 2)) * (3 * x + sqrt(3) * (y - 2)) * (1 + y) * (x * x - (y - 2) * y)};
+                return vector<double>{8 * (1 + 3 * (6 - 10 * b + 5 * pow(b, 2)) * pow(x, 4) - 6 * y +
+                                           3 * (8 - 6 * b + pow(b, 2)) * pow(y, 2) + 6 * (-3 + 2 * b) * pow(y, 3) + 3 * pow(y, 4) +
+                                           pow(x, 3) * (-46 - 20 * pow(b, 2) - 60 * b * (-1 + y) + 60 * y) +
+                                           3 * pow(x, 2) * (13 - 36 * y + 27 * pow(y, 2) - 6 * b * (2 - 4 * y + 5 * pow(y, 2)) + pow(b, 2) * (2 + 15 * pow(y, 2))) -
+                                           6 * x * (2 - 9 * y + 16 * pow(y, 2) + 5 * pow(b, 2) * pow(y, 2) - 5 * pow(y, 3) + b * (-1 + 3 * y - 15 * pow(y, 2) + 5 * pow(y, 3))))};
+            };
+
+            function<vector<double>(const VectorXd &)> analytical_solution = [&b](const VectorXd &u) {
+                double x = u(0);
+                double y = u(1);
+                return vector<double>{pow(-1 + x, 2) * pow(x, 2) * pow(1 + (-1 + b) * x - y, 2) * pow(y, 2),
+                                      2 * (-1 + x) * x * (1 + (-1 + b) * x - y) * pow(y, 2) *
+                                          (-1 + 3 * (-1 + b) * pow(x, 2) + y - 2 * x * (-2 + b + y)),
+                                      2 * pow(-1 + x, 2) * pow(x, 2) * (1 + (-1 + b) * x - 2 * y) * (1 + (-1 + b) * x - y) * y};
             };
 
             DofMapper<2, double> dof_map;
@@ -103,15 +111,15 @@ int main()
             stiffness.StiffnessAssembler(stiffness_matrix_triangle_view);
             stiffness.LoadAssembler(load_vector);
             SparseMatrix<double> stiffness_matrix = stiffness_matrix_triangle_view.template selfadjointView<Eigen::Upper>();
-            BiharmonicInterfaceH1<2, double> interface(dof_map);
+            // BiharmonicInterfaceH1<2, double> interface(dof_map);
             BiharmonicInterface<2, double> interface1(dof_map);
             for (int i = 0; i < 3; i++)
             {
-                cells[i]->EdgeAccept(interface);
+                // cells[i]->EdgeAccept(interface);
                 cells[i]->EdgeAccept(interface1);
             }
             MatrixXd constraint, constraint1;
-            interface.ConstraintMatrix(constraint);
+            // interface.ConstraintMatrix(constraint);
             interface1.ConstraintMatrix(constraint1);
 
             MatrixXd global_to_free = MatrixXd::Identity(dof_map.Dof(), dof_map.Dof());
@@ -123,9 +131,9 @@ int main()
             }
             SparseMatrix<double> free_stiffness = SparseMatrix<double>(global_to_free.sparseView()) * stiffness_matrix * SparseMatrix<double>(global_to_free.transpose().sparseView());
             VectorXd free_load = global_to_free * load_vector;
-            MatrixXd free_constraint = constraint * global_to_free.transpose();
+            MatrixXd free_constraint = constraint1 * global_to_free.transpose();
             FullPivLU<MatrixXd> lu(free_constraint);
-            lu.setThreshold(1e-11);
+            lu.setThreshold(1e-13);
             MatrixXd ker = lu.kernel();
             SparseMatrix<double> ker_sparse = ker.sparseView();
 
