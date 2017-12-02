@@ -123,6 +123,7 @@ typename PhyTensorNURBSBasis<d, N, T>::BasisFunValDerAllList_ptr
 PhyTensorNURBSBasis<d, N, T>::EvalDerAllTensor(const PhyTensorNURBSBasis<d, N, T>::vector &u,
                                                const int i) const
 {
+    std::cout<<"used"<<std::endl;
     using namespace boost::math;
     if (_nurbsSwtch == false)
     {
@@ -240,6 +241,7 @@ PhyTensorNURBSBasis<d, N, T>::DegreeElevate(int orientation,
     }
     PhyTensorBsplineBasis<d, N, T>::DegreeElevate(orientation, r);
     _weightFunction.DegreeElevate(orientation, r);
+    dof = this->GetDof();
     for (int i = 0; i < dof; i++)
     {
         this->_geometricInfo[i] /= _weightFunction.CtrPtsGetter(i)(0);
@@ -258,6 +260,7 @@ PhyTensorNURBSBasis<d, N, T>::KnotInsertion(int orientation,
         this->_geometricInfo[i] *= _weightFunction.CtrPtsGetter(i)(0);
     }
     PhyTensorBsplineBasis<d, N, T>::KnotInsertion(orientation, knot, m);
+    dof = this->GetDof();
     _weightFunction.KnotInsertion(orientation, knot, m);
     for (int i = 0; i < dof; i++)
     {
@@ -277,6 +280,7 @@ PhyTensorNURBSBasis<d, N, T>::UniformRefine(int orientation,
         this->_geometricInfo[i] *= _weightFunction.CtrPtsGetter(i)(0);
     }
     PhyTensorBsplineBasis<d, N, T>::UniformRefine(orientation, r, m);
+    dof = this->GetDof();
     _weightFunction.UniformRefine(orientation, r, m);
     for (int i = 0; i < dof; i++)
     {

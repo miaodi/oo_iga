@@ -124,8 +124,7 @@ class DomainVisitor : public Visitor<d, N, T>
     using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
     using Vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
 
-    DomainVisitor(const DofMapper<N, T> &dof_mapper)
-        : _dofMapper(dof_mapper) {}
+    DomainVisitor(){}
 
     //    Multi thread domain visitor
     void Visit(Element<d, N, T> *g)
@@ -259,29 +258,6 @@ class DomainVisitor : public Visitor<d, N, T>
             }
         }
     }
-
-    void LocalToGlobal(Element<d, N, T> *g, MatrixData<T> &indexed_matrix)
-    {
-        int start_index = _dofMapper.StartingIndex(g->GetDomain());
-        std::transform(indexed_matrix._colIndices->cbegin(),
-                       indexed_matrix._colIndices->cend(),
-                       indexed_matrix._colIndices->begin(),
-                       [&start_index](const int &i) { return i + start_index; });
-        std::transform(indexed_matrix._rowIndices->cbegin(),
-                       indexed_matrix._rowIndices->cend(),
-                       indexed_matrix._rowIndices->begin(),
-                       [&start_index](const int &i) { return i + start_index; });
-    }
-
-    void LocalToGlobal(Element<d, N, T> *g, VectorData<T> &indexed_matrix)
-    {
-        int start_index = _dofMapper.StartingIndex(g->GetDomain());
-        std::transform(indexed_matrix._rowIndices->cbegin(),
-                       indexed_matrix._rowIndices->cend(),
-                       indexed_matrix._rowIndices->begin(),
-                       [&start_index](const int &i) { return i + start_index; });
-    }
-
     //    Convert non-zero Symmetric MatrixData elements to Triplet
     void SymmetricTriplet(const MatrixData<T> &matrix,
                           std::vector<Eigen::Triplet<T>> &triplet,
@@ -500,7 +476,6 @@ class DomainVisitor : public Visitor<d, N, T>
     }
 
   protected:
-    const DofMapper<N, T> &_dofMapper;
     std::mutex _mutex;
     u_int _num_of_threads{std::thread::hardware_concurrency()};
 };

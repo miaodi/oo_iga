@@ -122,7 +122,7 @@ class PhyTensorBsplineBasis : public TensorBsplineBasis<d, T>
             DegreeElevate(i, p);
     }
 
-    inline virtual void UniformRefine(int r, int m)
+    inline virtual void UniformRefine(int r, int m=1)
     {
         if (r == 0)
             return;
