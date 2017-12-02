@@ -44,11 +44,11 @@ class StiffnessVisitor : public DomainVisitor<2, N, T>
     const LoadFunctor &_bodyForceFunctor;
 };
 
-template <int N, typename T>
+template <int N, int TrialFunctionDimension, typename T>
 void
-    StiffnessVisitor<N, T>::LocalAssemble(Element<2, N, T> *g,
-                                          const QuadratureRule<T> &quadrature_rule,
-                                          const KnotSpan &knot_span)
+    StiffnessVisitor<N, TrialFunctionDimension, T>::LocalAssemble(Element<2, N, T> *g,
+                                                                  const QuadratureRule<T> &quadrature_rule,
+                                                                  const KnotSpan &knot_span)
 {
     auto domain = g->GetDomain();
     QuadList quadrature_points;
@@ -83,17 +83,17 @@ void
     this->SymmetricTriplet(stiff, _stiffnees);
 }
 
-template <int N, typename T>
-void StiffnessVisitor<N, T>::StiffnessAssembler(Eigen::SparseMatrix<T> &sparse_matrix) const
+template <int N, int TrialFunctionDimension, typename T>
+void StiffnessVisitor<N, TrialFunctionDimension, T>::StiffnessAssembler(Eigen::SparseMatrix<T> &sparse_matrix) const
 {
     auto col_set = Accessory::ColIndicesSet(_stiffnees);
     auto row_set = Accessory::RowIndicesSet(_stiffnees);
-    this->MatrixAssembler(*row_set.rbegin(), *col_set.rbegin(), _stiffnees, sparse_matrix);
+    this->MatrixAssembler(*row_set.rbegin() + 1, *col_set.rbegin() + 1, _stiffnees, sparse_matrix);
 }
 
-template <int N, typename T>
-void StiffnessVisitor<N, T>::LoadAssembler(Eigen::SparseMatrix<T> &sparse_matrix) const
+template <int N, int TrialFunctionDimension, typename T>
+void StiffnessVisitor<N, TrialFunctionDimension, T>::LoadAssembler(Eigen::SparseMatrix<T> &sparse_matrix) const
 {
     auto row_set = Accessory::RowIndicesSet(_rhs);
-    this->VectorAssembler(*row_set.rbegin(), _rhs, sparse_matrix);
+    this->VectorAssembler(*row_set.rbegin() + 1, _rhs, sparse_matrix);
 }

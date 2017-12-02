@@ -8,10 +8,10 @@
 #include "PhyTensorBsplineBasis.h"
 #include <boost/math/special_functions/binomial.hpp>
 
-template<int d, int N, typename T=double>
+template <int d, int N, typename T = double>
 class PhyTensorNURBSBasis : public PhyTensorBsplineBasis<d, N, T>
 {
-public:
+  public:
     using Pts = typename PhyTensorBsplineBasis<d, N, T>::Pts;
     using PhyPts = typename PhyTensorBsplineBasis<d, N, T>::PhyPts;
     using GeometryVector = typename PhyTensorBsplineBasis<d, N, T>::GeometryVector;
@@ -24,7 +24,7 @@ public:
     typedef typename TensorBsplineBasis<d, T>::BasisFunVal BasisFunVal;
     typedef typename TensorBsplineBasis<d, T>::BasisFunValPac BasisFunValPac;
     typedef typename TensorBsplineBasis<d, T>::BasisFunValPac_ptr BasisFunValPac_ptr;
-    using vector=Eigen::Matrix<T, Eigen::Dynamic, 1>;
+    using vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
 
     using PhyTensorBsplineBasis<d, N, T>::DegreeElevate;
     using PhyTensorBsplineBasis<d, N, T>::UniformRefine;
@@ -71,29 +71,30 @@ public:
     {
         _weightFunction.PrintCtrPts();
     }
-protected:
+
+  protected:
     PhyTensorBsplineBasis<d, 1, T> _weightFunction;
 
     mutable bool _nurbsSwtch;
 };
 
-template<int d, int N, typename T>
+template <int d, int N, typename T>
 PhyTensorNURBSBasis<d, N, T>::PhyTensorNURBSBasis(const std::vector<KnotVector<T>> &base,
                                                   const PhyTensorNURBSBasis::GeometryVector &geometry,
                                                   const PhyTensorNURBSBasis::WeightVector &weight,
                                                   const bool swtch)
-    :PhyTensorBsplineBasis<d, N, T>(base, geometry), _weightFunction(base, weight), _nurbsSwtch{swtch}
+    : PhyTensorBsplineBasis<d, N, T>(base, geometry), _weightFunction(base, weight), _nurbsSwtch{swtch}
 {
 }
 
 //! not finished yet.
-template<int d, int N, typename T>
+template <int d, int N, typename T>
 typename PhyTensorNURBSBasis<d, N, T>::BasisFunValPac_ptr
 PhyTensorNURBSBasis<d, N, T>::EvalTensor(const PhyTensorNURBSBasis<d, N, T>::vector &u,
                                          const PhyTensorNURBSBasis<d, N, T>::DiffPattern &dff_pattern) const
 {
     int diff = 0;
-    for (const auto &i:dff_pattern)
+    for (const auto &i : dff_pattern)
     {
         diff += i;
     }
@@ -111,113 +112,112 @@ PhyTensorNURBSBasis<d, N, T>::EvalTensor(const PhyTensorNURBSBasis<d, N, T>::vec
         if (differentialPatternList[i] == dff_pattern)
             break;
     }
-    for (const auto &j:*all_ders)
+    for (const auto &j : *all_ders)
     {
         res->push_back(std::make_pair(j.first, j.second[i]));
     }
     return res;
 }
 
-template<int d, int N, typename T>
+template <int d, int N, typename T>
 typename PhyTensorNURBSBasis<d, N, T>::BasisFunValDerAllList_ptr
 PhyTensorNURBSBasis<d, N, T>::EvalDerAllTensor(const PhyTensorNURBSBasis<d, N, T>::vector &u,
                                                const int i) const
 {
-    std::cout<<"used"<<std::endl;
     using namespace boost::math;
     if (_nurbsSwtch == false)
     {
         return TensorBsplineBasis<d, T>::EvalDerAllTensor(u, i);
     }
     auto bspline_result = TensorBsplineBasis<d, T>::EvalDerAllTensor(u, i);
-    for (auto &it:*bspline_result)
+    for (auto &it : *bspline_result)
     {
-        for (auto &j:it.second)
+        for (auto &j : it.second)
         {
             j *= _weightFunction.CtrPtsGetter(it.first)(0);
         }
     }
     switch (d)
     {
-        case 1:
+    case 1:
+    {
+        std::vector<T> weight_ders(i + 1);
+        for (int j = 0; j < i + 1; j++)
         {
-            std::vector<T> weight_ders(i + 1);
-            for (int j = 0; j < i + 1; j++)
-            {
-                weight_ders[j] = _weightFunction.AffineMap(u, std::vector<int>{j})(0);
-            }
-            for (auto &it:*bspline_result)
-            {
-                auto temp = it.second;
-                for (int k = 0; k <= i; k++)
-                {
-                    auto v = temp[k];
-                    for (int j = 1; j <= k; j++)
-                    {
-                        v -= binomial_coefficient<T>(k, j) * weight_ders[j] * it.second[k - j];
-                    }
-                    it.second[k] = v / weight_ders[0];
-                }
-            }
-            break;
+            weight_ders[j] = _weightFunction.AffineMap(u, std::vector<int>{j})(0);
         }
-
-        case 2:
+        for (auto &it : *bspline_result)
         {
-            Accessory::DifferentialPatternList differentialPatternList;
-            for (int order = 0; order <= i; ++order)
+            auto temp = it.second;
+            for (int k = 0; k <= i; k++)
             {
-                auto temp = Accessory::PartialDerPattern<d>(order);
-                differentialPatternList.insert(differentialPatternList.end(), temp->begin(), temp->end());
-            }
-            int derivativeAmount = differentialPatternList.size();
-            Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> weight_ders(i + 1, i + 1);
-            for (const auto &j:differentialPatternList)
-            {
-                weight_ders(j[0], j[1]) = _weightFunction.AffineMap(u, j)(0);
-            }
-            for (auto &it:*bspline_result)
-            {
-                Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> temp(i + 1, i + 1);
-                Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> SKL(i + 1, i + 1);
-                for (int j = 0; j < derivativeAmount; j++)
+                auto v = temp[k];
+                for (int j = 1; j <= k; j++)
                 {
-                    temp(differentialPatternList[j][0], differentialPatternList[j][1]) = it.second[j];
+                    v -= binomial_coefficient<T>(k, j) * weight_ders[j] * it.second[k - j];
                 }
-                for (int k = 0; k <= i; k++)
+                it.second[k] = v / weight_ders[0];
+            }
+        }
+        break;
+    }
+
+    case 2:
+    {
+        Accessory::DifferentialPatternList differentialPatternList;
+        for (int order = 0; order <= i; ++order)
+        {
+            auto temp = Accessory::PartialDerPattern<d>(order);
+            differentialPatternList.insert(differentialPatternList.end(), temp->begin(), temp->end());
+        }
+        int derivativeAmount = differentialPatternList.size();
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> weight_ders(i + 1, i + 1);
+        for (const auto &j : differentialPatternList)
+        {
+            weight_ders(j[0], j[1]) = _weightFunction.AffineMap(u, j)(0);
+        }
+        for (auto &it : *bspline_result)
+        {
+            Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> temp(i + 1, i + 1);
+            Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> SKL(i + 1, i + 1);
+            for (int j = 0; j < derivativeAmount; j++)
+            {
+                temp(differentialPatternList[j][0], differentialPatternList[j][1]) = it.second[j];
+            }
+            for (int k = 0; k <= i; k++)
+            {
+                for (int l = 0; l <= i - k; l++)
                 {
-                    for (int l = 0; l <= i - k; l++)
+                    auto v = temp(k, l);
+                    for (int n = 1; n <= l; n++)
                     {
-                        auto v = temp(k, l);
+                        v -= binomial_coefficient<T>(l, n) * weight_ders(0, n) * SKL(k, l - n);
+                    }
+                    for (int m = 1; m <= k; m++)
+                    {
+                        v -= binomial_coefficient<T>(k, m) * weight_ders(m, 0) * SKL(k - m, l);
+                        T v2 = 0.0;
                         for (int n = 1; n <= l; n++)
                         {
-                            v -= binomial_coefficient<T>(l, n) * weight_ders(0, n) * SKL(k, l - n);
+                            v2 += binomial_coefficient<T>(l, n) * weight_ders(m, n) * SKL(k - m, l - n);
                         }
-                        for (int m = 1; m <= k; m++)
-                        {
-                            v -= binomial_coefficient<T>(k, m) * weight_ders(m, 0) * SKL(k - m, l);
-                            T v2 = 0.0;
-                            for (int n = 1; n <= l; n++)
-                            {
-                                v2 += binomial_coefficient<T>(l, n) * weight_ders(m, n) * SKL(k - m, l - n);
-                            }
-                            v -= binomial_coefficient<T>(k, m) * v2;
-                        }
-                        SKL(k, l) = v / weight_ders(0, 0);
+                        v -= binomial_coefficient<T>(k, m) * v2;
                     }
-                }
-                for (int j = 0; j < derivativeAmount; j++)
-                {
-                    it.second[j] = SKL(differentialPatternList[j][0], differentialPatternList[j][1]);
+                    SKL(k, l) = v / weight_ders(0, 0);
                 }
             }
-            break;
+            for (int j = 0; j < derivativeAmount; j++)
+            {
+                it.second[j] = SKL(differentialPatternList[j][0], differentialPatternList[j][1]);
+            }
         }
+        break;
+    }
     }
     return bspline_result;
 }
 
-template<int d, int N, typename T>
+template <int d, int N, typename T>
 typename PhyTensorNURBSBasis<d, N, T>::PhyPts
 PhyTensorNURBSBasis<d, N, T>::AffineMap(const PhyTensorNURBSBasis<d, N, T>::Pts &u,
                                         const PhyTensorNURBSBasis<d, N, T>::DiffPattern &dff_pattern) const
@@ -229,10 +229,9 @@ PhyTensorNURBSBasis<d, N, T>::AffineMap(const PhyTensorNURBSBasis<d, N, T>::Pts 
     return res;
 }
 
-template<int d, int N, typename T>
-void
-PhyTensorNURBSBasis<d, N, T>::DegreeElevate(int orientation,
-                                            int r)
+template <int d, int N, typename T>
+void PhyTensorNURBSBasis<d, N, T>::DegreeElevate(int orientation,
+                                                 int r)
 {
     auto dof = this->GetDof();
     for (int i = 0; i < dof; i++)
@@ -248,11 +247,10 @@ PhyTensorNURBSBasis<d, N, T>::DegreeElevate(int orientation,
     }
 }
 
-template<int d, int N, typename T>
-void
-PhyTensorNURBSBasis<d, N, T>::KnotInsertion(int orientation,
-                                            T knot,
-                                            int m)
+template <int d, int N, typename T>
+void PhyTensorNURBSBasis<d, N, T>::KnotInsertion(int orientation,
+                                                 T knot,
+                                                 int m)
 {
     auto dof = this->GetDof();
     for (int i = 0; i < dof; i++)
@@ -268,11 +266,10 @@ PhyTensorNURBSBasis<d, N, T>::KnotInsertion(int orientation,
     }
 }
 
-template<int d, int N, typename T>
-void
-PhyTensorNURBSBasis<d, N, T>::UniformRefine(int orientation,
-                                            int r,
-                                            int m)
+template <int d, int N, typename T>
+void PhyTensorNURBSBasis<d, N, T>::UniformRefine(int orientation,
+                                                 int r,
+                                                 int m)
 {
     auto dof = this->GetDof();
     for (int i = 0; i < dof; i++)

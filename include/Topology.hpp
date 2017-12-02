@@ -34,9 +34,6 @@ class Element
 
     virtual std::unique_ptr<std::vector<int>> Indices(const int &) const = 0;
 
-    // Return all indices that belong to this domain but not belong to the rest.
-    virtual std::unique_ptr<std::vector<int>> ExclusiveIndices(const int &) const = 0;
-
     virtual void PrintIndices(const int &layerNum) const
     {
         auto res = Indices(layerNum);
@@ -47,41 +44,22 @@ class Element
         std::cout << std::endl;
     }
 
-    virtual void PrintExclusiveIndices(const int &layerNum) const
-    {
-        auto res = ExclusiveIndices(layerNum);
-        for (const auto &i : *res)
-        {
-            std::cout << i << " ";
-        }
-        std::cout << std::endl;
-    }
-
-    inline bool BeCalled() const
-    {
-        return _called;
-    }
-
     inline DomainShared_ptr GetDomain() const
     {
         return _domain;
     }
 
-    inline void Called() { _called = true; }
-
   protected:
     DomainShared_ptr _domain;
-
-    bool _called;
 };
 
 template <int d, int N, typename T>
-Element<d, N, T>::Element() : _domain{std::make_shared<PhyTensorBsplineBasis<d, N, T>>()}, _called{false}
+Element<d, N, T>::Element() : _domain{std::make_shared<PhyTensorBsplineBasis<d, N, T>>()}
 {
 }
 
 template <int d, int N, typename T>
-Element<d, N, T>::Element(const Element::DomainShared_ptr &m) : _domain{m}, _called{false}
+Element<d, N, T>::Element(const Element::DomainShared_ptr &m) : _domain{m}
 {
 }
 
@@ -90,18 +68,10 @@ Element<d, N, T>::Element(const Element::DomainShared_ptr &m) : _domain{m}, _cal
 // | west                 east |
 // |          south            |
 // +---------------------------+
-enum Orientation
+enum class Orientation
 {
-    south = 0,
+    south,
     east,
     north,
     west
-};
-
-enum VertexIndex
-{
-    first = 0,
-    second,
-    third,
-    fourth
 };

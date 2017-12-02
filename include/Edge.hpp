@@ -30,104 +30,10 @@ class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N
     using PhyPts = typename PhyTensorBsplineBasis<2, N, T>::PhyPts;
     using EdgeShared_Ptr = typename std::shared_ptr<Edge<N, T>>;
 
-    Edge(const Orientation &orient = west)
-        : Element<1, N, T>(), _position(orient), _matched(false){};
+    Edge(const Orientation &orient = Orientation::west)
+        : Element<1, N, T>(), _position(orient){};
 
-    Edge(DomainShared_ptr m, const Orientation &orient, std::shared_ptr<Vertex<N, T>> &begin,
-         std::shared_ptr<Vertex<N, T>> &end, const bool &dirichlet)
-        : Element<1, N, T>(m), _position(orient), _matched(false), _Dirichlet(dirichlet)
-    {
-        _vertices[0] = begin;
-        _vertices[1] = end;
-    };
-
-    // Generate a mapping that moves all the vertex indices to the nearest indices in the edge
-    std::map<int, int> IndicesMover(const int &layer) const
-    {
-        auto start_vertex_indices = *_vertices[0]->ExclusiveIndices(layer);
-        auto end_vertex_indices = *_vertices[1]->ExclusiveIndices(layer);
-        auto edge_indices = *ExclusiveIndices(layer);
-        int edge_dof{0};
-        if (&*(_vertices[0]->Parent(0).lock()) != this)
-        {
-            edge_dof = _vertices[0]->Parent(0).lock()->GetDomain()->GetDof();
-        }
-        else
-        {
-            edge_dof = _vertices[0]->Parent(1).lock()->GetDomain()->GetDof();
-        }
-        std::map<int, int> res;
-        switch (_position)
-        {
-        case east:
-        case west:
-        {
-            for (auto i : start_vertex_indices)
-            {
-                int n = 1;
-                while (1)
-                {
-                    auto it = std::find(edge_indices.begin(), edge_indices.end(), i + n);
-                    if (it != edge_indices.end())
-                    {
-                        res[i] = *it;
-                        break;
-                    }
-                    n++;
-                }
-            }
-            for (auto i : end_vertex_indices)
-            {
-                int n = 1;
-                while (1)
-                {
-                    auto it = std::find(edge_indices.begin(), edge_indices.end(), i - n);
-                    if (it != edge_indices.end())
-                    {
-                        res[i] = *it;
-                        break;
-                    }
-                    n++;
-                }
-            }
-            break;
-        }
-        case north:
-        case south:
-        {
-            for (auto i : start_vertex_indices)
-            {
-                int n = 1;
-                while (1)
-                {
-                    auto it = std::find(edge_indices.begin(), edge_indices.end(), i + edge_dof * n);
-                    if (it != edge_indices.end())
-                    {
-                        res[i] = *it;
-                        break;
-                    }
-                    n++;
-                }
-            }
-            for (auto i : end_vertex_indices)
-            {
-                int n = 1;
-                while (1)
-                {
-                    auto it = std::find(edge_indices.begin(), edge_indices.end(), i - edge_dof * n);
-                    if (it != edge_indices.end())
-                    {
-                        res[i] = *it;
-                        break;
-                    }
-                    n++;
-                }
-            }
-            break;
-        }
-        }
-        return res;
-    }
+    Edge(DomainShared_ptr m, const Orientation &orient) : Element<1, N, T>(m), _position(orient) {}
 
     std::unique_ptr<std::vector<int>>
     Indices(const int &layer) const
@@ -137,7 +43,7 @@ class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N
         auto domain = parent->GetDomain();
         switch (_position)
         {
-        case west:
+        case Orientation::west:
         {
             for (int i = 0; i <= layer; ++i)
             {
@@ -146,7 +52,7 @@ class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N
             }
             break;
         }
-        case east:
+        case Orientation::east:
         {
             for (int i = 0; i <= layer; ++i)
             {
@@ -155,7 +61,7 @@ class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N
             }
             break;
         }
-        case north:
+        case Orientation::north:
         {
             for (int i = 0; i <= layer; ++i)
             {
@@ -164,7 +70,7 @@ class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N
             }
             break;
         }
-        case south:
+        case Orientation::south:
         {
             for (int i = 0; i <= layer; ++i)
             {
@@ -178,87 +84,32 @@ class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N
         return res;
     };
 
-    std::unique_ptr<std::vector<int>>
-    ExclusiveIndices(const int &layer) const
-    {
-        auto res = this->Indices(layer);
-        std::unique_ptr<std::vector<int>> temp;
-        for (int i = 0; i < _vertices.size(); ++i)
-        {
-            temp = _vertices[i]->Indices(layer);
-            std::vector<int> diff;
-            std::set_difference(res->begin(), res->end(), temp->begin(), temp->end(), std::back_inserter(diff));
-            *res = diff;
-        }
-        return res;
-    }
-
-    bool IsDirichlet() const
-    {
-        return _Dirichlet;
-    }
-
     void
     PrintInfo() const
     {
         switch (_position)
         {
-        case west:
+        case Orientation::west:
         {
             std::cout << "West edge:" << std::endl;
             break;
         }
-        case east:
+        case Orientation::east:
         {
             std::cout << "East edge:" << std::endl;
             break;
         }
-        case north:
+        case Orientation::north:
         {
             std::cout << "North edge:" << std::endl;
             break;
         }
-        case south:
+        case Orientation::south:
         {
             std::cout << "South edge:" << std::endl;
             break;
         }
         }
-        auto begin = _vertices[0]->GetDomain();
-        auto end = _vertices[1]->GetDomain();
-        PhyPts beginPts = begin->Position();
-        PhyPts endPts = end->Position();
-        std::cout << "Starting Point: "
-                  << "(";
-        for (int i = 0; i < N - 1; i++)
-        {
-            std::cout << beginPts(i) << ", ";
-        }
-        std::cout << beginPts(N - 1) << ")" << std::endl;
-        std::cout << "Ending Point: "
-                  << "(";
-        for (int i = 0; i < N - 1; i++)
-        {
-            std::cout << endPts(i) << ", ";
-        }
-        std::cout << endPts(N - 1) << ")" << std::endl;
-        if (IsDirichlet())
-        {
-            std::cout << "Dirichlet boundary.";
-        }
-        else
-        {
-            std::cout << "Neumann boundary.";
-        }
-        if (IsSlave())
-        {
-            std::cout << "Slave edge." << std::endl;
-        }
-        else
-        {
-            std::cout << "Master edge." << std::endl;
-        }
-        std::cout << std::endl;
     }
 
     //! Return the element coordinates in parametric domain. (Each element in the vector is composed with two points,
@@ -268,7 +119,7 @@ class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N
     {
         switch (_position)
         {
-        case west:
+        case Orientation::west:
         {
             auto knot_y = this->_domain->KnotVectorGetter(1);
             auto knot_x = this->_domain->DomainStart(0);
@@ -284,7 +135,7 @@ class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N
             }
             break;
         }
-        case east:
+        case Orientation::east:
         {
             auto knot_y = this->_domain->KnotVectorGetter(1);
             auto knot_x = this->_domain->DomainEnd(0);
@@ -300,7 +151,7 @@ class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N
             }
             break;
         }
-        case south:
+        case Orientation::south:
         {
             auto knot_y = this->_domain->DomainStart(1);
             auto knot_x = this->_domain->KnotVectorGetter(0);
@@ -316,7 +167,7 @@ class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N
             }
             break;
         }
-        case north:
+        case Orientation::north:
         {
             auto knot_y = this->_domain->DomainEnd(1);
             auto knot_x = this->_domain->KnotVectorGetter(0);
@@ -358,36 +209,6 @@ class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N
         return _position;
     }
 
-    PhyPts
-    GetStartCoordinate() const
-    {
-        return _vertices[0]->GetDomain()->Position();
-    }
-
-    PhyPts
-    GetEndCoordinate() const
-    {
-        return _vertices[1]->GetDomain()->Position();
-    }
-
-    bool
-    IsMatched() const
-    {
-        return _matched;
-    }
-
-    bool
-    IsSlave() const
-    {
-        return _slave;
-    }
-
-    auto
-    Counterpart() const
-    {
-        return _pair;
-    }
-
     void
     ParentSetter(const std::shared_ptr<Surface<N, T>> &parent)
     {
@@ -400,55 +221,11 @@ class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N
         return _parents[i];
     }
 
-    auto
-    Vertices(const int &i) const
-    {
-        return _vertices[i];
-    }
-
     void
     PrintIndices(const int &layerNum) const
     {
         std::cout << "Activated Dofs on this edge are: ";
         Element<1, N, T>::PrintIndices(layerNum);
-    }
-
-    void
-    PrintExclusiveIndices(const int &layerNum) const
-    {
-        std::cout << "Activated exclusive Dofs on this edge are: ";
-        Element<1, N, T>::PrintExclusiveIndices(layerNum);
-    }
-
-    //
-    bool
-    Match(std::shared_ptr<Edge<N, T>> &counterpart)
-    {
-        T tol = std::numeric_limits<T>::epsilon() * 1e3;
-        if (_matched == true || counterpart->_matched == true)
-        {
-            return true;
-        }
-        if (((GetStartCoordinate() - counterpart->GetStartCoordinate()).norm() < tol && (GetEndCoordinate() - counterpart->GetEndCoordinate()).norm() < tol) ||
-            ((GetStartCoordinate() - counterpart->GetEndCoordinate()).norm() < tol && (GetEndCoordinate() - counterpart->GetStartCoordinate()).norm() < tol))
-        {
-            _pair = counterpart;
-            _matched = true;
-            counterpart->_pair = this->shared_from_this();
-            counterpart->_matched = true;
-            if (this->GetDomain()->GetDof(0) > counterpart->GetDomain()->GetDof(0))
-            {
-                _slave = true;
-                counterpart->_slave = false;
-            }
-            else
-            {
-                _slave = false;
-                counterpart->_slave = true;
-            }
-            return true;
-        }
-        return false;
     }
 
     PhyPts NormalDirection(const Coordinate &u) const
@@ -459,11 +236,6 @@ class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N
 
   protected:
     Orientation _position;
-    bool _matched;
-    bool _slave{false};
-    std::array<std::shared_ptr<Vertex<N, T>>, 2> _vertices;
-    std::weak_ptr<Edge<N, T>> _pair;
-    bool _Dirichlet{false};
     std::vector<std::weak_ptr<Surface<N, T>>> _parents;
 };
 
@@ -487,28 +259,28 @@ struct ComputeNormal<2, T>
         PhyPts normal;
         switch (edge_ptr->GetOrient())
         {
-        case west:
+        case Orientation::west:
         {
             PhyPts tangent = edge_ptr->GetDomain()->AffineMap(u, {1});
             normal << -tangent(1), tangent(0);
             normal.normalize();
             break;
         }
-        case east:
+        case Orientation::east:
         {
             PhyPts tangent = edge_ptr->GetDomain()->AffineMap(u, {1});
             normal << tangent(1), -tangent(0);
             normal.normalize();
             break;
         }
-        case north:
+        case Orientation::north:
         {
             PhyPts tangent = edge_ptr->GetDomain()->AffineMap(u, {1});
             normal << -tangent(1), tangent(0);
             normal.normalize();
             break;
         }
-        case south:
+        case Orientation::south:
         {
             PhyPts tangent = edge_ptr->GetDomain()->AffineMap(u, {1});
             normal << tangent(1), -tangent(0);

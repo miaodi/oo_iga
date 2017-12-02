@@ -2,10 +2,9 @@
 #include <eigen3/Eigen/Dense>
 #include "Surface.hpp"
 #include "Utility.hpp"
-#include "Vertex.hpp"
 #include "DofMapper.hpp"
 #include "PhyTensorNURBSBasis.h"
-#include "PostProcess.hpp"
+#include "Elasticity2DDeviatoricStiffnessVisitor.hpp"
 #include <fstream>
 #include <time.h>
 #include <boost/multiprecision/gmp.hpp>
@@ -28,16 +27,19 @@ int main()
     GeometryVector points{point1, point2, point3, point4, point5, point6, point7, point8, point9};
     Vector1d weight1(1), weight2(1.0 / sqrt(2.0)), weight3(1);
     WeightVector weights{weight1, weight2, weight3, weight1, weight2, weight3, weight1, weight2, weight3};
-    auto domain = make_shared<PhyTensorNURBSBasis<2, 2, double>>(std::vector<KnotVector<double>>{a, a}, points, weights, true);
+    auto domain = make_shared<PhyTensorNURBSBasis<2, 2, double>>(std::vector<KnotVector<double>>{a, a}, points, weights, false);
 
-    domain->DegreeElevate(3);
-    domain->UniformRefine(2);
-    for (int i = 0; i <= 10; i++)
-    {
-        Vector2d u;
-        u << 1, i * 1.0 / 10;
-        Vector2d phy_u = domain->AffineMap(u);
-        cout << sqrt(pow(phy_u(0),2)+pow(phy_u(1),2)) << endl;
-    }
+    auto cell = make_shared<Surface<2, double>>(domain);
+    cell->SurfaceInitialize();
+
+    function<vector<double>(const VectorXd &)> body_force = [](const VectorXd &u) {
+        return vector<double>{0, 0};
+    };
+    Elasticity2DDeviatoricStiffnessVisitor<double> stiffness(body_force);
+
+    cell->Accept(stiffness);
+    SparseMatrix<double> sparse_stiffness;
+    stiffness.StiffnessAssembler(sparse_stiffness);
+    cout << MatrixXd(sparse_stiffness);
     return 0;
 }
