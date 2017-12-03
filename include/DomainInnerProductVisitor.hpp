@@ -35,7 +35,8 @@ class DomainInnerProductVisitor : public DomainVisitor<2, N, T>
 
   protected:
     std::vector<Eigen::Triplet<T>> _innerProduct;
-    TensorBsplineBasis<2, T> _againstField;
+    TensorBsplineBasis<2, T> _left;
+    TensorBsplineBasis<2, T> _right;
 };
 
 template <int N, int TrialFunctionDimension, typename T>
