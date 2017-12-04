@@ -362,7 +362,7 @@ typename BsplineBasis<T>::BasisFunValDerAllList_ptr BsplineBasis<T>::EvalDerAll(
     }
     for (j = deg; j >= 0; --j)
         (*ders)[j].second[0] = ndu(j, deg);
-        
+
     // Compute the derivatives
     matrix a(deg + 1, deg + 1);
     for (r = 0; r <= deg; r++)

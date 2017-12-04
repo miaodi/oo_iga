@@ -124,13 +124,14 @@ class DomainVisitor : public Visitor<d, N, T>
     using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
     using Vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
 
-    DomainVisitor(){}
+    DomainVisitor() {}
 
     //    Multi thread domain visitor
     void Visit(Element<d, N, T> *g)
     {
         QuadratureRule<T> quad_rule;
         KnotSpanlist knot_spans;
+        Initialize(g);
         InitializeQuadratureRule(g, quad_rule);
         InitializeKnotSpans(g, knot_spans);
         std::vector<std::thread> threads(_num_of_threads);
@@ -156,6 +157,8 @@ class DomainVisitor : public Visitor<d, N, T>
     }
 
   protected:
+    virtual void Initialize(Element<d, N, T> *g){};
+
     //    Initialize quadrature rule
     virtual void InitializeQuadratureRule(Element<d, N, T> *g,
                                           QuadratureRule<T> &quad_rule)

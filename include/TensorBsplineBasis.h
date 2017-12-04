@@ -72,7 +72,7 @@ class TensorBsplineBasis
     HyperPlaneIndices(const int &, const int &) const;
 
     matrix Support(const int &i) const;
-    
+
     int NumActive() const;
 
     int NumActive(const int &i) const;
@@ -86,6 +86,11 @@ class TensorBsplineBasis
     void PrintEvalTensor(const vector &u, const DiffPattern &diff = DiffPattern(d, 0)) const;
 
     void PrintEvalDerAllTensor(const vector &u, const int diff = 0) const;
+
+    inline void KnotVectorSetter(const KnotVector<T> &knot_vector, int i)
+    {
+        _basis[i] = knot_vector;
+    }
 
     inline const KnotVector<T> &KnotVectorGetter(int i) const
     {
