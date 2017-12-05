@@ -137,9 +137,6 @@ class TensorBsplineBasis
   protected:
     std::array<BsplineBasis<T>, d> _basis;
 
-    TensorBsplineBasis(const TensorBsplineBasis<d, T> &) = delete;
-
-    TensorBsplineBasis operator=(const TensorBsplineBasis<d, T> &) = delete;
 };
 
 template <typename T>

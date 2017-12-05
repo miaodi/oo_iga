@@ -28,6 +28,8 @@ class PhyTensorNURBSBasis : public PhyTensorBsplineBasis<d, N, T>
 
     using PhyTensorBsplineBasis<d, N, T>::DegreeElevate;
     using PhyTensorBsplineBasis<d, N, T>::UniformRefine;
+    using HyperPlane = typename PhyTensorBsplineBasis<d, N, T>::HyperPlane;
+    using HyperPlaneSharedPts = typename PhyTensorBsplineBasis<d, N, T>::HyperPlaneSharedPts;
 
     PhyTensorNURBSBasis(const std::vector<KnotVector<T>> &,
                         const GeometryVector &,
@@ -71,6 +73,9 @@ class PhyTensorNURBSBasis : public PhyTensorBsplineBasis<d, N, T>
     {
         _weightFunction.PrintCtrPts();
     }
+
+    virtual HyperPlaneSharedPts MakeHyperPlane(const int &orientation,
+                                               const int &layer) const;
 
   protected:
     PhyTensorBsplineBasis<d, 1, T> _weightFunction;
@@ -284,5 +289,51 @@ void PhyTensorNURBSBasis<d, N, T>::UniformRefine(int orientation,
         this->_geometricInfo[i] /= _weightFunction.CtrPtsGetter(i)(0);
     }
 }
+
+template <int d, int N, typename T>
+typename PhyTensorNURBSBasis<d, N, T>::HyperPlaneSharedPts
+PhyTensorNURBSBasis<d, N, T>::MakeHyperPlane(const int &orientation,
+                                             const int &layer) const
+{
+    ASSERT(orientation < d, "Invalid input vector size.");
+    std::vector<KnotVector<T>> hpknotvector;
+    for (int i = 0; i != d; ++i)
+    {
+        if (i != orientation)
+            hpknotvector.push_back(this->KnotVectorGetter(i));
+    }
+    auto indexList = this->HyperPlaneIndices(orientation, layer);
+    GeometryVector tempGeometry;
+    for (const auto &i : *indexList)
+    {
+        tempGeometry.push_back(this->_geometricInfo[i]);
+    }
+    WeightVector tempWeight;
+    for (const auto &i : *indexList)
+    {
+        tempWeight.push_back(this->WtPtsGetter(i));
+    }
+    return std::make_shared<PhyTensorNURBSBasis<d - 1, N, T>>(hpknotvector, tempGeometry, tempWeight);
+}
+
+template <int N, typename T>
+class PhyTensorNURBSBasis<0, N, T> : public PhyTensorBsplineBasis<0, N, T>
+{
+  public:
+    using HyperPlane = PhyTensorBsplineBasis<-1, N, T>;
+    using HyperPlaneSharedPts = std::shared_ptr<PhyTensorBsplineBasis<-1, N, T>>;
+    using GeometryVector = Accessory::ContPtsList<T, N>;
+    using WeightVector = typename PhyTensorBsplineBasis<0, 1, T>::GeometryVector;
+    PhyTensorNURBSBasis() {}
+
+    PhyTensorNURBSBasis(const std::vector<KnotVector<T>> &,
+                        const GeometryVector &,
+                        const WeightVector &) {}
+
+    HyperPlane MakeHyperPlane(const int &orientation,
+                              const int &layer) const {}
+
+    ~PhyTensorNURBSBasis(){};
+};
 
 #endif //OO_IGA_PHYTENSORNURBSBASIS_H

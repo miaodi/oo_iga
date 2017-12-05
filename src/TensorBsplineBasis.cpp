@@ -507,7 +507,6 @@ TensorBsplineBasis<0, T>::TensorBsplineBasis(const T &support) : _basis{support}
 template <typename T>
 TensorBsplineBasis<0, T>::TensorBsplineBasis() {}
 
-template class TensorBsplineBasis<0, long double>;
 template class TensorBsplineBasis<1, long double>;
 template class TensorBsplineBasis<2, long double>;
 template class TensorBsplineBasis<3, long double>;
@@ -517,22 +516,6 @@ template class TensorBsplineBasis<1, double>;
 template class TensorBsplineBasis<2, double>;
 template class TensorBsplineBasis<3, double>;
 
-template class TensorBsplineBasis<0, float>;
 template class TensorBsplineBasis<1, float>;
 template class TensorBsplineBasis<2, float>;
 template class TensorBsplineBasis<3, float>;
-
-template class TensorBsplineBasis<0, boost::multiprecision::mpf_float_50>;
-template class TensorBsplineBasis<1, boost::multiprecision::mpf_float_50>;
-template class TensorBsplineBasis<2, boost::multiprecision::mpf_float_50>;
-template class TensorBsplineBasis<3, boost::multiprecision::mpf_float_50>;
-
-template class TensorBsplineBasis<0, boost::multiprecision::mpf_float_100>;
-template class TensorBsplineBasis<1, boost::multiprecision::mpf_float_100>;
-template class TensorBsplineBasis<2, boost::multiprecision::mpf_float_100>;
-template class TensorBsplineBasis<3, boost::multiprecision::mpf_float_100>;
-
-template class TensorBsplineBasis<0, boost::multiprecision::mpf_float_1000>;
-template class TensorBsplineBasis<1, boost::multiprecision::mpf_float_1000>;
-template class TensorBsplineBasis<2, boost::multiprecision::mpf_float_1000>;
-template class TensorBsplineBasis<3, boost::multiprecision::mpf_float_1000>;

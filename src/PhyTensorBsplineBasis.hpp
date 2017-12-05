@@ -115,9 +115,9 @@ void PhyTensorBsplineBasis<d, N, T>::DegreeElevate(int orientation,
     KnotVector<T> knot_temp_storage;
     bool called = false;
     recursive = [this, &orientation, &called, &knot_temp_storage, &tmp1, r, &temp1, &MultiIndex, &recursive](
-        std::vector<int> &indexes,
-        const std::vector<int> &endPerIndex,
-        int direction) {
+                    std::vector<int> &indexes,
+                    const std::vector<int> &endPerIndex,
+                    int direction) {
         if (direction == indexes.size())
         {
             Accessory::ContPtsList<T, N> ElevateList;
@@ -195,9 +195,9 @@ void PhyTensorBsplineBasis<d, N, T>::KnotRefine(int orientation,
     knot_temp_storage.resize(0);
     bool called = false;
     recursive = [this, &X, &orientation, &called, &knot_temp_storage, &tmp1, &temp1, &MultiIndex, &recursive](
-        std::vector<int> &indexes,
-        const std::vector<int> &endPerIndex,
-        int direction) {
+                    std::vector<int> &indexes,
+                    const std::vector<int> &endPerIndex,
+                    int direction) {
         if (direction == indexes.size())
         {
             Accessory::ContPtsList<T, N> RefineList;
@@ -358,8 +358,7 @@ PhyTensorBsplineBasis<d, N, T>::Eval2PhyDerAllTensor(const PhyTensorBsplineBasis
     }
     Eigen::Matrix<T, 5, 5> Hessian;
     Hessian << Pxi(0), Pxi(1), 0, 0, 0, Peta(0), Peta(1), 0, 0, 0, PxiPxi(0), PxiPxi(1), Pxi(0) * Pxi(0), 2 * Pxi(0) * Pxi(1),
-        Pxi(1) * Pxi(1), PxiPeta(0), PxiPeta(1), Pxi(0) * Peta(0), Pxi(0) * Peta(1) + Peta(0) * Pxi(1), Pxi(1) * Peta(1), PetaPeta(
-                                                                                                                              0),
+        Pxi(1) * Pxi(1), PxiPeta(0), PxiPeta(1), Pxi(0) * Peta(0), Pxi(0) * Peta(1) + Peta(0) * Pxi(1), Pxi(1) * Peta(1), PetaPeta(0),
         PetaPeta(1), Peta(0) * Peta(0), 2 * Peta(0) * Peta(1), Peta(1) * Peta(1);
     for (auto &i : *parametric)
     {
@@ -434,6 +433,7 @@ PhyTensorBsplineBasis<d, N, T>::Eval3PhyDerAllTensor(const PhyTensorBsplineBasis
     return parametric;
 }
 
+//TODO This member function is so shitty. need improvement
 template <int d, int N, typename T>
 typename PhyTensorBsplineBasis<d, N, T>::HyperPlaneSharedPts
 PhyTensorBsplineBasis<d, N, T>::MakeHyperPlane(const int &orientation,
@@ -452,6 +452,7 @@ PhyTensorBsplineBasis<d, N, T>::MakeHyperPlane(const int &orientation,
     {
         tempGeometry.push_back(_geometricInfo[i]);
     }
+
     return std::make_shared<HyperPlane>(hpknotvector, tempGeometry);
 }
 
@@ -477,9 +478,9 @@ void PhyTensorBsplineBasis<d, N, T>::KnotInsertion(int orientation,
     KnotVector<T> knot_temp_storage;
     bool called = false;
     recursive = [this, &orientation, &called, &knot_temp_storage, &tmp1, knot, m, &temp1, &MultiIndex, &recursive](
-        std::vector<int> &indexes,
-        const std::vector<int> &endPerIndex,
-        int direction) {
+                    std::vector<int> &indexes,
+                    const std::vector<int> &endPerIndex,
+                    int direction) {
         if (direction == indexes.size())
         {
 
@@ -692,14 +693,14 @@ struct ComputeJacobian<2, 3, T>
     }
 };
 
-template <int N, typename T>
-PhyTensorBsplineBasis<0, N, T>::PhyTensorBsplineBasis(const T &knot, const PhyPts &point)
-    : TensorBsplineBasis<0, T>(knot), _point(point)
-{
-}
+// template <int N, typename T>
+// PhyTensorBsplineBasis<0, N, T>::PhyTensorBsplineBasis(const T &knot, const PhyPts &point)
+//     : TensorBsplineBasis<0, T>(knot), _point(point)
+// {
+// }
 
-template <int N, typename T>
-PhyTensorBsplineBasis<0, N, T>::PhyTensorBsplineBasis(const PhyPts &point)
-    : TensorBsplineBasis<0, T>(), _point(point)
-{
-}
+// template <int N, typename T>
+// PhyTensorBsplineBasis<0, N, T>::PhyTensorBsplineBasis(const PhyPts &point)
+//     : TensorBsplineBasis<0, T>(), _point(point)
+// {
+// }

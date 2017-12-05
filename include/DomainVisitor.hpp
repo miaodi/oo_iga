@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include "DofMapper.hpp"
 #include "QuadratureRule.h"
 #include "Topology.hpp"
 #include "Visitor.hpp"
