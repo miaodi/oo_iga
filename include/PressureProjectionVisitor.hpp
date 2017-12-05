@@ -105,7 +105,7 @@ void PressureProjectionVisitor<T>::IntegralElementAssembler(
     const DomainShared_ptr domain,
     const Knot &u) const
 {
-    auto test_evals = _pressureParametricDomain.EvalDualAllTensor(u);
+    auto test_evals = _pressureParametricDomain.EvalDerAllTensor(u);
     auto evals = domain->Eval1PhyDerAllTensor(u);
     bilinear_form_trail.resize(1, 2 * evals->size());
     bilinear_form_trail.setZero();

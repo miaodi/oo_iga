@@ -315,17 +315,8 @@ typename std::enable_if<D == 2 && n == 2, typename PhyTensorBsplineBasis<d, N, T
 PhyTensorBsplineBasis<d, N, T>::Eval1PhyDerAllTensor(const vector &u) const
 {
     BasisFunValDerAllList_ptr parametric = this->EvalDerAllTensor(u, 1);
-    Eigen::Matrix<T, 2, 1> Pxi, Peta;
-    Pxi.setZero();
-    Peta.setZero();
-    for (const auto &i : *parametric)
-    {
-        Pxi += i.second[1] * _geometricInfo[i.first];
-        Peta += i.second[2] * _geometricInfo[i.first];
-    }
-    Eigen::Matrix<T, 2, 2> Jacobian;
-    Jacobian.row(0) = Pxi.transpose();
-    Jacobian.row(1) = Peta.transpose();
+
+    Eigen::Matrix<T, 2, 2> Jacobian = JacobianMatrix(u).transpose();
     for (auto &i : *parametric)
     {
         Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, 1>> temp(i.second.data() + 1, i.second.size() - 1);
