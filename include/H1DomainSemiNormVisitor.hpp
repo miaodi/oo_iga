@@ -62,7 +62,7 @@ void H1DomainSemiNormVisitor<T>::LocalAssemble(Element<2, 2, T> *g,
 
     for (int i = 0; i < quadrature_points.size(); ++i)
     {
-        weights.push_back(quadrature_points[i].second);
+        weights.push_back(quadrature_points[i].second * domain->Jacobian(quadrature_points[i].first));
         IntegralElementAssembler(bilinear_form_trial[i], bilinear_form_test[i], domain, quadrature_points[i].first);
     }
     auto stiff = this->LocalStiffness(bilinear_form_test, bilinear_form_test_indices, bilinear_form_trial,

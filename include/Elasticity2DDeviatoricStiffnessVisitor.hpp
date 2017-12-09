@@ -24,7 +24,7 @@ class Elasticity2DDeviatoricStiffnessVisitor : public StiffnessVisitor<2, 2, T>
     Elasticity2DDeviatoricStiffnessVisitor(const LoadFunctor &body_force)
         : StiffnessVisitor<2, 2, T>(body_force)
     {
-        T nu = 0.499999;
+        T nu = 0.49999;
         T E = 1e11;
         T mu = E / 2 / (1 + nu);
         _constitutive.resize(4, 4);

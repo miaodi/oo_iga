@@ -20,7 +20,7 @@ class PressureProjectionVisitor : public DomainVisitor<2, 2, T>
     using DomainShared_ptr = typename std::shared_ptr<PhyTensorBsplineBasis<2, 2, T>>;
 
   public:
-    PressureProjectionVisitor() {}
+    PressureProjectionVisitor(const bool &bezier) : _bezierDual(bezier) {}
 
     void
     InnerProductAssembler(Eigen::SparseMatrix<T> &) const;
@@ -37,6 +37,7 @@ class PressureProjectionVisitor : public DomainVisitor<2, 2, T>
   protected:
     std::vector<Eigen::Triplet<T>> _innerProduct;
     TensorBsplineBasis<2, T> _pressureParametricDomain;
+    bool _bezierDual;
 };
 
 template <typename T>
@@ -81,7 +82,14 @@ void PressureProjectionVisitor<T>::LocalAssemble(Element<2, 2, T> *g,
 
     for (int i = 0; i < quadrature_points.size(); ++i)
     {
-        weights.push_back(quadrature_points[i].second);
+        if (_bezierDual)
+        {
+            weights.push_back(quadrature_points[i].second);
+        }
+        else
+        {
+            weights.push_back(quadrature_points[i].second * domain->Jacobian(quadrature_points[i].first));
+        }
         IntegralElementAssembler(bilinear_form_trial[i], bilinear_form_test[i], domain, quadrature_points[i].first);
     }
     auto stiff = this->LocalStiffness(bilinear_form_test, bilinear_form_test_indices, bilinear_form_trial,
@@ -105,19 +113,41 @@ void PressureProjectionVisitor<T>::IntegralElementAssembler(
     const DomainShared_ptr domain,
     const Knot &u) const
 {
-    auto test_evals = _pressureParametricDomain.EvalDerAllTensor(u);
-    auto evals = domain->Eval1PhyDerAllTensor(u);
-    bilinear_form_trail.resize(1, 2 * evals->size());
-    bilinear_form_trail.setZero();
-    bilinear_form_test.resize(1, test_evals->size());
-    bilinear_form_test.setZero();
-    for (int j = 0; j < evals->size(); ++j)
+
+    if (_bezierDual)
     {
-        bilinear_form_trail(0, 2 * j) = (*evals)[j].second[1];
-        bilinear_form_trail(0, 2 * j + 1) = (*evals)[j].second[2];
+        auto test_evals = _pressureParametricDomain.EvalDualAllTensor(u);
+        auto evals = domain->Eval1PhyDerAllTensor(u);
+        bilinear_form_trail.resize(1, 2 * evals->size());
+        bilinear_form_trail.setZero();
+        bilinear_form_test.resize(1, test_evals->size());
+        bilinear_form_test.setZero();
+        for (int j = 0; j < evals->size(); ++j)
+        {
+            bilinear_form_trail(0, 2 * j) = (*evals)[j].second[1];
+            bilinear_form_trail(0, 2 * j + 1) = (*evals)[j].second[2];
+        }
+        for (int j = 0; j < test_evals->size(); ++j)
+        {
+            bilinear_form_test(0, j) = (*test_evals)[j].second[0];
+        }
     }
-    for (int j = 0; j < test_evals->size(); ++j)
+    else
     {
-        bilinear_form_test(0, j) = (*test_evals)[j].second[0];
+        auto test_evals = _pressureParametricDomain.EvalDerAllTensor(u);
+        auto evals = domain->Eval1PhyDerAllTensor(u);
+        bilinear_form_trail.resize(1, 2 * evals->size());
+        bilinear_form_trail.setZero();
+        bilinear_form_test.resize(1, test_evals->size());
+        bilinear_form_test.setZero();
+        for (int j = 0; j < evals->size(); ++j)
+        {
+            bilinear_form_trail(0, 2 * j) = (*evals)[j].second[1];
+            bilinear_form_trail(0, 2 * j + 1) = (*evals)[j].second[2];
+        }
+        for (int j = 0; j < test_evals->size(); ++j)
+        {
+            bilinear_form_test(0, j) = (*test_evals)[j].second[0];
+        }
     }
 }
