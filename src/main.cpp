@@ -4,9 +4,9 @@
 #include "Utility.hpp"
 #include "PhyTensorNURBSBasis.h"
 #include "Elasticity2DDeviatoricStiffnessVisitor.hpp"
-#include "PostProcess.hpp"
 #include "PressureProjectionVisitor.hpp"
 #include "PressureStiffnessVisitor.hpp"
+#include "PostProcess.hpp"
 #include "H1DomainSemiNormVisitor.hpp"
 #include "NeumannBoundaryVisitor.hpp"
 #include <fstream>
@@ -40,7 +40,7 @@ int main()
     int degree, refine;
     cin >> degree >> refine;
     domain->DegreeElevate(degree);
-    domain->KnotInsertion(0,.5);
+    domain->KnotInsertion(0, .5);
     domain->UniformRefine(refine);
     auto cell = make_shared<Surface<2, double>>(domain);
     cell->SurfaceInitialize();
@@ -117,7 +117,7 @@ int main()
     }
     SparseMatrix<double> sparse_stiffness = sparse_stiffness_triangle_view.template selfadjointView<Eigen::Upper>();
 
-    MatrixXd stiffness_matrix = global_to_free * ((lambda + 2.0 / 3 * mu) * sparse_bezier_projection.transpose() * sparse_pressure * sparse_bezier_projection + sparse_stiffness) * global_to_free.transpose();
+    MatrixXd stiffness_matrix = global_to_free * ((lambda + 2.0 / 3 * mu) * sparse_projection.transpose() * sparse_bezier_projection + sparse_stiffness) * global_to_free.transpose();
     VectorXd load_vector = global_to_free * rhs;
     VectorXd solution = global_to_free.transpose() * stiffness_matrix.partialPivLu().solve(load_vector);
     GeometryVector solution_control_point_vector;
@@ -125,17 +125,25 @@ int main()
     {
         solution_control_point_vector.push_back((VectorXd(2) << solution(i), solution(i + 1)).finished());
     }
+    VectorXd pressure_solution = sparse_bezier_projection * solution;
+    WeightVector pressure_point_vector;
+    for (int i = 0; i < pressure_solution.size(); i++)
+    {
+        pressure_point_vector.push_back((VectorXd(1) << pressure_solution(i)).finished());
+    }
     vector<KnotVector<double>> solution_knot_vector;
     solution_knot_vector.push_back(domain->KnotVectorGetter(0));
     solution_knot_vector.push_back(domain->KnotVectorGetter(1));
     PhyTensorBsplineBasis<2, 2, double> solution_domain(solution_knot_vector, solution_control_point_vector);
-    PostProcess<2, double> post(solution_domain, displacement_solution, stress_solution);
+    solution_knot_vector[0].erase(solution_knot_vector[0].begin());
+    solution_knot_vector[0].erase(solution_knot_vector[0].end() - 1);
+    solution_knot_vector[1].erase(solution_knot_vector[1].begin());
+    solution_knot_vector[1].erase(solution_knot_vector[1].end() - 1);
+    PhyTensorBsplineBasis<2, 1, double> pressure_domain(solution_knot_vector, pressure_point_vector);
+    PostProcess<2, double> post(solution_domain, pressure_domain, displacement_solution, stress_solution);
     cell->Accept(post);
-    ofstream myfile;
-    myfile.open("example.txt");
-    myfile << stiffness_matrix;
-    myfile.close();
     cout << post.L2Norm() << endl;
     cout << post.L2StressNorm() << endl;
+    cout << post.L2EnergyNorm() << endl;
     return 0;
 }

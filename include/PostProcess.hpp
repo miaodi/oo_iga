@@ -17,17 +17,18 @@ class PostProcess : public DomainVisitor<2, N, T>
     using DomainShared_ptr = typename std::shared_ptr<PhyTensorBsplineBasis<2, N, T>>;
 
   public:
-    PostProcess(const PhyTensorBsplineBasis<2, 2, double> &solution, const LoadFunctor &analytical_solution, const LoadFunctor &analytical_stress_solution) : _solution(solution), _analyticalSolution(analytical_solution), _analyticalStressSolution(analytical_stress_solution)
+    PostProcess(const PhyTensorBsplineBasis<2, 2, double> &solution, const PhyTensorBsplineBasis<2, 1, double> &pressure, const LoadFunctor &analytical_solution, const LoadFunctor &analytical_stress_solution) : _solution(solution), _analyticalSolution(analytical_solution), _analyticalStressSolution(analytical_stress_solution), _pressure(pressure)
     {
         T nu = 0.49999;
         T E = 1e11;
         T mu = E / 2 / (1 + nu);
-        _constitutive.resize(3, 3);
-        _constitutive << 1 - nu, nu, 0, nu, 1 - nu, 0, 0, 0, (1.0 - 2 * nu) / 2;
+        _constitutive.resize(4, 4);
+        _constitutive << 1 - nu, nu, nu, 0, nu, 1 - nu, nu, 0, nu, nu, 1 - nu, 0, 0, 0, 0, (1.0 - 2 * nu) / 2;
         _constitutive *= E / (1 + nu) / (1 - 2 * nu);
     }
     T L2Norm() const;
     T L2StressNorm() const;
+    T L2EnergyNorm() const;
 
   protected:
     void LocalAssemble(Element<2, N, T> *,
@@ -38,8 +39,10 @@ class PostProcess : public DomainVisitor<2, N, T>
     const LoadFunctor &_analyticalSolution;
     const LoadFunctor &_analyticalStressSolution;
     const PhyTensorBsplineBasis<2, 2, double> &_solution;
+    const PhyTensorBsplineBasis<2, 1, double> &_pressure;
     std::vector<std::pair<T, T>> _normContainer;
     std::vector<std::pair<T, T>> _stressNormContainer;
+    std::vector<std::pair<T, T>> _energyNormContainer;
     Matrix _constitutive;
 };
 
@@ -55,6 +58,7 @@ void PostProcess<N, T>::LocalAssemble(Element<2, N, T> *g,
     auto num_of_quadrature = quadrature_points.size();
     T relative{0}, denominator{0};
     T stress_relative{0}, stress_denominator{0};
+    T energy_relative{0}, energy_denominator{0};
     for (int i = 0; i < quadrature_points.size(); ++i)
     {
         T x = _analyticalSolution(domain->AffineMap(quadrature_points[i].first))[0];
@@ -62,22 +66,44 @@ void PostProcess<N, T>::LocalAssemble(Element<2, N, T> *g,
         Vector approx_solution = _solution.AffineMap(quadrature_points[i].first);
         Vector approx_strain_solution1 = _solution.AffineMap(quadrature_points[i].first, {1, 0});
         Vector approx_strain_solution2 = _solution.AffineMap(quadrature_points[i].first, {0, 1});
-        Vector strain(3);
-        strain << approx_strain_solution1(0), approx_strain_solution2(1), approx_strain_solution2(0) + approx_strain_solution1(1);
 
-        Vector approx_stress = _constitutive * strain;
+        Vector pressure_solution = _pressure.AffineMap(quadrature_points[i].first);
+        Vector u(2), v(2);
+        u << approx_strain_solution1(0), approx_strain_solution2(0);
+        v << approx_strain_solution1(1), approx_strain_solution2(1);
+        Matrix Jacobian = domain->JacobianMatrix(quadrature_points[i].first).transpose();
+        u = Jacobian.inverse() * u;
+        v = Jacobian.inverse() * v;
+        T volumetric = 1.0 / 3 * (u(0) + v(1));
+        Vector strain(4);
+        strain << u(0) - volumetric + 1.0 / 3 * pressure_solution(0), v(1) - volumetric + 1.0 / 3 * pressure_solution(0), -volumetric + 1.0 / 3 * pressure_solution(0), v(0) + u(1);
 
         T sigma_xx = _analyticalStressSolution(domain->AffineMap(quadrature_points[i].first))[0];
         T sigma_yy = _analyticalStressSolution(domain->AffineMap(quadrature_points[i].first))[1];
         T sigma_xy = _analyticalStressSolution(domain->AffineMap(quadrature_points[i].first))[2];
+
+        Vector exact_stress(3);
+        exact_stress << sigma_xx, sigma_yy, sigma_xy;
+        Matrix transform(3, 4);
+        transform.setZero();
+        transform(0, 0) = 1;
+        transform(1, 1) = 1;
+        transform(2, 3) = 1;
+        // Vector exact_strain = (transform * _constitutive * transform.transpose()).partialPivLu().solve(exact_stress);
+        Vector stress = _constitutive * strain;
+        Vector stress_error(3);
+        stress_error << stress(0) - exact_stress(0), stress(1) - exact_stress(1), stress(3) - exact_stress(2);
         relative += quadrature_points[i].second * (pow(x - approx_solution(0), 2) + pow(y - approx_solution(1), 2)) * domain->Jacobian(quadrature_points[i].first);
         denominator += quadrature_points[i].second * (pow(x, 2) + pow(y, 2)) * domain->Jacobian(quadrature_points[i].first);
-        stress_relative += quadrature_points[i].second * (pow(sigma_xx - approx_stress(0), 2) + pow(sigma_yy - approx_stress(1), 2) + pow(sigma_xy - approx_stress(2), 2)) * domain->Jacobian(quadrature_points[i].first);
-        stress_denominator += quadrature_points[i].second * (pow(sigma_xx, 2) + pow(sigma_yy, 2) + pow(sigma_xy, 2)) * domain->Jacobian(quadrature_points[i].first);
+        stress_relative += quadrature_points[i].second * (pow(exact_stress(0) - stress(0), 2) + pow(exact_stress(1) - stress(1), 2) + pow(exact_stress(2) - stress(3), 2)) * domain->Jacobian(quadrature_points[i].first);
+        stress_denominator += quadrature_points[i].second * (pow(exact_stress(0), 2) + pow(exact_stress(1), 2) + pow(exact_stress(2), 2)) * domain->Jacobian(quadrature_points[i].first);
+        energy_relative += quadrature_points[i].second * (stress_error * (transform * _constitutive * transform.transpose()).partialPivLu().solve(stress_error))(0) * domain->Jacobian(quadrature_points[i].first);
+        energy_denominator += quadrature_points[i].second * (exact_stress * (transform * _constitutive * transform.transpose()).partialPivLu().solve(exact_stress))(0) * domain->Jacobian(quadrature_points[i].first);
     }
     std::lock_guard<std::mutex> lock(this->_mutex);
     _normContainer.push_back(std::make_pair(relative, denominator));
     _stressNormContainer.push_back(std::make_pair(stress_relative, stress_denominator));
+    _energyNormContainer.push_back(std::make_pair(energy_relative, energy_denominator));
 }
 
 template <int N, typename T>
@@ -97,6 +123,18 @@ T PostProcess<N, T>::L2StressNorm() const
 {
     T relative{0}, denominator{0};
     for (const auto &i : _stressNormContainer)
+    {
+        relative += i.first;
+        denominator += i.second;
+    }
+    return sqrt(relative / denominator);
+}
+
+template <int N, typename T>
+T PostProcess<N, T>::L2EnergyNorm() const
+{
+    T relative{0}, denominator{0};
+    for (const auto &i : _energyNormContainer)
     {
         relative += i.first;
         denominator += i.second;
