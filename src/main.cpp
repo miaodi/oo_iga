@@ -95,7 +95,7 @@ int main()
     projection.InnerProductAssembler(sparse_projection);
     bezier_projection.InnerProductAssembler(sparse_bezier_projection);
     pressure.InnerProductAssembler(sparse_pressure);
-
+    MatrixXd global_projection = MatrixXd(sparse_pressure).partialPivLu().solve(MatrixXd(sparse_projection));
     neumann.NeumannBoundaryAssembler(rhs);
 
     auto east_indices = cell->EdgePointerGetter(1)->Indices(0);
@@ -117,7 +117,7 @@ int main()
     }
     SparseMatrix<double> sparse_stiffness = sparse_stiffness_triangle_view.template selfadjointView<Eigen::Upper>();
 
-    MatrixXd stiffness_matrix = global_to_free * ((lambda + 2.0 / 3 * mu) * sparse_projection.transpose() * sparse_bezier_projection + sparse_stiffness) * global_to_free.transpose();
+    MatrixXd stiffness_matrix = global_to_free * ((lambda + 2.0 / 3 * mu) * sparse_projection.transpose() * global_projection + sparse_stiffness) * global_to_free.transpose();
     VectorXd load_vector = global_to_free * rhs;
     VectorXd solution = global_to_free.transpose() * stiffness_matrix.partialPivLu().solve(load_vector);
     GeometryVector solution_control_point_vector;
@@ -125,7 +125,7 @@ int main()
     {
         solution_control_point_vector.push_back((VectorXd(2) << solution(i), solution(i + 1)).finished());
     }
-    VectorXd pressure_solution = sparse_bezier_projection * solution;
+    VectorXd pressure_solution = global_projection * solution;
     WeightVector pressure_point_vector;
     for (int i = 0; i < pressure_solution.size(); i++)
     {
@@ -145,5 +145,6 @@ int main()
     cout << post.L2Norm() << endl;
     cout << post.L2StressNorm() << endl;
     cout << post.L2EnergyNorm() << endl;
+    post.Plot();
     return 0;
 }

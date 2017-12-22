@@ -1,7 +1,7 @@
 #pragma once
 
 #include "DomainVisitor.hpp"
-
+#include <fstream>
 template <int N, typename T>
 class PostProcess : public DomainVisitor<2, N, T>
 {
@@ -25,10 +25,14 @@ class PostProcess : public DomainVisitor<2, N, T>
         _constitutive.resize(4, 4);
         _constitutive << 1 - nu, nu, nu, 0, nu, 1 - nu, nu, 0, nu, nu, 1 - nu, 0, 0, 0, 0, (1.0 - 2 * nu) / 2;
         _constitutive *= E / (1 + nu) / (1 - 2 * nu);
+        myfile_xx.open("sigma_xx.txt");
+        myfile_yy.open("sigma_yy.txt");
+        myfile_xy.open("sigma_xy.txt");
     }
     T L2Norm() const;
     T L2StressNorm() const;
     T L2EnergyNorm() const;
+    void Plot();
 
   protected:
     void LocalAssemble(Element<2, N, T> *,
@@ -44,6 +48,10 @@ class PostProcess : public DomainVisitor<2, N, T>
     std::vector<std::pair<T, T>> _stressNormContainer;
     std::vector<std::pair<T, T>> _energyNormContainer;
     Matrix _constitutive;
+    std::ofstream myfile_xx;
+    std::ofstream myfile_yy;
+    std::ofstream myfile_xy;
+    Element<2, N, T> *_f;
 };
 
 template <int N, typename T>
@@ -53,6 +61,7 @@ void PostProcess<N, T>::LocalAssemble(Element<2, N, T> *g,
 {
 
     auto domain = g->GetDomain();
+    _f = g;
     QuadList quadrature_points;
     quadrature_rule.MapToQuadrature(knot_span, quadrature_points);
     auto num_of_quadrature = quadrature_points.size();
@@ -140,4 +149,38 @@ T PostProcess<N, T>::L2EnergyNorm() const
         denominator += i.second;
     }
     return sqrt(relative / denominator);
+}
+
+template <int N, typename T>
+void PostProcess<N, T>::Plot()
+{
+    auto domain = _f->GetDomain();
+    Vector position(2);
+    for (int i = 0; i < 101; i++)
+    {
+        for (int j = 0; j < 101; j++)
+        {
+            position << i * 1.0 / 100, j * 1.0 / 100;
+            Vector approx_solution = _solution.AffineMap(position);
+            Vector approx_strain_solution1 = _solution.AffineMap(position, {1, 0});
+            Vector approx_strain_solution2 = _solution.AffineMap(position, {0, 1});
+            T sigma_xx = _analyticalStressSolution(domain->AffineMap(position))[0];
+            T sigma_yy = _analyticalStressSolution(domain->AffineMap(position))[1];
+            T sigma_xy = _analyticalStressSolution(domain->AffineMap(position))[2];
+            Vector pressure_solution = _pressure.AffineMap(position);
+            Vector u(2), v(2);
+            u << approx_strain_solution1(0), approx_strain_solution2(0);
+            v << approx_strain_solution1(1), approx_strain_solution2(1);
+            Matrix Jacobian = domain->JacobianMatrix(position).transpose();
+            u = Jacobian.inverse() * u;
+            v = Jacobian.inverse() * v;
+            T volumetric = 1.0 / 3 * (u(0) + v(1));
+            Vector strain(4);
+            strain << u(0) - volumetric + 1.0 / 3 * pressure_solution(0), v(1) - volumetric + 1.0 / 3 * pressure_solution(0), -volumetric + 1.0 / 3 * pressure_solution(0), v(0) + u(1);
+            Vector stress = _constitutive * strain;
+            myfile_xx << -domain->AffineMap(position)(0) << " " << domain->AffineMap(position)(1) << " " << stress(0) << std::endl;
+            myfile_yy << -domain->AffineMap(position)(0) << " " << domain->AffineMap(position)(1) << " " << stress(1) << std::endl;
+            myfile_xy << -domain->AffineMap(position)(0) << " " << domain->AffineMap(position)(1) << " " << stress(3) << std::endl;
+        }
+    }
 }
