@@ -6,6 +6,7 @@
 #include "Elasticity2DDeviatoricStiffnessVisitor.hpp"
 #include "PressureProjectionVisitor.hpp"
 #include "PressureStiffnessVisitor.hpp"
+#include "PressureStiffnessDualVisitor.hpp"
 #include "PostProcess.hpp"
 #include "H1DomainSemiNormVisitor.hpp"
 #include "NeumannBoundaryVisitor.hpp"
@@ -31,7 +32,6 @@ int main()
     double mu = E / 2 / (1 + nu);
     KnotVector<double> a;
     a.InitClosed(2, 0, 1);
-
     Vector2d point1(-1, 0), point2(-2.5, 0), point3(-4, 0), point4(-1, 1), point5(-2.5, 2.5), point6(-4, 4), point7(0, 1), point8(0, 2.5), point9(0, 4);
     GeometryVector points{point1, point2, point3, point4, point5, point6, point7, point8, point9};
     Vector1d weight1(1), weight2(1.0 / sqrt(2.0)), weight3(1);
@@ -90,7 +90,7 @@ int main()
     cell->Accept(projection);
     cell->Accept(pressure);
     cell->EdgePointerGetter(2)->Accept(neumann);
-    SparseMatrix<double> sparse_stiffness_triangle_view, sparse_bezier_projection, sparse_projection, sparse_pressure, sparse_h1, rhs;
+    SparseMatrix<double> sparse_stiffness_triangle_view, sparse_bezier_projection, sparse_projection, sparse_pressure, sparse_dual_pressure, sparse_h1, rhs;
     stiffness.StiffnessAssembler(sparse_stiffness_triangle_view);
     projection.InnerProductAssembler(sparse_projection);
     bezier_projection.InnerProductAssembler(sparse_bezier_projection);
@@ -117,7 +117,7 @@ int main()
     }
     SparseMatrix<double> sparse_stiffness = sparse_stiffness_triangle_view.template selfadjointView<Eigen::Upper>();
 
-    MatrixXd stiffness_matrix = global_to_free * ((lambda + 2.0 / 3 * mu) * sparse_projection.transpose() * global_projection + sparse_stiffness) * global_to_free.transpose();
+    MatrixXd stiffness_matrix = global_to_free * ((lambda + 2.0 / 3 * mu) * sparse_projection.transpose() * sparse_bezier_projection + sparse_stiffness) * global_to_free.transpose();
     VectorXd load_vector = global_to_free * rhs;
     VectorXd solution = global_to_free.transpose() * stiffness_matrix.partialPivLu().solve(load_vector);
     GeometryVector solution_control_point_vector;
@@ -125,7 +125,7 @@ int main()
     {
         solution_control_point_vector.push_back((VectorXd(2) << solution(i), solution(i + 1)).finished());
     }
-    VectorXd pressure_solution = global_projection * solution;
+    VectorXd pressure_solution = sparse_bezier_projection * solution;
     WeightVector pressure_point_vector;
     for (int i = 0; i < pressure_solution.size(); i++)
     {
@@ -145,6 +145,5 @@ int main()
     cout << post.L2Norm() << endl;
     cout << post.L2StressNorm() << endl;
     cout << post.L2EnergyNorm() << endl;
-    post.Plot();
     return 0;
 }

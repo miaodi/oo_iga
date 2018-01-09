@@ -156,11 +156,11 @@ void PostProcess<N, T>::Plot()
 {
     auto domain = _f->GetDomain();
     Vector position(2);
-    for (int i = 0; i < 101; i++)
+    for (int i = 0; i < 201; i++)
     {
-        for (int j = 0; j < 101; j++)
+        for (int j = 0; j < 201; j++)
         {
-            position << i * 1.0 / 100, j * 1.0 / 100;
+            position << i * 1.0 / 200, j * 1.0 / 200;
             Vector approx_solution = _solution.AffineMap(position);
             Vector approx_strain_solution1 = _solution.AffineMap(position, {1, 0});
             Vector approx_strain_solution2 = _solution.AffineMap(position, {0, 1});
@@ -178,9 +178,9 @@ void PostProcess<N, T>::Plot()
             Vector strain(4);
             strain << u(0) - volumetric + 1.0 / 3 * pressure_solution(0), v(1) - volumetric + 1.0 / 3 * pressure_solution(0), -volumetric + 1.0 / 3 * pressure_solution(0), v(0) + u(1);
             Vector stress = _constitutive * strain;
-            myfile_xx << -domain->AffineMap(position)(0) << " " << domain->AffineMap(position)(1) << " " << stress(0) << std::endl;
-            myfile_yy << -domain->AffineMap(position)(0) << " " << domain->AffineMap(position)(1) << " " << stress(1) << std::endl;
-            myfile_xy << -domain->AffineMap(position)(0) << " " << domain->AffineMap(position)(1) << " " << stress(3) << std::endl;
+            myfile_xx << -domain->AffineMap(position)(0) << " " << domain->AffineMap(position)(1) << " " << abs(stress(0) - sigma_xx) << std::endl;
+            myfile_yy << -domain->AffineMap(position)(0) << " " << domain->AffineMap(position)(1) << " " << abs(stress(1) - sigma_yy) << std::endl;
+            myfile_xy << -domain->AffineMap(position)(0) << " " << domain->AffineMap(position)(1) << " " << abs(stress(30) - sigma_xy) << std::endl;
         }
     }
 }
