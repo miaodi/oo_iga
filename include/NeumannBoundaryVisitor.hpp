@@ -107,7 +107,7 @@ void NeumannBoundaryVisitor<T>::IntegralElementAssembler(
     // TODO: Bug for create edge domain for NURBS
     Eigen::Matrix<T, 2, 1> normal = edge->NormalDirection(u);
 
-    linear_form_value = stress_tensor * normal;
+    linear_form_value<<sigma_xx,sigma_yy;
     for (int j = 0; j < test_evals->size(); ++j)
     {
         linear_form_test(0, 2 * j) = (*test_evals)[j].second[0];
