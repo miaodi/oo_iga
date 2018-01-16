@@ -58,7 +58,7 @@ int main()
     {
         dirichlet_indices.push_back(3 * i);
     }
-    dirichlet_indices.push_back(3 * *(south_indices->end())+1);
+    dirichlet_indices.push_back(3 * *(south_indices->end()) + 1);
     for (const auto &i : *south_indices)
     {
         dirichlet_indices.push_back(3 * i + 2);
