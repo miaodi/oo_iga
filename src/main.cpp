@@ -3,104 +3,84 @@
 #include "Surface.hpp"
 #include "Utility.hpp"
 #include "PhyTensorNURBSBasis.h"
-#include "Elasticity2DDeviatoricStiffnessVisitor.hpp"
-#include "PressureProjectionVisitor.hpp"
-#include "PressureStiffnessVisitor.hpp"
-#include "PressureStiffnessDualVisitor.hpp"
+#include "MembraneStiffnessVisitor.hpp"
+#include "BendingStiffnessVisitor.hpp"
 #include "PostProcess.hpp"
 #include "H1DomainSemiNormVisitor.hpp"
 #include "NeumannBoundaryVisitor.hpp"
 #include <fstream>
 #include <time.h>
-#include <boost/multiprecision/gmp.hpp>
+#include <boost/math/constants/constants.hpp>
 
 using namespace Eigen;
 using namespace std;
-using namespace boost::multiprecision;
-using GeometryVector = PhyTensorBsplineBasis<2, 2, double>::GeometryVector;
-using WeightVector = PhyTensorNURBSBasis<2, 2, double>::WeightVector;
-using Vector2mpf = Matrix<mpf_float_100, 2, 1>;
-using VectorXmpf = Matrix<mpf_float_100, Dynamic, 1>;
-using MatrixXmpf = Matrix<mpf_float_100, Dynamic, Dynamic>;
+using GeometryVector = PhyTensorBsplineBasis<2, 3, double>::GeometryVector;
+using WeightVector = PhyTensorNURBSBasis<2, 3, double>::WeightVector;
 using Vector1d = Matrix<double, 1, 1>;
 
 int main()
 {
-    double nu = 0.4999;
-    double E = 240.565e6;
-    double lambda = nu * E / (1 + nu) / (1 - 2 * nu);
-    double mu = E / 2 / (1 + nu);
-    KnotVector<double> a;
-    a.InitClosed(1, 0, 1);
-    Vector2d point1(0, 0), point2(0, 44), point3(48, 44), point4(48, 60);
-    GeometryVector points{point1, point2, point3, point4};
-    Vector1d weight1(1);
-    WeightVector weights{weight1, weight1, weight1, weight1};
-    auto domain = make_shared<PhyTensorNURBSBasis<2, 2, double>>(std::vector<KnotVector<double>>{a, a}, points, weights);
-    int degree, refine;
-    cin >> degree >> refine;
-    domain->DegreeElevate(degree);
-    domain->UniformRefine(refine);
-    auto cell = make_shared<Surface<2, double>>(domain);
+    double nu = .0;
+    double E = 4.32e8;
+    double R = 25;
+    double L = 50;
+    KnotVector<double> knot_vector;
+    knot_vector.InitClosed(2, 0, 1);
+    double rad = 40.0 / 180 * boost::math::constants::pi<double>();
+    double a = sin(rad) * R;
+    double b = a * tan(rad);
+    Vector3d point1(-a, 0, 0), point2(-a, L / 2, 0), point3(-a, L, 0), point4(0, 0, b), point5(0, L / 2, b), point6(0, L, b), point7(a, 0, 0), point8(a, L / 2, 0), point9(a, L, 0);
+    GeometryVector points{point1, point2, point3, point4, point5, point6, point7, point8, point9};
+    Vector1d weight1(1), weight2(sin(boost::math::constants::pi<double>() / 2 - rad));
+    WeightVector weights{weight1, weight1, weight1, weight2, weight2, weight2, weight1, weight1, weight1};
+    auto domain = make_shared<PhyTensorNURBSBasis<2, 3, double>>(std::vector<KnotVector<double>>{knot_vector, knot_vector}, points, weights);
+    domain->DegreeElevate(2);
+    domain->UniformRefine(3);
+    auto cell = make_shared<Surface<3, double>>(domain);
     cell->SurfaceInitialize();
-
     function<vector<double>(const VectorXd &)> body_force = [](const VectorXd &u) {
-        return vector<double>{0, 0};
+        return vector<double>{0, 0, -90};
     };
-    function<vector<double>(const VectorXd &)> stress_solution = [](const VectorXd &u) {
-        double f = 0;
-        if (abs(u(0) - 48)<1e-5)
-        {
-            f = 6.25e6;
-        }
-        cout<<u.transpose()<<endl;
-        return vector<double>{0, f, 0};
-    };
-
-    function<vector<double>(const VectorXd &)> displacement_solution = [](const VectorXd &u) {
-
-        return vector<double>{1, 1};
-    };
-
-    Elasticity2DDeviatoricStiffnessVisitor<double> stiffness(body_force);
-    PressureProjectionVisitor<double> bezier_projection(true), projection(false);
-    PressureStiffnessVisitor<double> pressure;
-    NeumannBoundaryVisitor<double> neumann(stress_solution);
-    cell->Accept(stiffness);
-    cell->Accept(bezier_projection);
-    cell->Accept(projection);
-    cell->Accept(pressure);
-    cell->EdgePointerGetter(1)->Accept(neumann);
-    SparseMatrix<double> sparse_stiffness_triangle_view, sparse_bezier_projection, sparse_projection, sparse_pressure, sparse_dual_pressure, sparse_h1, rhs;
-    stiffness.StiffnessAssembler(sparse_stiffness_triangle_view);
-    projection.InnerProductAssembler(sparse_projection);
-    bezier_projection.InnerProductAssembler(sparse_bezier_projection);
-    pressure.InnerProductAssembler(sparse_pressure);
-    MatrixXd global_projection = MatrixXd(sparse_pressure).partialPivLu().solve(MatrixXd(sparse_projection));
-    neumann.NeumannBoundaryAssembler(rhs);
-    cout<<rhs<<endl;
-
-    auto west_indices = cell->EdgePointerGetter(3)->Indices(0);
+    MembraneStiffnessVisitor<double> membrane_stiffness(body_force);
+    BendingStiffnessVisitor<double> bending_stiffness(body_force);
+    cell->Accept(membrane_stiffness);
+    cell->Accept(bending_stiffness);
+    SparseMatrix<double> sparse_bstiffness_triangle_view, rhs;
+    SparseMatrix<double> sparse_mstiffness_triangle_view;
+    bending_stiffness.StiffnessAssembler(sparse_bstiffness_triangle_view);
+    membrane_stiffness.StiffnessAssembler(sparse_mstiffness_triangle_view);
+    SparseMatrix<double> sparse_stiffness = (sparse_bstiffness_triangle_view + sparse_mstiffness_triangle_view).template selfadjointView<Eigen::Upper>();
+    membrane_stiffness.LoadAssembler(rhs);
+    auto south_indices = cell->EdgePointerGetter(0)->Indices(0);
+    auto north_indices = cell->EdgePointerGetter(2)->Indices(0);
     vector<int> dirichlet_indices;
-    for (const auto &i : *west_indices)
+    for (const auto &i : *south_indices)
     {
-        dirichlet_indices.push_back(2 * i);
+        dirichlet_indices.push_back(3 * i);
     }
-    for (const auto &i : *west_indices)
+    dirichlet_indices.push_back(3 * *(south_indices->end())+1);
+    for (const auto &i : *south_indices)
     {
-        dirichlet_indices.push_back(2 * i + 1);
+        dirichlet_indices.push_back(3 * i + 2);
+    }
+    for (const auto &i : *north_indices)
+    {
+        dirichlet_indices.push_back(3 * i);
+    }
+
+    for (const auto &i : *north_indices)
+    {
+        dirichlet_indices.push_back(3 * i + 2);
     }
     sort(dirichlet_indices.begin(), dirichlet_indices.end());
-    MatrixXd global_to_free = MatrixXd::Identity(2 * (domain->GetDof()), 2 * (domain->GetDof()));
+    MatrixXd global_to_free = MatrixXd::Identity(3 * (domain->GetDof()), 3 * (domain->GetDof()));
     for (auto it = dirichlet_indices.rbegin(); it != dirichlet_indices.rend(); ++it)
     {
         Accessory::removeRow(global_to_free, *it);
     }
-    SparseMatrix<double> sparse_stiffness = sparse_stiffness_triangle_view.template selfadjointView<Eigen::Upper>();
-
-    MatrixXd stiffness_matrix = global_to_free * ((lambda + 2.0 / 3 * mu) * sparse_projection.transpose() * sparse_bezier_projection + sparse_stiffness) * global_to_free.transpose();
+    MatrixXd stiffness_matrix = global_to_free * sparse_stiffness * global_to_free.transpose();
     VectorXd load_vector = global_to_free * rhs;
     VectorXd solution = global_to_free.transpose() * stiffness_matrix.partialPivLu().solve(load_vector);
-    cout<<solution;
+    cout << solution << endl;
     return 0;
 }

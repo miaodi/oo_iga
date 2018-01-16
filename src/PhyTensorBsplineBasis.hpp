@@ -679,7 +679,6 @@ struct ComputeJacobian<2, 3, T>
         Eigen::Matrix<T, 3, 2> Jacob = domain_ptr->JacobianMatrix(u);
         PhyPts normal = Jacob.col(0).cross(Jacob.col(1));
         T res = normal.transpose() * normal;
-        std::cout << "Called 2 3." << std::endl;
         return sqrt(res);
     }
 };

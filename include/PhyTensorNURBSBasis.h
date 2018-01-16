@@ -34,7 +34,7 @@ class PhyTensorNURBSBasis : public PhyTensorBsplineBasis<d, N, T>
     PhyTensorNURBSBasis(const std::vector<KnotVector<T>> &,
                         const GeometryVector &,
                         const WeightVector &,
-                        const bool swtch = false);
+                        const bool swtch = true);
 
     BasisFunValPac_ptr
     EvalTensor(const vector &u,

@@ -693,4 +693,13 @@ void removeColumn(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> &matrix,
     matrix.conservativeResize(numRows,
                               numCols);
 }
+
+template <typename T>
+std::tuple<Eigen::Matrix<T, 3, 1>, Eigen::Matrix<T, 3, 1>, Eigen::Matrix<T, 3, 1>> CovariantToContravariant(const Eigen::Matrix<T, 3, 1> &v1,
+                                                                                                            const Eigen::Matrix<T, 3, 1> &v2,
+                                                                                                            const Eigen::Matrix<T, 3, 1> &v3)
+{
+    T J = v1.dot(v2.cross(v3));
+    return std::make_tuple(1.0 / J * v2.cross(v3), 1.0 / J * v3.cross(v1), 1.0 / J * v1.cross(v2));
+}
 }
