@@ -35,13 +35,12 @@ class MembraneStiffnessVisitor : public StiffnessVisitor<3, 3, T>
 };
 
 template <typename T>
-void MembraneStiffnessVisitor<T>::IntegralElementAssembler(
-    Matrix &bilinear_form_trail,
-    Matrix &bilinear_form_test,
-    Matrix &linear_form_value,
-    Matrix &linear_form_test,
-    const DomainShared_ptr domain,
-    const Knot &u) const
+void MembraneStiffnessVisitor<T>::IntegralElementAssembler(Matrix &bilinear_form_trail,
+                                                           Matrix &bilinear_form_test,
+                                                           Matrix &linear_form_value,
+                                                           Matrix &linear_form_test,
+                                                           const DomainShared_ptr domain,
+                                                           const Knot &u) const
 {
     auto evals = domain->EvalDerAllTensor(u, 1);
     linear_form_value.resize(3, 1);
@@ -54,15 +53,12 @@ void MembraneStiffnessVisitor<T>::IntegralElementAssembler(
     bilinear_form_trail.resize(3, 3 * evals->size());
     bilinear_form_trail.setZero();
 
-    Matrix jacobian_matrix = domain->JacobianMatrix(u);
     Eigen::Matrix<T, 3, 1> u1, u2, u3, v1, v2, v3;
-
-    u1 = jacobian_matrix.col(0);
-    u2 = jacobian_matrix.col(1);
+    u1 = domain->AffineMap(u, {1, 0});
+    u2 = domain->AffineMap(u, {0, 1});
     u3 = u1.cross(u2);
     T jacobian = u3.norm();
     u3 *= 1.0 / jacobian;
-
 
     std::tie(v1, v2, v3) = Accessory::CovariantToContravariant(u1, u2, u3);
 
@@ -92,5 +88,5 @@ void MembraneStiffnessVisitor<T>::IntegralElementAssembler(
 
     Matrix H(3, 3);
     H << v11 * v11, _nu * v11 * v22 + (1 - _nu) * v12 * v12, v11 * v12, _nu * v11 * v22 + (1 - _nu) * v12 * v12, v22 * v22, v22 * v12, v11 * v12, v22 * v12, .5 * ((1 - _nu) * v11 * v22 + (1 + _nu) * v12 * v12);
-    bilinear_form_test = _E * pow(_h, 3) / 12 / (1 - _nu * _nu) * H * bilinear_form_trail;
+    bilinear_form_test = _E * _h / (1 - _nu * _nu) * H * bilinear_form_trail;
 }

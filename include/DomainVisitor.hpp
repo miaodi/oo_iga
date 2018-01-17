@@ -133,7 +133,6 @@ class DomainVisitor : public Visitor<d, N, T>
         Initialize(g);
         InitializeQuadratureRule(g, quad_rule);
         InitializeKnotSpans(g, knot_spans);
-        _num_of_threads = 1;
         std::vector<std::thread> threads(_num_of_threads);
         const int grainsize = knot_spans.size() / _num_of_threads;
         auto work_iter = knot_spans.begin();

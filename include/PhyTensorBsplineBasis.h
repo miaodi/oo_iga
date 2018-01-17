@@ -139,6 +139,11 @@ class PhyTensorBsplineBasis : public TensorBsplineBasis<d, T>
         return _geometricInfo[i];
     }
 
+    const inline GeometryVector& CtrPtsVecGetter() const
+    {
+        return _geometricInfo;
+    }
+
     inline void CtrPtsSetter(const int &i, const PhyPts &pt)
     {
         ASSERT(i < _geometricInfo.size(), "The control point index is out of range.\n");

@@ -34,8 +34,10 @@ int main()
     Vector1d weight1(1), weight2(sin(boost::math::constants::pi<double>() / 2 - rad));
     WeightVector weights{weight1, weight1, weight1, weight2, weight2, weight2, weight1, weight1, weight1};
     auto domain = make_shared<PhyTensorNURBSBasis<2, 3, double>>(std::vector<KnotVector<double>>{knot_vector, knot_vector}, points, weights);
-    domain->DegreeElevate(2);
-    domain->UniformRefine(3);
+    int degree, refine;
+    cin >> degree >> refine;
+    domain->DegreeElevate(degree);
+    domain->UniformRefine(refine);
     auto cell = make_shared<Surface<3, double>>(domain);
     cell->SurfaceInitialize();
     function<vector<double>(const VectorXd &)> body_force = [](const VectorXd &u) {
@@ -58,7 +60,9 @@ int main()
     {
         dirichlet_indices.push_back(3 * i);
     }
-    dirichlet_indices.push_back(3 * *(south_indices->end()) + 1);
+
+    dirichlet_indices.push_back(3 * *(south_indices->begin()) + 1);
+
     for (const auto &i : *south_indices)
     {
         dirichlet_indices.push_back(3 * i + 2);
@@ -81,6 +85,16 @@ int main()
     MatrixXd stiffness_matrix = global_to_free * sparse_stiffness * global_to_free.transpose();
     VectorXd load_vector = global_to_free * rhs;
     VectorXd solution = global_to_free.transpose() * stiffness_matrix.partialPivLu().solve(load_vector);
-    cout << solution << endl;
+    GeometryVector solution_ctrl_pts;
+    for (int i = 0; i < domain->GetDof(); i++)
+    {
+        Vector3d temp;
+        temp << solution(3 * i + 0), solution(3 * i + 1), solution(3 * i + 2);
+        solution_ctrl_pts.push_back(temp);
+    }
+    auto solution_domain = make_shared<PhyTensorNURBSBasis<2, 3, double>>(std::vector<KnotVector<double>>{domain->KnotVectorGetter(0), domain->KnotVectorGetter(1)}, solution_ctrl_pts, domain->WeightVectorGetter());
+    Vector2d u;
+    u << 1, .5;
+    cout <<setprecision(10)<< solution_domain->AffineMap(u);
     return 0;
 }

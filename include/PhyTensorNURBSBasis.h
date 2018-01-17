@@ -33,8 +33,7 @@ class PhyTensorNURBSBasis : public PhyTensorBsplineBasis<d, N, T>
 
     PhyTensorNURBSBasis(const std::vector<KnotVector<T>> &,
                         const GeometryVector &,
-                        const WeightVector &,
-                        const bool swtch = true);
+                        const WeightVector &);
 
     BasisFunValPac_ptr
     EvalTensor(const vector &u,
@@ -43,10 +42,6 @@ class PhyTensorNURBSBasis : public PhyTensorBsplineBasis<d, N, T>
     BasisFunValDerAllList_ptr
     EvalDerAllTensor(const vector &u,
                      const int i = 0) const;
-
-    PhyPts
-    AffineMap(const Pts &,
-              const DiffPattern &i = DiffPattern(d, 0)) const;
 
     void
     DegreeElevate(int,
@@ -68,6 +63,10 @@ class PhyTensorNURBSBasis : public PhyTensorBsplineBasis<d, N, T>
         return _weightFunction.CtrPtsGetter(i);
     }
 
+    const WeightVector& WeightVectorGetter() const
+    {
+        return _weightFunction.CtrPtsVecGetter();
+    }
     void
     PrintWtCtrPts() const
     {
@@ -80,15 +79,13 @@ class PhyTensorNURBSBasis : public PhyTensorBsplineBasis<d, N, T>
   protected:
     PhyTensorBsplineBasis<d, 1, T> _weightFunction;
 
-    mutable bool _nurbsSwtch;
 };
 
 template <int d, int N, typename T>
 PhyTensorNURBSBasis<d, N, T>::PhyTensorNURBSBasis(const std::vector<KnotVector<T>> &base,
                                                   const PhyTensorNURBSBasis::GeometryVector &geometry,
-                                                  const PhyTensorNURBSBasis::WeightVector &weight,
-                                                  const bool swtch)
-    : PhyTensorBsplineBasis<d, N, T>(base, geometry), _weightFunction(base, weight), _nurbsSwtch{swtch}
+                                                  const PhyTensorNURBSBasis::WeightVector &weight)
+    : PhyTensorBsplineBasis<d, N, T>(base, geometry), _weightFunction(base, weight)
 {
 }
 
@@ -130,10 +127,6 @@ PhyTensorNURBSBasis<d, N, T>::EvalDerAllTensor(const PhyTensorNURBSBasis<d, N, T
                                                const int i) const
 {
     using namespace boost::math;
-    if (_nurbsSwtch == false)
-    {
-        return TensorBsplineBasis<d, T>::EvalDerAllTensor(u, i);
-    }
     auto bspline_result = TensorBsplineBasis<d, T>::EvalDerAllTensor(u, i);
     for (auto &it : *bspline_result)
     {
@@ -222,17 +215,6 @@ PhyTensorNURBSBasis<d, N, T>::EvalDerAllTensor(const PhyTensorNURBSBasis<d, N, T
     return bspline_result;
 }
 
-template <int d, int N, typename T>
-typename PhyTensorNURBSBasis<d, N, T>::PhyPts
-PhyTensorNURBSBasis<d, N, T>::AffineMap(const PhyTensorNURBSBasis<d, N, T>::Pts &u,
-                                        const PhyTensorNURBSBasis<d, N, T>::DiffPattern &dff_pattern) const
-{
-    auto temp_swtch = _nurbsSwtch;
-    _nurbsSwtch = true;
-    PhyPts res = PhyTensorBsplineBasis<d, N, T>::AffineMap(u, dff_pattern);
-    _nurbsSwtch = temp_swtch;
-    return res;
-}
 
 template <int d, int N, typename T>
 void PhyTensorNURBSBasis<d, N, T>::DegreeElevate(int orientation,

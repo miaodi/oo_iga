@@ -74,9 +74,9 @@ void BendingStiffnessVisitor<T>::IntegralElementAssembler(
         linear_form_test(2, 3 * j + 2) = (*evals)[j].second[0];
 
         Eigen::Matrix<T, 3, 1> B1, B2, B3;
-        B1 = -(*evals)[j].second[3] * u3 + 1.0 / jacobian * ((*evals)[j].second[1] * u11.cross(u2) + (*evals)[j].second[2] * u1.cross(u11) + u3.dot(u11) * ((*evals)[j].second[1] * u2.cross(u3) + (*evals)[j].second[2] * u3.cross(u3)));
-        B2 = -(*evals)[j].second[5] * u3 + 1.0 / jacobian * ((*evals)[j].second[1] * u22.cross(u2) + (*evals)[j].second[2] * u1.cross(u22) + u3.dot(u22) * ((*evals)[j].second[1] * u2.cross(u3) + (*evals)[j].second[2] * u3.cross(u3)));
-        B3 = -(*evals)[j].second[4] * u3 + 1.0 / jacobian * ((*evals)[j].second[1] * u12.cross(u2) + (*evals)[j].second[2] * u1.cross(u12) + u3.dot(u12) * ((*evals)[j].second[1] * u2.cross(u3) + (*evals)[j].second[2] * u3.cross(u3)));
+        B1 = -(*evals)[j].second[3] * u3 + 1.0 / jacobian * ((*evals)[j].second[1] * u11.cross(u2) + (*evals)[j].second[2] * u1.cross(u11) + u3.dot(u11) * ((*evals)[j].second[1] * u2.cross(u3) + (*evals)[j].second[2] * u3.cross(u1)));
+        B2 = -(*evals)[j].second[5] * u3 + 1.0 / jacobian * ((*evals)[j].second[1] * u22.cross(u2) + (*evals)[j].second[2] * u1.cross(u22) + u3.dot(u22) * ((*evals)[j].second[1] * u2.cross(u3) + (*evals)[j].second[2] * u3.cross(u1)));
+        B3 = 2*(-(*evals)[j].second[4] * u3 + 1.0 / jacobian * ((*evals)[j].second[1] * u12.cross(u2) + (*evals)[j].second[2] * u1.cross(u12) + u3.dot(u12) * ((*evals)[j].second[1] * u2.cross(u3) + (*evals)[j].second[2] * u3.cross(u1))));
 
         bilinear_form_trail(0, 3 * j) = B1(0);
         bilinear_form_trail(0, 3 * j + 1) = B1(1);
@@ -98,5 +98,5 @@ void BendingStiffnessVisitor<T>::IntegralElementAssembler(
 
     Matrix H(3, 3);
     H << v11 * v11, _nu * v11 * v22 + (1 - _nu) * v12 * v12, v11 * v12, _nu * v11 * v22 + (1 - _nu) * v12 * v12, v22 * v22, v22 * v12, v11 * v12, v22 * v12, .5 * ((1 - _nu) * v11 * v22 + (1 + _nu) * v12 * v12);
-    bilinear_form_test = _E * _h / (1 - _nu * _nu) * H * bilinear_form_trail;
+    bilinear_form_test = _E * pow(_h, 3) / 12 / (1 - _nu * _nu) * H * bilinear_form_trail;
 }
