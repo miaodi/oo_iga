@@ -33,7 +33,13 @@ class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N
     Edge(const Orientation &orient = Orientation::west)
         : Element<1, N, T>(), _position(orient){};
 
-    Edge(DomainShared_ptr m, const Orientation &orient) : Element<1, N, T>(m), _position(orient) {}
+    Edge(DomainShared_ptr m, const Orientation &orient, std::shared_ptr<Vertex<N, T>> &begin,
+         std::shared_ptr<Vertex<N, T>> &end)
+        : Element<1, N, T>(m), _position(orient), _matched(false)
+    {
+        _vertices[0] = begin;
+        _vertices[1] = end;
+    };
 
     std::unique_ptr<std::vector<int>>
     Indices(const int &layer) const
@@ -82,7 +88,22 @@ class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N
         }
         std::sort(res->begin(), res->end());
         return res;
-    };
+    }
+
+    std::unique_ptr<std::vector<int>>
+    ExclusiveIndices(const int &layer) const
+    {
+        auto res = this->Indices(layer);
+        std::unique_ptr<std::vector<int>> temp;
+        for (int i = 0; i < _vertices.size(); ++i)
+        {
+            temp = _vertices[i]->Indices(layer);
+            std::vector<int> diff;
+            std::set_difference(res->begin(), res->end(), temp->begin(), temp->end(), std::back_inserter(diff));
+            *res = diff;
+        }
+        return res;
+    }
 
     void
     PrintInfo() const
@@ -110,6 +131,73 @@ class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N
             break;
         }
         }
+
+        PhyPts beginPts = _vertices[0]->Position();
+        PhyPts endPts = _vertices[1]->Position();
+
+        std::cout << "Starting Point: "
+                  << "(";
+        for (int i = 0; i < N - 1; i++)
+        {
+            std::cout << beginPts(i) << ", ";
+        }
+        std::cout << beginPts(N - 1) << ")" << std::endl;
+        std::cout << "Ending Point: "
+                  << "(";
+        for (int i = 0; i < N - 1; i++)
+        {
+            std::cout << endPts(i) << ", ";
+        }
+        std::cout << endPts(N - 1) << ")" << std::endl;
+
+        if (IsSlave())
+        {
+            std::cout << "Slave edge." << std::endl;
+        }
+        else
+        {
+            std::cout << "Master edge." << std::endl;
+        }
+        if (IsMatched())
+        {
+            std::cout << "Matched." << std::endl;
+        }
+        else
+        {
+            std::cout << "Not matched." << std::endl;
+        }
+
+        std::cout << std::endl;
+    }
+
+    bool
+    Match(std::shared_ptr<Edge<N, T>> &counterpart)
+    {
+        T tol = std::numeric_limits<T>::epsilon() * 1e3;
+        if (_matched == true || counterpart->_matched == true)
+        {
+            return true;
+        }
+        if (((GetStartCoordinate() - counterpart->GetStartCoordinate()).norm() < tol && (GetEndCoordinate() - counterpart->GetEndCoordinate()).norm() < tol) ||
+            ((GetStartCoordinate() - counterpart->GetEndCoordinate()).norm() < tol && (GetEndCoordinate() - counterpart->GetStartCoordinate()).norm() < tol))
+        {
+            _pair = counterpart;
+            _matched = true;
+            counterpart->_pair = this->shared_from_this();
+            counterpart->_matched = true;
+            if (this->GetDomain()->GetDof(0) > counterpart->GetDomain()->GetDof(0))
+            {
+                _slave = true;
+                counterpart->_slave = false;
+            }
+            else
+            {
+                _slave = false;
+                counterpart->_slave = true;
+            }
+            return true;
+        }
+        return false;
     }
 
     //! Return the element coordinates in parametric domain. (Each element in the vector is composed with two points,
@@ -209,6 +297,36 @@ class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N
         return _position;
     }
 
+    PhyPts
+    GetStartCoordinate() const
+    {
+        return _vertices[0]->Position();
+    }
+
+    PhyPts
+    GetEndCoordinate() const
+    {
+        return _vertices[1]->Position();
+    }
+
+    bool
+    IsMatched() const
+    {
+        return _matched;
+    }
+
+    bool
+    IsSlave() const
+    {
+        return _slave;
+    }
+
+    auto
+    Counterpart() const
+    {
+        return _pair;
+    }
+
     void
     ParentSetter(const std::shared_ptr<Surface<N, T>> &parent)
     {
@@ -228,6 +346,13 @@ class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N
         Element<1, N, T>::PrintIndices(layerNum);
     }
 
+    void
+    PrintExclusiveIndices(const int &layerNum) const
+    {
+        std::cout << "Activated exclusive Dofs on this edge are: ";
+        Element<1, N, T>::PrintExclusiveIndices(layerNum);
+    }
+
     PhyPts NormalDirection(const Coordinate &u) const
     {
         ComputeNormal<N, T> temp;
@@ -236,6 +361,10 @@ class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N
 
   protected:
     Orientation _position;
+    bool _matched;
+    bool _slave{false};
+    std::array<std::shared_ptr<Vertex<N, T>>, 2> _vertices;
+    std::weak_ptr<Edge<N, T>> _pair;
     std::vector<std::weak_ptr<Surface<N, T>>> _parents;
 };
 

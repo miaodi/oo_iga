@@ -29,6 +29,21 @@ class StiffnessVisitor : public DomainVisitor<2, N, T>
     void
     LoadAssembler(Eigen::SparseMatrix<T> &) const;
 
+    int ID() const
+    {
+        return _ID;
+    }
+
+    const std::vector<Eigen::Triplet<T>> &GetStiffness() const
+    {
+        return _stiffnees;
+    }
+
+    const std::vector<Eigen::Triplet<T>> &GetRhs() const
+    {
+        return _rhs;
+    }
+
   protected:
     //    Assemble stiffness matrix and rhs
     void
@@ -38,9 +53,15 @@ class StiffnessVisitor : public DomainVisitor<2, N, T>
     IntegralElementAssembler(Matrix &bilinear_form_trail, Matrix &bilinear_form_test, Matrix &linear_form_value,
                              Matrix &linear_form_test, const DomainShared_ptr domain, const Knot &u) const = 0;
 
+    void Initialize(Element<2, N, T> *g)
+    {
+        _ID = static_cast<Surface<N, T> *>(g)->GetID();
+    }
+
   protected:
     std::vector<Eigen::Triplet<T>> _stiffnees;
     std::vector<Eigen::Triplet<T>> _rhs;
+    int _ID;
     const LoadFunctor &_bodyForceFunctor;
 };
 

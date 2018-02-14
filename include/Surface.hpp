@@ -8,6 +8,7 @@
 #include "Topology.hpp"
 #include "Edge.hpp"
 #include "Visitor.hpp"
+#include "Vertex.hpp"
 
 template <int d, int N, typename T>
 class Visitor;
@@ -28,31 +29,64 @@ class Surface : public Element<2, N, T>, public std::enable_shared_from_this<Sur
     typedef typename Element<2, N, T>::CoordinatePairList CoordinatePairList;
     using SurfaceShared_Ptr = typename std::shared_ptr<Surface<N, T>>;
 
-    Surface() : Element<2, N, T>(){};
+    Surface() : Element<2, N, T>(), _currentID(++_ID) {}
 
-    Surface(DomainShared_ptr m) : Element<2, N, T>(m)
+    Surface(DomainShared_ptr m) : Element<2, N, T>(m), _currentID(++_ID)
     {
     }
 
     // shared_from_this requires that there be at least one shared_ptr instance that owns *this
     void SurfaceInitialize()
     {
-        _edges[0] = std::make_shared<Edge<N, T>>(MakeEdge(Orientation::south), Orientation::south);
+
+        _vertices[0] = std::make_shared<Vertex<N, T>>(MakeVertex(VertexIndex::first));
+        _vertices[1] = std::make_shared<Vertex<N, T>>(MakeVertex(VertexIndex::second));
+        _vertices[2] = std::make_shared<Vertex<N, T>>(MakeVertex(VertexIndex::third));
+        _vertices[3] = std::make_shared<Vertex<N, T>>(MakeVertex(VertexIndex::fourth));
+
+        _edges[0] = std::make_shared<Edge<N, T>>(MakeEdge(Orientation::south), Orientation::south, _vertices[0], _vertices[1]);
         _edges[0]->ParentSetter(this->shared_from_this());
 
-        _edges[1] = std::make_shared<Edge<N, T>>(MakeEdge(Orientation::east), Orientation::east);
+        _vertices[0]->ParentSetter(_edges[0]);
+        _vertices[1]->ParentSetter(_edges[0]);
+
+        _edges[1] = std::make_shared<Edge<N, T>>(MakeEdge(Orientation::east), Orientation::east, _vertices[1], _vertices[2]);
         _edges[1]->ParentSetter(this->shared_from_this());
 
-        _edges[2] = std::make_shared<Edge<N, T>>(MakeEdge(Orientation::north), Orientation::north);
+        _vertices[1]->ParentSetter(_edges[1]);
+        _vertices[2]->ParentSetter(_edges[1]);
+
+        _edges[2] = std::make_shared<Edge<N, T>>(MakeEdge(Orientation::north), Orientation::north, _vertices[3], _vertices[2]);
         _edges[2]->ParentSetter(this->shared_from_this());
 
-        _edges[3] = std::make_shared<Edge<N, T>>(MakeEdge(Orientation::west), Orientation::west);
+        _vertices[2]->ParentSetter(_edges[2]);
+        _vertices[3]->ParentSetter(_edges[2]);
+
+        _edges[3] = std::make_shared<Edge<N, T>>(MakeEdge(Orientation::west), Orientation::west, _vertices[0], _vertices[3]);
         _edges[3]->ParentSetter(this->shared_from_this());
+
+        _vertices[3]->ParentSetter(_edges[3]);
+        _vertices[0]->ParentSetter(_edges[3]);
     }
 
     virtual std::unique_ptr<std::vector<int>> Indices(const int &layer) const
     {
         return this->_domain->Indices();
+    }
+
+    // Return all indices that belong to this domain but not belong to the rest.
+    std::unique_ptr<std::vector<int>> ExclusiveIndices(const int &layer) const
+    {
+        auto res = this->Indices(layer);
+        std::unique_ptr<std::vector<int>> temp;
+        for (int i = 0; i < _edges.size(); ++i)
+        {
+            temp = _edges[i]->Indices(layer);
+            std::vector<int> diff;
+            std::set_difference(res->begin(), res->end(), temp->begin(), temp->end(), std::back_inserter(diff));
+            *res = diff;
+        }
+        return res;
     }
 
     void Accept(Visitor<2, N, T> &a)
@@ -71,6 +105,11 @@ class Surface : public Element<2, N, T>, public std::enable_shared_from_this<Sur
     auto EdgePointerGetter(const int &i)
     {
         return _edges[i];
+    }
+
+    auto VertexPointerGetter(const int &i)
+    {
+        return _vertices[i];
     }
 
     void PrintIndices(const int &layerNum = 0) const
@@ -105,6 +144,17 @@ class Surface : public Element<2, N, T>, public std::enable_shared_from_this<Sur
         return 0;
     }
 
+    void Match(std::shared_ptr<Surface<N, T>> &counterpart)
+    {
+        for (auto &i : _edges)
+        {
+            for (auto &j : counterpart->_edges)
+            {
+                i->Match(j);
+            }
+        }
+    }
+
     void PrintEdgeInfo() const
     {
         for (const auto &i : _edges)
@@ -119,8 +169,16 @@ class Surface : public Element<2, N, T>, public std::enable_shared_from_this<Sur
         return this->_domain->Jacobian(u);
     }
 
+    int GetID() const
+    {
+        return _currentID;
+    }
+
   protected:
     std::array<std::shared_ptr<Edge<N, T>>, 4> _edges;
+    std::array<std::shared_ptr<Vertex<N, T>>, 4> _vertices;
+    static int _ID;
+    const int _currentID;
 
     std::shared_ptr<PhyTensorBsplineBasis<1, N, T>> MakeEdge(const Orientation &orient) const
     {
@@ -144,6 +202,32 @@ class Surface : public Element<2, N, T>, public std::enable_shared_from_this<Sur
         }
         }
     }
+
+    PhyPts MakeVertex(const VertexIndex &index) const
+    {
+        switch (index)
+        {
+        case VertexIndex::first:
+        {
+            return this->_domain->AffineMap(Coordinate(this->_domain->DomainStart(0), this->_domain->DomainStart(1)));
+        }
+        case VertexIndex::second:
+        {
+            return this->_domain->AffineMap(Coordinate(this->_domain->DomainEnd(0), this->_domain->DomainStart(1)));
+        }
+        case VertexIndex::third:
+        {
+            return this->_domain->AffineMap(Coordinate(this->_domain->DomainEnd(0), this->_domain->DomainEnd(1)));
+        }
+        case VertexIndex::fourth:
+        {
+            return this->_domain->AffineMap(Coordinate(this->_domain->DomainStart(0), this->_domain->DomainEnd(1)));
+        }
+        }
+    }
 };
+
+template <int N, typename T>
+int Surface<N, T>::_ID = 0;
 
 #endif //OO_IGA_SURFACE_H

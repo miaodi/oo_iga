@@ -23,6 +23,16 @@ struct MatrixData
     {
     }
 
+    MatrixData(const MatrixData &matrix_data)
+    {
+        _rowIndices = std::unique_ptr<std::vector<int>>(new std::vector<int>());
+        _colIndices = std::unique_ptr<std::vector<int>>(new std::vector<int>());
+        _matrix = std::unique_ptr<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>>(new Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>());
+        *_rowIndices = *(matrix_data._rowIndices);
+        *_colIndices = *(matrix_data._colIndices);
+        *_matrix = *(matrix_data._matrix);
+    }
+
     MatrixData(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> &matrix,
                std::vector<int> &row,
                std::vector<int> &col) : MatrixData()
@@ -40,6 +50,61 @@ struct MatrixData
         auto col_indices = *(matrix._colIndices);
         auto row_indices = *(this->_rowIndices);
         return MatrixData(temp, row_indices, col_indices);
+    }
+
+    MatrixData operator+(const MatrixData &matrix)
+    {
+        std::vector<int> sum_row, sum_col;
+        std::set_union(_rowIndices->begin(), _rowIndices->end(), matrix._rowIndices->begin(),
+                       matrix._rowIndices->end(), std::back_inserter(sum_row));
+        std::set_union(_colIndices->begin(), _colIndices->end(), matrix._colIndices->begin(),
+                       matrix._colIndices->end(), std::back_inserter(sum_col));
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> temp(sum_row.size(), sum_col.size());
+        temp.setZero();
+        for (int i = 0; i < sum_row.size(); ++i)
+        {
+            for (int j = 0; j < sum_col.size(); ++j)
+            {
+                auto it_row = std::find(_rowIndices->begin(), _rowIndices->end(), sum_row[i]);
+                auto it_col = std::find(_colIndices->begin(), _colIndices->end(), sum_col[j]);
+                if (it_row != _rowIndices->end() && it_col != _colIndices->end())
+                {
+                    int ii = it_row - _rowIndices->begin();
+                    int jj = it_col - _colIndices->begin();                    
+                    temp(i, j) += (*_matrix)(ii,jj);
+                }
+            }
+        }
+        for (int i = 0; i < sum_row.size(); ++i)
+        {
+            for (int j = 0; j < sum_col.size(); ++j)
+            {
+                auto it_row = std::find(matrix._rowIndices->begin(), matrix._rowIndices->end(), sum_row[i]);
+                auto it_col = std::find(matrix._colIndices->begin(), matrix._colIndices->end(), sum_col[j]);
+                if (it_row != matrix._rowIndices->end() && it_col != matrix._colIndices->end())
+                {
+                    int ii = it_row - matrix._rowIndices->begin();
+                    int jj = it_col - matrix._colIndices->begin();                    
+                    temp(i, j) += (*matrix._matrix)(ii,jj);
+                }
+            }
+        }
+        return MatrixData(temp, sum_row, sum_col);
+    }
+
+    MatrixData &operator=(const MatrixData &matrix_data)
+    {
+        // self-assignment guard
+        if (this == &matrix_data)
+            return *this;
+
+        // do the copy
+        *_rowIndices = *(matrix_data._rowIndices);
+        *_colIndices = *(matrix_data._colIndices);
+        *_matrix = *(matrix_data._matrix);
+
+        // return the existing object so we can chain this operator
+        return *this;
     }
 
     void Print() const

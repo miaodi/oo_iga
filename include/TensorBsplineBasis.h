@@ -124,7 +124,7 @@ class TensorBsplineBasis
 
     virtual BasisFunValDerAllList_ptr EvalDerAllTensor(const vector &u, const int i = 0) const;
 
-    BasisFunValDerAllList_ptr EvalDualAllTensor(const vector &u) const;
+    virtual BasisFunValDerAllList_ptr EvalDualAllTensor(const vector &u) const;
 
     std::vector<int> ActiveIndex(const vector &u) const;
 

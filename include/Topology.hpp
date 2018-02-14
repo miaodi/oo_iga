@@ -75,3 +75,11 @@ enum class Orientation
     north,
     west
 };
+
+enum class VertexIndex
+{
+    first,
+    second,
+    third,
+    fourth
+};

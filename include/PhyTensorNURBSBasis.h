@@ -63,7 +63,7 @@ class PhyTensorNURBSBasis : public PhyTensorBsplineBasis<d, N, T>
         return _weightFunction.CtrPtsGetter(i);
     }
 
-    const WeightVector& WeightVectorGetter() const
+    const WeightVector &WeightVectorGetter() const
     {
         return _weightFunction.CtrPtsVecGetter();
     }
@@ -76,9 +76,10 @@ class PhyTensorNURBSBasis : public PhyTensorBsplineBasis<d, N, T>
     virtual HyperPlaneSharedPts MakeHyperPlane(const int &orientation,
                                                const int &layer) const;
 
+    virtual BasisFunValDerAllList_ptr EvalDualAllTensor(const vector &u) const;
+
   protected:
     PhyTensorBsplineBasis<d, 1, T> _weightFunction;
-
 };
 
 template <int d, int N, typename T>
@@ -87,6 +88,19 @@ PhyTensorNURBSBasis<d, N, T>::PhyTensorNURBSBasis(const std::vector<KnotVector<T
                                                   const PhyTensorNURBSBasis::WeightVector &weight)
     : PhyTensorBsplineBasis<d, N, T>(base, geometry), _weightFunction(base, weight)
 {
+}
+
+template <int d, int N, typename T>
+typename PhyTensorNURBSBasis<d, N, T>::BasisFunValDerAllList_ptr
+PhyTensorNURBSBasis<d, N, T>::EvalDualAllTensor(const vector &u) const
+{
+    auto eval = TensorBsplineBasis<d, T>::EvalDualAllTensor(u);
+    T weight = _weightFunction.AffineMap(u)(0);
+    for (auto &i : *eval)
+    {
+        i.second[0] *= weight / WtPtsGetter(i.first)(0);
+    }
+    return eval;
 }
 
 //! not finished yet.
@@ -215,7 +229,6 @@ PhyTensorNURBSBasis<d, N, T>::EvalDerAllTensor(const PhyTensorNURBSBasis<d, N, T
     return bspline_result;
 }
 
-
 template <int d, int N, typename T>
 void PhyTensorNURBSBasis<d, N, T>::DegreeElevate(int orientation,
                                                  int r)
@@ -312,6 +325,7 @@ class PhyTensorNURBSBasis<0, N, T> : public PhyTensorBsplineBasis<0, N, T>
                         const GeometryVector &,
                         const WeightVector &) {}
 
+    //  There should be no hyper plane for point
     HyperPlane MakeHyperPlane(const int &orientation,
                               const int &layer) const {}
 

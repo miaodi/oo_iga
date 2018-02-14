@@ -181,6 +181,7 @@ class PhyTensorBsplineBasis : public TensorBsplineBasis<d, T>
 //     }
 // }
 
+// This is a helper class for completing the function definition.
 template <int N, typename T>
 class PhyTensorBsplineBasis<0, N, T> : public TensorBsplineBasis<0, T>
 {
