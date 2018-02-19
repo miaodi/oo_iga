@@ -6,6 +6,7 @@
 
 #include "InterfaceVisitor.hpp"
 #include "PoissonInterfaceVisitor.hpp"
+#include <eigen3/unsupported/Eigen/KroneckerProduct>
 
 template <int N, typename T>
 class BiharmonicInterfaceVisitor : public InterfaceVisitor<N, T>
@@ -70,7 +71,7 @@ void BiharmonicInterfaceVisitor<N, T>::SolveConstraint(Edge<N, T> *edge)
     std::vector<int> slave_indices = Accessory::ColIndicesVector(_c1Slave);
     std::vector<int> master_indices = Accessory::ColIndicesVector(_c1Master);
     std::vector<int> multiplier_indices = Accessory::RowIndicesVector(_c1Slave);
-    std::vector<int> c0_slave_indices = *(edge->Indices(0));
+    std::vector<int> c0_slave_indices = edge->Indices(3, 0);
 
     std::vector<int> c1_slave_indices;
     std::set_difference(slave_indices.begin(), slave_indices.end(), c0_slave_indices.begin(),
@@ -169,9 +170,18 @@ void BiharmonicInterfaceVisitor<N, T>::C1IntegralElementAssembler(Matrix &slave_
     Matrix slave_jacobian = slave_domain->JacobianMatrix(slave_quadrature_abscissa);
     Matrix master_jacobian = master_domain->JacobianMatrix(master_quadrature_abscissa);
     // Matrix master_to_slave = slave_jacobian * master_jacobian.inverse();
+    Eigen::Matrix<T, 3, 1> s_s, s_t, m_s, m_t, s_n, m_n;
+    s_s = slave_jacobian.col(0);
+    s_t = slave_jacobian.col(1);
+    m_s = master_jacobian.col(0);
+    m_t = master_jacobian.col(1);
+    s_n = s_s.cross(s_t);
+    m_n = m_s.cross(m_t);
+
+    Eigen::Matrix<T, 3, 3> rotation_matrix = Accessory::RotationMatrix(s_n, m_n);
 
     Matrix gramian = slave_jacobian.transpose() * slave_jacobian;
-    Matrix rhs = slave_jacobian.transpose() * master_jacobian;
+    Matrix rhs = slave_jacobian.transpose() * rotation_matrix * master_jacobian;
 
     Matrix sol = gramian.partialPivLu().solve(rhs);
 
@@ -214,17 +224,47 @@ void BiharmonicInterfaceVisitor<N, T>::C1IntegralElementAssembler(Matrix &slave_
         multiplier_basis(0, j) = (*multiplier_evals)[j].second[0];
     }
 
+    Eigen::Matrix<T, 3, 3> identity;
+    identity.setIdentity();
+
+    master_constraint_basis = kroneckerProduct(master_constraint_basis, identity).eval();
+    slave_constraint_basis = kroneckerProduct(slave_constraint_basis, identity).eval();
+    multiplier_basis = kroneckerProduct(multiplier_basis, identity).eval();
+
+    master_constraint_basis = (rotation_matrix.transpose() * master_constraint_basis).eval();
+
     // set up local indices corresponding to test basis functions and trial basis functions
     if (slave_constraint_basis_indices.size() == 0)
     {
-        slave_constraint_basis_indices = slave_domain->ActiveIndex(slave_quadrature_abscissa);
+        auto index = slave_domain->ActiveIndex(slave_quadrature_abscissa);
+        for (auto &i : index)
+        {
+            for (int j = 0; j < 3; j++)
+            {
+                slave_constraint_basis_indices.push_back(3 * i + j);
+            }
+        }
     }
     if (master_constraint_basis_indices.size() == 0)
     {
-        master_constraint_basis_indices = master_domain->ActiveIndex(master_quadrature_abscissa);
+        auto index = master_domain->ActiveIndex(master_quadrature_abscissa);
+        for (auto &i : index)
+        {
+            for (int j = 0; j < 3; j++)
+            {
+                master_constraint_basis_indices.push_back(3 * i + j);
+            }
+        }
     }
     if (multiplier_basis_indices.size() == 0)
     {
-        multiplier_basis_indices = multiplier_domain->ActiveIndex(u.first);
+        auto index = multiplier_domain->ActiveIndex(u.first);
+        for (auto &i : index)
+        {
+            for (int j = 0; j < 3; j++)
+            {
+                multiplier_basis_indices.push_back(3 * i + j);
+            }
+        }
     }
 }

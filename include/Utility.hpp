@@ -704,17 +704,15 @@ std::tuple<Eigen::Matrix<T, 3, 1>, Eigen::Matrix<T, 3, 1>, Eigen::Matrix<T, 3, 1
 }
 
 template <typename T>
-Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> RotationMatrix(const Eigen::Matrix<T, Eigen::Dynamic, 1> &from,
-                                                                const Eigen::Matrix<T, Eigen::Dynamic, 1> &to)
+Eigen::Matrix<T, 3, 3> RotationMatrix(const Eigen::Matrix<T, 3, 1> &from,
+                                      const Eigen::Matrix<T, 3, 1> &to)
 {
-    ASSERT(from.rows() == 3 && to.rows() == 3, "Rotation is available only for 3D problem.\n");
-    Eigen::Matrix<T, Eigen::Dynamic, 1> n_from = from.normalize();
-    Eigen::Matrix<T, Eigen::Dynamic, 1> n_to = to.normalize();
-    Eigen::Matrix<T, Eigen::Dynamic, 1> v = n_from.cross(n_to);
-    T s = v.norm();
-    T c = (n_from.adjoint() * n_to).value();
-    Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> w(3, 3);
+    Eigen::Matrix<T, 3, 1> n_from = from.normalized();
+    Eigen::Matrix<T, 3, 1> n_to = to.normalized();
+    Eigen::Matrix<T, 3, 1> v = n_from.cross(n_to);
+    T c = n_from.dot(n_to);
+    Eigen::Matrix<T, 3, 3> w;
     w << 0, -v(2), v(1), v(2), 0, -v(0), -v(1), v(0), 0;
-    return Eigen::Matrix<T, 3, 3>::Identity() + w + w * w * (1 - c) / pow(s, 2);
+    return Eigen::Matrix<T, 3, 3>::Identity() + w + w * w * 1.0 / (1 + c);
 }
 }

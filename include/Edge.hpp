@@ -41,20 +41,26 @@ class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N
         _vertices[1] = end;
     };
 
-    std::unique_ptr<std::vector<int>>
-    Indices(const int &layer) const
+    virtual std::vector<int> Indices(const int &dimension, const int &layer) const
     {
-        std::unique_ptr<std::vector<int>> res(new std::vector<int>);
+        std::vector<int> res;
         auto parent = _parents[0].lock();
         auto domain = parent->GetDomain();
+        std::unique_ptr<std::vector<int>> indices;
         switch (_position)
         {
         case Orientation::west:
         {
             for (int i = 0; i <= layer; ++i)
             {
-                auto tmp = domain->HyperPlaneIndices(0, i);
-                res->insert(res->end(), tmp->begin(), tmp->end());
+                indices = domain->HyperPlaneIndices(0, i);
+                for (auto &i : *indices)
+                {
+                    for (int j = 0; j < dimension; j++)
+                    {
+                        res.push_back(dimension * i + j);
+                    }
+                }
             }
             break;
         }
@@ -62,8 +68,14 @@ class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N
         {
             for (int i = 0; i <= layer; ++i)
             {
-                auto tmp = domain->HyperPlaneIndices(0, domain->GetDof(0) - 1 - i);
-                res->insert(res->end(), tmp->begin(), tmp->end());
+                indices = domain->HyperPlaneIndices(0, domain->GetDof(0) - 1 - i);
+                for (auto &i : *indices)
+                {
+                    for (int j = 0; j < dimension; j++)
+                    {
+                        res.push_back(dimension * i + j);
+                    }
+                }
             }
             break;
         }
@@ -71,8 +83,14 @@ class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N
         {
             for (int i = 0; i <= layer; ++i)
             {
-                auto tmp = domain->HyperPlaneIndices(1, domain->GetDof(1) - 1 - i);
-                res->insert(res->end(), tmp->begin(), tmp->end());
+                indices = domain->HyperPlaneIndices(1, domain->GetDof(1) - 1 - i);
+                for (auto &i : *indices)
+                {
+                    for (int j = 0; j < dimension; j++)
+                    {
+                        res.push_back(dimension * i + j);
+                    }
+                }
             }
             break;
         }
@@ -80,27 +98,33 @@ class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N
         {
             for (int i = 0; i <= layer; ++i)
             {
-                auto tmp = domain->HyperPlaneIndices(1, i);
-                res->insert(res->end(), tmp->begin(), tmp->end());
+                indices = domain->HyperPlaneIndices(1, i);
+                for (auto &i : *indices)
+                {
+                    for (int j = 0; j < dimension; j++)
+                    {
+                        res.push_back(dimension * i + j);
+                    }
+                }
             }
             break;
         }
         }
-        std::sort(res->begin(), res->end());
+
+        std::sort(res.begin(), res.end());
         return res;
     }
 
-    std::unique_ptr<std::vector<int>>
-    ExclusiveIndices(const int &layer) const
+    std::vector<int> ExclusiveIndices(const int &dimension, const int &layer) const
     {
-        auto res = this->Indices(layer);
-        std::unique_ptr<std::vector<int>> temp;
+        auto res = this->Indices(dimension, layer);
+        std::vector<int> temp;
         for (int i = 0; i < _vertices.size(); ++i)
         {
-            temp = _vertices[i]->Indices(layer);
+            temp = _vertices[i]->Indices(dimension, layer);
             std::vector<int> diff;
-            std::set_difference(res->begin(), res->end(), temp->begin(), temp->end(), std::back_inserter(diff));
-            *res = diff;
+            std::set_difference(res.begin(), res.end(), temp.begin(), temp.end(), std::back_inserter(diff));
+            res = diff;
         }
         return res;
     }
@@ -340,17 +364,17 @@ class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N
     }
 
     void
-    PrintIndices(const int &layerNum) const
+    PrintIndices(const int &dimension, const int &layerNum) const
     {
-        std::cout << "Activated Dofs on this edge are: ";
-        Element<1, N, T>::PrintIndices(layerNum);
+        std::cout << "Activated Dofs of " << dimension << " dimensional field on this edge are: ";
+        Element<1, N, T>::PrintIndices(dimension, layerNum);
     }
 
     void
-    PrintExclusiveIndices(const int &layerNum) const
+    PrintExclusiveIndices(const int &dimension, const int &layerNum) const
     {
-        std::cout << "Activated exclusive Dofs on this edge are: ";
-        Element<1, N, T>::PrintExclusiveIndices(layerNum);
+        std::cout << "Activated Dofs of " << dimension << " dimensional field on this edge are: ";
+        Element<1, N, T>::PrintExclusiveIndices(dimension, layerNum);
     }
 
     PhyPts NormalDirection(const Coordinate &u) const

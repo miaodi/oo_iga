@@ -28,35 +28,36 @@ class Vertex : public Element<0, N, T>, public std::enable_shared_from_this<Vert
         return 0;
     }
 
-    std::unique_ptr<std::vector<int>> Indices(const int &layer) const
+    virtual std::vector<int> Indices(const int & dimension, const int &layer) const
     {
-        auto res = _parents[0].lock()->Indices(layer);
+        auto res = _parents[0].lock()->Indices(dimension, layer);
         for (int i = 1; i < _parents.size(); ++i)
         {
-            auto temp = _parents[i].lock()->Indices(layer);
+            auto temp = _parents[i].lock()->Indices(dimension, layer);
             std::vector<int> intersection;
-            std::set_intersection(res->begin(), res->end(), temp->begin(), temp->end(),
+            std::set_intersection(res.begin(), res.end(), temp.begin(), temp.end(),
                                   std::back_inserter(intersection));
-            *res = intersection;
+            res = intersection;
         }
         return res;
     };
 
-    std::unique_ptr<std::vector<int>> ExclusiveIndices(const int &layer) const
+
+    std::vector<int> ExclusiveIndices(const int & dimension, const int &layer) const
     {
-        return Indices(layer);
+        return Indices(dimension, layer);
     }
 
-    void PrintIndices(const int &layerNum) const
+    void PrintIndices(const int & dimension, const int &layerNum) const
     {
         std::cout << "Activated Dofs on this vertex are: ";
-        Element<0, N, T>::PrintIndices(layerNum);
+        Element<0, N, T>::PrintIndices(dimension, layerNum);
     }
 
-    void PrintExclusiveIndices(const int &layerNum) const
+    void PrintExclusiveIndices(const int & dimension, const int &layerNum) const
     {
         std::cout << "Activated exclusive Dofs on this vertex are: ";
-        Element<0, N, T>::PrintExclusiveIndices(layerNum);
+        Element<0, N, T>::PrintExclusiveIndices(dimension, layerNum);
     }
 
     void ParentSetter(const std::shared_ptr<Edge<N, T>> &parent)

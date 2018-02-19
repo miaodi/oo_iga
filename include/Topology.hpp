@@ -32,12 +32,15 @@ class Element
 
     virtual void Accept(Visitor<d, N, T> &) = 0;
 
-    virtual std::unique_ptr<std::vector<int>> Indices(const int &) const = 0;
+    // give indices of the element for given dimension problem.
+    virtual std::vector<int> Indices(const int &, const int &) const = 0;
 
-    virtual void PrintIndices(const int &layerNum) const
+    virtual std::vector<int> ExclusiveIndices(const int &, const int &) const = 0;
+
+    virtual void PrintIndices(const int &dimension, const int &layerNum) const
     {
-        auto res = Indices(layerNum);
-        for (const auto &i : *res)
+        auto res = Indices(dimension, layerNum);
+        for (const auto &i : res)
         {
             std::cout << i << " ";
         }

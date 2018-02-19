@@ -67,7 +67,7 @@ int main()
     cells[0]->Match(cells[1]);
     for (auto &i : cells)
     {
-        dof.Insert(i->GetID(), i->GetDomain()->GetDof());
+        dof.Insert(i->GetID(), 3 * i->GetDomain()->GetDof());
     }
     BiharmonicInterfaceVisitor<3, double> biharmonic_interface;
     cells[0]->EdgeAccept(biharmonic_interface);
@@ -92,51 +92,51 @@ int main()
             constraint_matrix.coeffRef(master_start_index + (*constraint._colIndices)[j], slave_start_index + (*constraint._rowIndices)[i]) = (*constraint._matrix)(i, j);
         }
     }
-    constraint_matrix = kroneckerProduct(constraint_matrix, identity).eval();
 
-    auto south_indices = cells[0]->EdgePointerGetter(0)->Indices(0);
-    auto south_indices_slave = cells[1]->EdgePointerGetter(0)->Indices(1);
-    auto north_indices = cells[1]->EdgePointerGetter(2)->Indices(0);
+    auto south_indices = cells[0]->EdgePointerGetter(0)->Indices(1, 0);
+    auto south_indices_slave = cells[1]->EdgePointerGetter(0)->Indices(1, 1);
+    auto north_indices = cells[1]->EdgePointerGetter(2)->Indices(1, 0);
     vector<int> dirichlet_indices;
-    for (const auto &i : *south_indices)
+    for (const auto &i : south_indices)
     {
-        dirichlet_indices.push_back(3 * master_start_index + 3 * i);
+        dirichlet_indices.push_back(master_start_index + 3 * i);
     }
 
-    dirichlet_indices.push_back(3 * master_start_index + 3 * *(south_indices->begin()) + 1);
-    for (const auto &i : *south_indices)
+    dirichlet_indices.push_back(master_start_index + 3 * *(south_indices.begin()) + 1);
+    for (const auto &i : south_indices)
     {
-        dirichlet_indices.push_back(3 * master_start_index + 3 * i + 2);
+        dirichlet_indices.push_back(master_start_index + 3 * i + 2);
     }
-    for (const auto &i : *north_indices)
+    for (const auto &i : north_indices)
     {
-        dirichlet_indices.push_back(3 * slave_start_index + 3 * i);
-    }
-
-    for (const auto &i : *north_indices)
-    {
-        dirichlet_indices.push_back(3 * slave_start_index + 3 * i + 2);
+        dirichlet_indices.push_back(slave_start_index + 3 * i);
     }
 
-    for (const auto &i : *south_indices_slave)
+    for (const auto &i : north_indices)
     {
-        dirichlet_indices.push_back(3 * slave_start_index + 3 * i + 0);
+        dirichlet_indices.push_back(slave_start_index + 3 * i + 2);
     }
-    for (const auto &i : *south_indices_slave)
+
+    for (const auto &i : south_indices_slave)
     {
-        dirichlet_indices.push_back(3 * slave_start_index + 3 * i + 1);
+        dirichlet_indices.push_back(slave_start_index + 3 * i + 0);
     }
-    for (const auto &i : *south_indices_slave)
+    for (const auto &i : south_indices_slave)
     {
-        dirichlet_indices.push_back(3 * slave_start_index + 3 * i + 2);
+        dirichlet_indices.push_back(slave_start_index + 3 * i + 1);
+    }
+    for (const auto &i : south_indices_slave)
+    {
+        dirichlet_indices.push_back(slave_start_index + 3 * i + 2);
     }
 
     sort(dirichlet_indices.begin(), dirichlet_indices.end());
-    MatrixXd global_to_free = MatrixXd::Identity(3 * dof.TotalDof(), 3 * dof.TotalDof());
+    MatrixXd global_to_free = MatrixXd::Identity(dof.TotalDof(), dof.TotalDof());
     for (auto it = dirichlet_indices.rbegin(); it != dirichlet_indices.rend(); ++it)
     {
         Accessory::removeRow(global_to_free, *it);
     }
+
     SparseMatrix<double> sparse_global_to_free = global_to_free.sparseView();
     SparseMatrix<double> stiff_sol = sparse_global_to_free * constraint_matrix * stiffness_matrix * constraint_matrix.transpose() * sparse_global_to_free.transpose();
     SparseMatrix<double> load_sol = sparse_global_to_free * constraint_matrix * load_vector;
@@ -153,7 +153,7 @@ int main()
     for (int i = 0; i < domain2->GetDof(); i++)
     {
         Vector3d temp;
-        temp << solution(3 * slave_start_index + 3 * i + 0), solution(3 * slave_start_index + 3 * i + 1), solution(3 * slave_start_index + 3 * i + 2);
+        temp << solution(slave_start_index + 3 * i + 0), solution(slave_start_index + 3 * i + 1), solution(slave_start_index + 3 * i + 2);
         solution_ctrl_pts2.push_back(temp);
     }
     auto solution_domain1 = make_shared<PhyTensorNURBSBasis<2, 3, double>>(std::vector<KnotVector<double>>{domain1->KnotVectorGetter(0), domain1->KnotVectorGetter(1)}, solution_ctrl_pts1, domain1->WeightVectorGetter());
@@ -163,23 +163,8 @@ int main()
     cout << setprecision(10) << solution_domain1->AffineMap(u) << std::endl;
     u << 1, 0;
     cout << setprecision(10) << solution_domain2->AffineMap(u) << std::endl;
-    ofstream myfile1, myfile2;
-    myfile1.open("domain1.txt");
-    myfile2.open("domain2.txt");
-    for (int i = 0; i < 201; i++)
-    {
-        for (int j = 0; j < 201; j++)
-        {
-            u << 1.0 * i / 200, 1.0 * j / 200;
-            VectorXd result = solution_domain1->AffineMap(u);
-            VectorXd position = domain1->AffineMap(u);
-            myfile1 << 20 * result(0) + position(0) << " " << 20 * result(1) + position(1) << " " << 20 * result(2) + position(2) << " " << result(2) << endl;
-            result = solution_domain2->AffineMap(u);
-            position = domain2->AffineMap(u);
-            myfile2 << 20 * result(0) + position(0) << " " << 20 * result(1) + position(1) << " " << 20 * result(2) + position(2) << " " << result(2) << endl;
-        }
-    }
-    myfile1.close();
-    myfile2.close();
+    ofstream file;
+    file.open("stiff.txt");
+    file << MatrixXd(sparse_global_to_free * constraint_matrix);
     return 0;
 }

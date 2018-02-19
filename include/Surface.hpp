@@ -69,22 +69,32 @@ class Surface : public Element<2, N, T>, public std::enable_shared_from_this<Sur
         _vertices[0]->ParentSetter(_edges[3]);
     }
 
-    virtual std::unique_ptr<std::vector<int>> Indices(const int &layer) const
+    virtual std::vector<int> Indices(const int & dimension, const int &layer) const
     {
-        return this->_domain->Indices();
+
+        auto indices = *(this->_domain->Indices());
+        std::vector<int> res;
+        for (auto &i : indices)
+        {
+            for (int j = 0; j < dimension; j++)
+            {
+                res.push_back(dimension * i + j);
+            }
+        }
+        return res;
     }
 
     // Return all indices that belong to this domain but not belong to the rest.
-    std::unique_ptr<std::vector<int>> ExclusiveIndices(const int &layer) const
+    std::vector<int> ExclusiveIndices(const int & dimension, const int &layer) const
     {
-        auto res = this->Indices(layer);
-        std::unique_ptr<std::vector<int>> temp;
+        auto res = this->Indices(dimension, layer);
+        std::vector<int> temp;
         for (int i = 0; i < _edges.size(); ++i)
         {
-            temp = _edges[i]->Indices(layer);
+            temp = _edges[i]->Indices(dimension, layer);
             std::vector<int> diff;
-            std::set_difference(res->begin(), res->end(), temp->begin(), temp->end(), std::back_inserter(diff));
-            *res = diff;
+            std::set_difference(res.begin(), res.end(), temp.begin(), temp.end(), std::back_inserter(diff));
+            res = diff;
         }
         return res;
     }
@@ -112,10 +122,10 @@ class Surface : public Element<2, N, T>, public std::enable_shared_from_this<Sur
         return _vertices[i];
     }
 
-    void PrintIndices(const int &layerNum = 0) const
+    void PrintIndices(const int & dimension, const int &layerNum = 0) const
     {
         std::cout << "Activated Dofs on this surface are: ";
-        Element<2, N, T>::PrintIndices(layerNum);
+        Element<2, N, T>::PrintIndices(dimension, layerNum);
     }
 
     //! Return the element coordinates in parametric domain. (Each element in the vector is composed with two points,
