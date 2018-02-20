@@ -24,20 +24,24 @@ using Vector1d = Matrix<double, 1, 1>;
 
 int main()
 {
-    double nu = .3;
+    double nu = .0;
     double E = 4.32e8;
     double R = 25;
     double L = 50;
     KnotVector<double> knot_vector;
-    knot_vector.InitClosed(1, 0, 1);
+    knot_vector.InitClosed(2, 0, 1);
+    double rad = 40.0 / 180 * boost::math::constants::pi<double>();
+    double a = sin(rad) * R;
+    double b = a * tan(rad);
+    Vector3d point1(-a, 0, 0), point2(-a, L / 4, 0), point3(-a, L / 2, 0), point4(0, 0, b), point5(0, L / 4, b), point6(0, L / 2, b), point7(a, 0, 0), point8(a, L / 4, 0), point9(a, L / 2, 0);
+    Vector3d point10(-a, L / 2, 0), point11(-a, 3.0 * L / 4, 0), point12(-a, L, 0), point13(0, L / 2, b), point14(0, 3.0 * L / 4, b), point15(0, L, b), point16(a, L / 2, 0), point17(a, 3.0 * L / 4, 0), point18(a, L, 0);
+    GeometryVector points1{point1, point2, point3, point4, point5, point6, point7, point8, point9};
+    GeometryVector points2{point10, point11, point12, point13, point14, point15, point16, point17, point18};
 
-    Vector3d point1(0, 0, 0), point2(0, 1, 0), point3(1, 0, 0), point4(1, 1, 0);
-    Vector3d point5(0, 1, 0), point6(0, 1, -1), point7(1, 1, 0), point8(1, 1, -1);
-    GeometryVector points1{point1, point2, point3, point4};
-    GeometryVector points2{point5, point6, point7, point8};
-
-    auto domain1 = make_shared<PhyTensorBsplineBasis<2, 3, double>>(std::vector<KnotVector<double>>{knot_vector, knot_vector}, points1);
-    auto domain2 = make_shared<PhyTensorBsplineBasis<2, 3, double>>(std::vector<KnotVector<double>>{knot_vector, knot_vector}, points2);
+    Vector1d weight1(1), weight2(sin(boost::math::constants::pi<double>() / 2 - rad));
+    WeightVector weights{weight1, weight1, weight1, weight2, weight2, weight2, weight1, weight1, weight1};
+    auto domain1 = make_shared<PhyTensorNURBSBasis<2, 3, double>>(std::vector<KnotVector<double>>{knot_vector, knot_vector}, points1, weights);
+    auto domain2 = make_shared<PhyTensorNURBSBasis<2, 3, double>>(std::vector<KnotVector<double>>{knot_vector, knot_vector}, points2, weights);
 
     int degree, refine;
     cin >> degree >> refine;
@@ -57,7 +61,7 @@ int main()
     cells.push_back(make_shared<Surface<3, double>>(domain2));
     cells[1]->SurfaceInitialize();
     function<vector<double>(const VectorXd &)> body_force = [](const VectorXd &u) {
-        return vector<double>{0, 0, 0};
+        return vector<double>{0, 0, -90};
     };
     DofMapper dof;
     cells[0]->Match(cells[1]);
@@ -89,20 +93,28 @@ int main()
         }
     }
 
-    auto south_indices = cells[0]->EdgePointerGetter(0)->Indices(1, 1);
+    auto south_indices = cells[0]->EdgePointerGetter(0)->Indices(1, 0);
     auto south_indices_slave = cells[1]->EdgePointerGetter(0)->Indices(1, 1);
+    auto north_indices = cells[1]->EdgePointerGetter(2)->Indices(1, 0);
     vector<int> dirichlet_indices;
     for (const auto &i : south_indices)
     {
         dirichlet_indices.push_back(master_start_index + 3 * i);
     }
-    for (const auto &i : south_indices)
-    {
-        dirichlet_indices.push_back(master_start_index + 3 * i + 1);
-    }
+
+    dirichlet_indices.push_back(master_start_index + 3 * *(south_indices.begin()) + 1);
     for (const auto &i : south_indices)
     {
         dirichlet_indices.push_back(master_start_index + 3 * i + 2);
+    }
+    for (const auto &i : north_indices)
+    {
+        dirichlet_indices.push_back(slave_start_index + 3 * i);
+    }
+
+    for (const auto &i : north_indices)
+    {
+        dirichlet_indices.push_back(slave_start_index + 3 * i + 2);
     }
 
     for (const auto &i : south_indices_slave)
@@ -124,7 +136,7 @@ int main()
     {
         Accessory::removeRow(global_to_free, *it);
     }
-    load_vector.coeffRef(load_vector.rows() - 2,0) = -10000;
+
     SparseMatrix<double> sparse_global_to_free = global_to_free.sparseView();
     SparseMatrix<double> stiff_sol = sparse_global_to_free * constraint_matrix * stiffness_matrix * constraint_matrix.transpose() * sparse_global_to_free.transpose();
     SparseMatrix<double> load_sol = sparse_global_to_free * constraint_matrix * load_vector;
@@ -144,31 +156,15 @@ int main()
         temp << solution(slave_start_index + 3 * i + 0), solution(slave_start_index + 3 * i + 1), solution(slave_start_index + 3 * i + 2);
         solution_ctrl_pts2.push_back(temp);
     }
-    auto solution_domain1 = make_shared<PhyTensorBsplineBasis<2, 3, double>>(std::vector<KnotVector<double>>{domain1->KnotVectorGetter(0), domain1->KnotVectorGetter(1)}, solution_ctrl_pts1);
-    auto solution_domain2 = make_shared<PhyTensorBsplineBasis<2, 3, double>>(std::vector<KnotVector<double>>{domain2->KnotVectorGetter(0), domain2->KnotVectorGetter(1)}, solution_ctrl_pts2);
+    auto solution_domain1 = make_shared<PhyTensorNURBSBasis<2, 3, double>>(std::vector<KnotVector<double>>{domain1->KnotVectorGetter(0), domain1->KnotVectorGetter(1)}, solution_ctrl_pts1, domain1->WeightVectorGetter());
+    auto solution_domain2 = make_shared<PhyTensorNURBSBasis<2, 3, double>>(std::vector<KnotVector<double>>{domain2->KnotVectorGetter(0), domain2->KnotVectorGetter(1)}, solution_ctrl_pts2, domain2->WeightVectorGetter());
     Vector2d u;
     u << 1, 1;
     cout << setprecision(10) << solution_domain1->AffineMap(u) << std::endl;
-    u << 1, 1;
+    u << 1, 0;
     cout << setprecision(10) << solution_domain2->AffineMap(u) << std::endl;
-    ofstream myfile1, myfile2;
-    myfile1.open("domain1.txt");
-    myfile2.open("domain2.txt");
-    for (int i = 0; i < 201; i++)
-    {
-        for (int j = 0; j < 201; j++)
-        {
-            u << 1.0 * i / 200, 1.0 * j / 200;
-            VectorXd result = solution_domain1->AffineMap(u);
-            VectorXd position = domain1->AffineMap(u);
-            myfile1 << 20 * result(0) + position(0) << " " << 20 * result(1) + position(1) << " " << 20 * result(2) + position(2) << " " << result(2) << endl;
-            result = solution_domain2->AffineMap(u);
-            position = domain2->AffineMap(u);
-            myfile2 << 20 * result(0) + position(0) << " " << 20 * result(1) + position(1) << " " << 20 * result(2) + position(2) << " " << result(2) << endl;
-        }
-    }
-    myfile1.close();
-    myfile2.close();
-    return 0;
+    ofstream file;
+    file.open("stiff.txt");
+    file << MatrixXd(sparse_global_to_free * constraint_matrix);
     return 0;
 }

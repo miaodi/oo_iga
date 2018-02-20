@@ -178,7 +178,7 @@ void BiharmonicInterfaceVisitor<N, T>::C1IntegralElementAssembler(Matrix &slave_
     s_n = s_s.cross(s_t);
     m_n = m_s.cross(m_t);
 
-    Eigen::Matrix<T, 3, 3> rotation_matrix = Accessory::RotationMatrix(s_n, m_n);
+    Eigen::Matrix<T, 3, 3> rotation_matrix = Accessory::RotationMatrix(m_n, s_n);
 
     Matrix gramian = slave_jacobian.transpose() * slave_jacobian;
     Matrix rhs = slave_jacobian.transpose() * rotation_matrix * master_jacobian;
@@ -231,7 +231,7 @@ void BiharmonicInterfaceVisitor<N, T>::C1IntegralElementAssembler(Matrix &slave_
     slave_constraint_basis = kroneckerProduct(slave_constraint_basis, identity).eval();
     multiplier_basis = kroneckerProduct(multiplier_basis, identity).eval();
 
-    master_constraint_basis = (rotation_matrix.transpose() * master_constraint_basis).eval();
+    master_constraint_basis = (rotation_matrix * master_constraint_basis).eval();
 
     // set up local indices corresponding to test basis functions and trial basis functions
     if (slave_constraint_basis_indices.size() == 0)
