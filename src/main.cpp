@@ -30,8 +30,8 @@ int main()
     KnotVector<double> knot_vector;
     knot_vector.InitClosed(2, 0, 1);
 
-    Vector3d point1(0, 0, 0), point2(0, .5, 0), point3(0, 1, 0), point4(.5, 0, 0), point5(.5, .5, 0), point6(.5, 1, 0), point7(1, 0, 0), point8(1, .5, 0), point9(1, 1, 0);
-    Vector3d point10(0, 1, 0), point11(0, 1, -.5), point12(0, 1, -1), point13(.6, 1, 0), point14(.5, 1, -.5), point15(.4, 1, -1), point16(1, 1, 0), point17(1, 1, -.5), point18(1, 1, -1);
+    Vector3d point1(0, 0, 0), point2(0, .5, 0), point3(0, 1, 0), point4(.4, 0, 0), point5(.5, .5, 0), point6(.6, 1, 0), point7(1, 0, 0), point8(1, .5, 0), point9(1, 1, 0);
+    Vector3d point10(0, 1, 0), point11(0, 1, -.5), point12(0, 1, -1), point13(.5, 1, 0), point14(.5, 1, -.5), point15(.5, 1, -1), point16(1, 1, 0), point17(1, 1, -.5), point18(1, 1, -1);
     GeometryVector points1{point1, point2, point3, point4, point5, point6, point7, point8, point9};
     GeometryVector points2{point10, point11, point12, point13, point14, point15, point16, point17, point18};
 
@@ -134,41 +134,64 @@ int main()
     for (int i = 0; i < domain1->GetDof(); i++)
     {
         Vector3d temp;
-        temp << solution(3 * i + 0), solution(3 * i + 1), solution(3 * i + 2);
+        Vector3d ctrpt = domain1->CtrPtsGetter(i);
+        temp << solution(3 * i + 0) + ctrpt(0), solution(3 * i + 1) + ctrpt(1), solution(3 * i + 2) + ctrpt(2);
         solution_ctrl_pts1.push_back(temp);
     }
     for (int i = 0; i < domain2->GetDof(); i++)
     {
         Vector3d temp;
-        temp << solution(slave_start_index + 3 * i + 0), solution(slave_start_index + 3 * i + 1), solution(slave_start_index + 3 * i + 2);
+        Vector3d ctrpt = domain2->CtrPtsGetter(i);
+        temp << solution(slave_start_index + 3 * i + 0) + ctrpt(0), solution(slave_start_index + 3 * i + 1) + ctrpt(1), solution(slave_start_index + 3 * i + 2) + ctrpt(2);
         solution_ctrl_pts2.push_back(temp);
     }
     auto solution_domain1 = make_shared<PhyTensorBsplineBasis<2, 3, double>>(std::vector<KnotVector<double>>{domain1->KnotVectorGetter(0), domain1->KnotVectorGetter(1)}, solution_ctrl_pts1);
     auto solution_domain2 = make_shared<PhyTensorBsplineBasis<2, 3, double>>(std::vector<KnotVector<double>>{domain2->KnotVectorGetter(0), domain2->KnotVectorGetter(1)}, solution_ctrl_pts2);
-    Vector2d u;
+    VectorXd u(2);
     u << 0, 1;
     cout << setprecision(10) << solution_domain2->AffineMap(u) << std::endl;
     u << 1, 1;
     cout << setprecision(10) << solution_domain2->AffineMap(u) << std::endl;
-    ofstream myfile1, myfile2;
-    myfile1.open("domain1.txt");
-    myfile2.open("domain2.txt");
-    for (int i = 0; i < 201; i++)
-    {
-        for (int j = 0; j < 201; j++)
-        {
-            u << 1.0 * i / 200, 1.0 * j / 200;
-            VectorXd result = solution_domain1->AffineMap(u);
-            VectorXd position = domain1->AffineMap(u);
-            myfile1 << 20 * result(0) + position(0) << " " << 20 * result(1) + position(1) << " " << 20 * result(2) + position(2) << " " << -result(1) << endl;
-            result = solution_domain2->AffineMap(u);
-            position = domain2->AffineMap(u);
-            myfile2 << 20 * result(0) + position(0) << " " << 20 * result(1) + position(1) << " " << 20 * result(2) + position(2) << " " << -result(1) << endl;
-        }
-    }
+    // ofstream myfile1, myfile2;
+    // myfile1.open("domain1.txt");
+    // myfile2.open("domain2.txt");
+    // for (int i = 0; i < 201; i++)
+    // {
+    //     for (int j = 0; j < 201; j++)
+    //     {
+    //         u << 1.0 * i / 200, 1.0 * j / 200;
+    //         VectorXd result = solution_domain1->AffineMap(u);
+    //         VectorXd position = domain1->AffineMap(u);
+    //         myfile1 << 20 * result(0) + position(0) << " " << 20 * result(1) + position(1) << " " << 20 * result(2) + position(2) << " " << -result(1) << endl;
+    //         result = solution_domain2->AffineMap(u);
+    //         position = domain2->AffineMap(u);
+    //         myfile2 << 20 * result(0) + position(0) << " " << 20 * result(1) + position(1) << " " << 20 * result(2) + position(2) << " " << -result(1) << endl;
+    //     }
+    // }
 
-    myfile1.close();
-    myfile2.close();
-    return 0;
+    // myfile1.close();
+    // myfile2.close();
+    for (int i = 0; i <= 20; i++)
+    {
+        u << 1.0 * i / 20, 1;
+        VectorXd v(2);
+        if (!Accessory::MapParametricPoint(&*domain1, u, &*domain2, v))
+        {
+            std::cout << "MapParametericPoint failed" << std::endl;
+        }
+        MatrixXd solution1_jacobian, solution2_jacobian;
+        solution1_jacobian = solution_domain1->JacobianMatrix(u);
+        solution2_jacobian = solution_domain2->JacobianMatrix(v);
+        Vector3d xi_1, eta_1, xi_2, eta_2;
+        xi_1 = solution1_jacobian.col(0);
+        eta_1 = solution1_jacobian.col(1);
+        xi_2 = solution2_jacobian.col(0);
+        eta_2 = solution2_jacobian.col(1);
+        Vector3d n1 = xi_1.cross(eta_1);
+        Vector3d n2 = xi_2.cross(eta_2);
+        n1.normalize();
+        n2.normalize();
+        cout << setprecision(10) << abs(acos(n1.dot(n2)) * 180.0 / boost::math::constants::pi<double>() - 90) / 90 << endl;
+    }
     return 0;
 }
