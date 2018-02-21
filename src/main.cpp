@@ -26,15 +26,14 @@ int main()
 {
     double nu = .3;
     double E = 4.32e8;
-    double R = 25;
-    double L = 50;
-    KnotVector<double> knot_vector;
-    knot_vector.InitClosed(1, 0, 1);
 
-    Vector3d point1(0, 0, 0), point2(0, 1, 0), point3(1, 0, 0), point4(1, 1, 0);
-    Vector3d point5(0, 1, 0), point6(0, 1, -1), point7(1, 1, 0), point8(1, 1, -1);
-    GeometryVector points1{point1, point2, point3, point4};
-    GeometryVector points2{point5, point6, point7, point8};
+    KnotVector<double> knot_vector;
+    knot_vector.InitClosed(2, 0, 1);
+
+    Vector3d point1(0, 0, 0), point2(0, .5, 0), point3(0, 1, 0), point4(.5, 0, 0), point5(.5, .5, 0), point6(.5, 1, 0), point7(1, 0, 0), point8(1, .5, 0), point9(1, 1, 0);
+    Vector3d point10(0, 1, 0), point11(0, 1, -.5), point12(0, 1, -1), point13(.6, 1, 0), point14(.5, 1, -.5), point15(.4, 1, -1), point16(1, 1, 0), point17(1, 1, -.5), point18(1, 1, -1);
+    GeometryVector points1{point1, point2, point3, point4, point5, point6, point7, point8, point9};
+    GeometryVector points2{point10, point11, point12, point13, point14, point15, point16, point17, point18};
 
     auto domain1 = make_shared<PhyTensorBsplineBasis<2, 3, double>>(std::vector<KnotVector<double>>{knot_vector, knot_vector}, points1);
     auto domain2 = make_shared<PhyTensorBsplineBasis<2, 3, double>>(std::vector<KnotVector<double>>{knot_vector, knot_vector}, points2);
@@ -124,8 +123,8 @@ int main()
     {
         Accessory::removeRow(global_to_free, *it);
     }
-    load_vector.coeffRef(load_vector.rows() - 2,0) = -10000;
     SparseMatrix<double> sparse_global_to_free = global_to_free.sparseView();
+    load_vector.coeffRef(load_vector.rows() - 2, 0) = -1e-2;
     SparseMatrix<double> stiff_sol = sparse_global_to_free * constraint_matrix * stiffness_matrix * constraint_matrix.transpose() * sparse_global_to_free.transpose();
     SparseMatrix<double> load_sol = sparse_global_to_free * constraint_matrix * load_vector;
     ConjugateGradient<SparseMatrix<double>, Lower | Upper> cg;
@@ -147,8 +146,8 @@ int main()
     auto solution_domain1 = make_shared<PhyTensorBsplineBasis<2, 3, double>>(std::vector<KnotVector<double>>{domain1->KnotVectorGetter(0), domain1->KnotVectorGetter(1)}, solution_ctrl_pts1);
     auto solution_domain2 = make_shared<PhyTensorBsplineBasis<2, 3, double>>(std::vector<KnotVector<double>>{domain2->KnotVectorGetter(0), domain2->KnotVectorGetter(1)}, solution_ctrl_pts2);
     Vector2d u;
-    u << 1, 1;
-    cout << setprecision(10) << solution_domain1->AffineMap(u) << std::endl;
+    u << 0, 1;
+    cout << setprecision(10) << solution_domain2->AffineMap(u) << std::endl;
     u << 1, 1;
     cout << setprecision(10) << solution_domain2->AffineMap(u) << std::endl;
     ofstream myfile1, myfile2;
@@ -161,12 +160,13 @@ int main()
             u << 1.0 * i / 200, 1.0 * j / 200;
             VectorXd result = solution_domain1->AffineMap(u);
             VectorXd position = domain1->AffineMap(u);
-            myfile1 << 20 * result(0) + position(0) << " " << 20 * result(1) + position(1) << " " << 20 * result(2) + position(2) << " " << result(2) << endl;
+            myfile1 << 20 * result(0) + position(0) << " " << 20 * result(1) + position(1) << " " << 20 * result(2) + position(2) << " " << -result(1) << endl;
             result = solution_domain2->AffineMap(u);
             position = domain2->AffineMap(u);
-            myfile2 << 20 * result(0) + position(0) << " " << 20 * result(1) + position(1) << " " << 20 * result(2) + position(2) << " " << result(2) << endl;
+            myfile2 << 20 * result(0) + position(0) << " " << 20 * result(1) + position(1) << " " << 20 * result(2) + position(2) << " " << -result(1) << endl;
         }
     }
+
     myfile1.close();
     myfile2.close();
     return 0;

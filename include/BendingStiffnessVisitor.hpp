@@ -31,7 +31,7 @@ class BendingStiffnessVisitor : public StiffnessVisitor<3, 3, T>
   protected:
     T _nu{.3};
     T _E{4.32e8};
-    T _h{0.25};
+    T _h{0.0025};
 };
 
 template <typename T>
