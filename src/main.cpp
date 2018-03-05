@@ -124,7 +124,7 @@ int main()
         Accessory::removeRow(global_to_free, *it);
     }
     SparseMatrix<double> sparse_global_to_free = global_to_free.sparseView();
-    load_vector.coeffRef(load_vector.rows() - 2, 0) = -1e-2;
+    load_vector.coeffRef(load_vector.rows() - 2, 0) = -1;
     SparseMatrix<double> stiff_sol = sparse_global_to_free * constraint_matrix * stiffness_matrix * constraint_matrix.transpose() * sparse_global_to_free.transpose();
     SparseMatrix<double> load_sol = sparse_global_to_free * constraint_matrix * load_vector;
     ConjugateGradient<SparseMatrix<double>, Lower | Upper> cg;
@@ -149,9 +149,9 @@ int main()
     auto solution_domain2 = make_shared<PhyTensorBsplineBasis<2, 3, double>>(std::vector<KnotVector<double>>{domain2->KnotVectorGetter(0), domain2->KnotVectorGetter(1)}, solution_ctrl_pts2);
     VectorXd u(2);
     u << 0, 1;
-    cout << setprecision(10) << solution_domain2->AffineMap(u) << std::endl;
+    cout << setprecision(10) << solution_domain2->AffineMap(u) - domain2->AffineMap(u) << std::endl;
     u << 1, 1;
-    cout << setprecision(10) << solution_domain2->AffineMap(u) << std::endl;
+    cout << setprecision(10) << solution_domain2->AffineMap(u) - domain2->AffineMap(u) << std::endl;
     // ofstream myfile1, myfile2;
     // myfile1.open("domain1.txt");
     // myfile2.open("domain2.txt");
