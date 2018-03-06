@@ -49,6 +49,10 @@ class InterfaceVisitor : public DomainVisitor<1, N, T>
         return _masterID;
     }
 
+    const MatrixData<T> &ConstraintData() const
+    {
+        return _constraintData;
+    }
   protected:
     // Initialize quadrature rule by the highest polynomial order of coupled domains
     void
@@ -74,6 +78,7 @@ class InterfaceVisitor : public DomainVisitor<1, N, T>
   protected:
     int _slaveID;
     int _masterID;
+    MatrixData<T> _constraintData;
 };
 
 template <int N, typename T>

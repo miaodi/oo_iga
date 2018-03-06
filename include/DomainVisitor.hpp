@@ -70,8 +70,8 @@ struct MatrixData
                 if (it_row != _rowIndices->end() && it_col != _colIndices->end())
                 {
                     int ii = it_row - _rowIndices->begin();
-                    int jj = it_col - _colIndices->begin();                    
-                    temp(i, j) += (*_matrix)(ii,jj);
+                    int jj = it_col - _colIndices->begin();
+                    temp(i, j) += (*_matrix)(ii, jj);
                 }
             }
         }
@@ -84,8 +84,8 @@ struct MatrixData
                 if (it_row != matrix._rowIndices->end() && it_col != matrix._colIndices->end())
                 {
                     int ii = it_row - matrix._rowIndices->begin();
-                    int jj = it_col - matrix._colIndices->begin();                    
-                    temp(i, j) += (*matrix._matrix)(ii,jj);
+                    int jj = it_col - matrix._colIndices->begin();
+                    temp(i, j) += (*matrix._matrix)(ii, jj);
                 }
             }
         }
@@ -105,6 +105,19 @@ struct MatrixData
 
         // return the existing object so we can chain this operator
         return *this;
+    }
+
+    std::vector<Eigen::Triplet<T>> ToTriplets()
+    {
+        std::vector<Eigen::Triplet<T>> res;
+        for (int i = 0; i < _matrix->rows(); i++)
+        {
+            for (int j = 0; j < _matrix->cols(); j++)
+            {
+                res.push_back(Eigen::Triplet<T>((*_rowIndices)[i], (*_colIndices)[j], (*_matrix)(i, j)));
+            }
+        }
+        return res;
     }
 
     void Print() const

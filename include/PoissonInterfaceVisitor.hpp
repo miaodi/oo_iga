@@ -24,11 +24,6 @@ class PoissonInterfaceVisitor : public InterfaceVisitor<N, T>
   public:
     PoissonInterfaceVisitor() : InterfaceVisitor<N, T>() {}
 
-    const MatrixData<T> &ConstraintData() const
-    {
-        return _constraintData;
-    }
-
   protected:
     void SolveConstraint(Edge<N, T> *);
 
@@ -51,7 +46,6 @@ class PoissonInterfaceVisitor : public InterfaceVisitor<N, T>
   protected:
     std::vector<Eigen::Triplet<T>> _c0Slave;
     std::vector<Eigen::Triplet<T>> _c0Master;
-    MatrixData<T> _constraintData;
 };
 
 template <int N, typename T>
@@ -77,7 +71,7 @@ void PoissonInterfaceVisitor<N, T>::SolveConstraint(Edge<N, T> *edge)
                           condensed_rhs, rhs_matrix);
     Matrix constraint = this->SolveNonSymmetric(gramian_matrix, rhs_matrix);
     MatrixData<T> constraint_data(constraint, slave_activated_indices, master_activated_indices);
-    _constraintData = std::move(constraint_data);
+    this->_constraintData = std::move(constraint_data);
 }
 
 template <int N, typename T>

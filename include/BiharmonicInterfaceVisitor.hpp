@@ -28,11 +28,6 @@ class BiharmonicInterfaceVisitor : public InterfaceVisitor<N, T>
 
     void Visit(Element<1, N, T> *g);
 
-    MatrixData<T> GetConstraintData() const
-    {
-        return _constraintData;
-    }
-
   protected:
     void SolveConstraint(Edge<N, T> *);
 
@@ -53,7 +48,6 @@ class BiharmonicInterfaceVisitor : public InterfaceVisitor<N, T>
   protected:
     std::vector<Eigen::Triplet<T>> _c1Slave;
     std::vector<Eigen::Triplet<T>> _c1Master;
-    MatrixData<T> _constraintData;
     PoissonInterfaceVisitor<N, T> _poisson;
 };
 
@@ -105,7 +99,7 @@ void BiharmonicInterfaceVisitor<N, T>::SolveConstraint(Edge<N, T> *edge)
     MatrixData<T> c1_constraint_data(c1_constraint, c1_slave_indices, master_indices);
     MatrixData<T> c0_c1constraint_data(c0_c1_constraint, c1_slave_indices_copy, c0_slave_indices);
     auto c0_slave_c1_constraint_data = c0_c1constraint_data * _poisson.ConstraintData();
-    _constraintData = c1_constraint_data + c0_slave_c1_constraint_data + _poisson.ConstraintData();
+    this->_constraintData = c1_constraint_data + c0_slave_c1_constraint_data + _poisson.ConstraintData();
 }
 
 template <int N, typename T>
