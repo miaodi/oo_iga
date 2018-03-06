@@ -26,7 +26,6 @@ class ConstraintAssembler
         for (auto &i : biharmonic_interface_visitors)
         {
             const auto constraint_data_in = i->ConstraintData();
-            constraint_data_in.Print();
             int slave_id = i->SlaveID();
             int master_id = i->MasterID();
             int slave_starting_dof = _dof.StartingDof(slave_id);

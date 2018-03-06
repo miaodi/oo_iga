@@ -50,6 +50,30 @@ int main()
     auto domain3 = make_shared<PhyTensorNURBSBasis<2, 3, double>>(std::vector<KnotVector<double>>{knot_vector, knot_vector}, points3, weights3);
     auto domain4 = make_shared<PhyTensorNURBSBasis<2, 3, double>>(std::vector<KnotVector<double>>{knot_vector, knot_vector}, points4, weights4);
 
+    int degree, refine;
+    cin >> degree >> refine;
+    domain1->DegreeElevate(degree);
+    domain2->DegreeElevate(degree);
+    domain3->DegreeElevate(degree);
+    domain4->DegreeElevate(degree);
+
+    // domain1->KnotInsertion(0, .5);
+    // domain2->KnotInsertion(0, 1.0 / 3);
+    // domain2->KnotInsertion(0, 2.0 / 3);
+    // domain1->KnotInsertion(1, .5);
+    // domain2->KnotInsertion(1, 1.0 / 3);
+    // domain2->KnotInsertion(1, 2.0 / 3);
+    // domain4->KnotInsertion(0, .5);
+    // domain3->KnotInsertion(0, 1.0 / 3);
+    // domain3->KnotInsertion(0, 2.0 / 3);
+    // domain4->KnotInsertion(1, .5);
+    // domain3->KnotInsertion(1, 1.0 / 3);
+    domain3->KnotInsertion(1, 2.0 / 3);
+
+    domain1->UniformRefine(refine);
+    domain2->UniformRefine(refine);
+    domain3->UniformRefine(refine);
+    domain4->UniformRefine(refine);
     vector<shared_ptr<Surface<3, double>>> cells;
     cells.push_back(make_shared<Surface<3, double>>(domain1));
     cells[0]->SurfaceInitialize();
@@ -80,23 +104,97 @@ int main()
     }
     vector<Triplet<double>> constraint;
     ConstraintAssembler<double> constraint_assemble(dof);
-    SparseMatrix<double> constraint_matrix(constraint_assemble.Assemble(cells, constraint), dof.TotalDof());
-    constraint_matrix.setFromTriplets(constraint.begin(), constraint.end());
+    auto num_of_constraints = constraint_assemble.Assemble(cells, constraint);
+    auto indices = cells[0]->EdgePointerGetter(0)->Indices(1, 0);
+    auto start_index = dof.StartingDof(cells[0]->GetID());
+    for (auto &i : indices)
+    {
+        constraint.push_back(Triplet<double>(num_of_constraints, start_index + 3 * i, 1));
+        num_of_constraints++;
+    }
+    for (auto &i : indices)
+    {
+        constraint.push_back(Triplet<double>(num_of_constraints, start_index + 3 * i + 2, 1));
+        num_of_constraints++;
+    }
+    constraint.push_back(Triplet<double>(num_of_constraints, start_index + 1, 1));
+    num_of_constraints++;
+    indices = cells[1]->EdgePointerGetter(2)->Indices(1, 0);
+    start_index = dof.StartingDof(cells[1]->GetID());
+    for (auto &i : indices)
+    {
+        constraint.push_back(Triplet<double>(num_of_constraints, start_index + 3 * i, 1));
+        num_of_constraints++;
+    }
+    for (auto &i : indices)
+    {
+        constraint.push_back(Triplet<double>(num_of_constraints, start_index + 3 * i + 2, 1));
+        num_of_constraints++;
+    }
+    indices = cells[2]->EdgePointerGetter(0)->Indices(1, 0);
+    start_index = dof.StartingDof(cells[2]->GetID());
+    for (auto &i : indices)
+    {
+        constraint.push_back(Triplet<double>(num_of_constraints, start_index + 3 * i, 1));
+        num_of_constraints++;
+    }
+    for (auto &i : indices)
+    {
+        constraint.push_back(Triplet<double>(num_of_constraints, start_index + 3 * i + 2, 1));
+        num_of_constraints++;
+    }
+    indices = cells[3]->EdgePointerGetter(2)->Indices(1, 0);
+    start_index = dof.StartingDof(cells[3]->GetID());
+    for (auto &i : indices)
+    {
+        constraint.push_back(Triplet<double>(num_of_constraints, start_index + 3 * i, 1));
+        num_of_constraints++;
+    }
+    for (auto &i : indices)
+    {
+        constraint.push_back(Triplet<double>(num_of_constraints, start_index + 3 * i + 2, 1));
+        num_of_constraints++;
+    }
 
+    SparseMatrix<double> constraint_matrix(num_of_constraints, dof.TotalDof());
+    constraint_matrix.setFromTriplets(constraint.begin(), constraint.end());
+    constraint_matrix.pruned(1e-10);
     SparseQR<SparseMatrix<double>, COLAMDOrdering<int>> qr(constraint_matrix);
     assert(qr.info() == Success);
     // Extract Q matrix
-    SparseMatrix<double> left = qr.matrixR().topLeftCorner(qr.rank(), qr.rank()).pruned(1e-13);
-    SparseMatrix<double> right = qr.matrixR().topRightCorner(qr.rank(), constraint_matrix.cols() - qr.rank()).pruned(1e-13);
+    SparseMatrix<double> left = qr.matrixR().topLeftCorner(qr.rank(), qr.rank());
+    SparseMatrix<double> right = qr.matrixR().topRightCorner(qr.rank(), constraint_matrix.cols() - qr.rank());
 
     BiCGSTAB<SparseMatrix<double>> solver;
     solver.compute(left);
-    MatrixXd x = solver.solve(-right);
-    cout << x << endl;
-    cout << qr.rank() << endl;
-    x.conservativeResize(x.rows() + x.cols(), x.cols());
-    x.bottomLeftCorner(x.cols(), x.cols()) = MatrixXd::Identity(x.cols(), x.cols());
-    cout << constraint_matrix * qr.colsPermutation() * x << endl;
+    SparseMatrix<double, RowMajor> x(dof.TotalDof(), right.cols());
+    x.topRows(qr.rank()) = MatrixXd(solver.solve(-right)).sparseView(1e-10);
+    SparseMatrix<double, RowMajor> identity(right.cols(), right.cols());
+    identity.setIdentity();
+    x.bottomRows(right.cols()) = identity;
+    x = qr.colsPermutation() * x;
+
+    StiffnessAssembler<double> stiffness_assemble(dof);
+    SparseMatrix<double> stiffness_matrix, load_vector;
+    stiffness_assemble.Assemble(cells, body_force, stiffness_matrix, load_vector);
+
+    SparseMatrix<double> stiff_sol = x.transpose() * stiffness_matrix * x;
+    SparseMatrix<double> load_sol = x.transpose() * load_vector;
+    ConjugateGradient<SparseMatrix<double>, Lower | Upper> cg;
+    cg.compute(stiff_sol);
+    VectorXd solution = x * cg.solve(load_sol);
+
+    GeometryVector solution_ctrl_pts1, solution_ctrl_pts2;
+    for (int i = 0; i < domain1->GetDof(); i++)
+    {
+        Vector3d temp;
+        temp << solution(3 * i + 0), solution(3 * i + 1), solution(3 * i + 2);
+        solution_ctrl_pts1.push_back(temp);
+    }
+    auto solution_domain1 = make_shared<PhyTensorNURBSBasis<2, 3, double>>(std::vector<KnotVector<double>>{domain1->KnotVectorGetter(0), domain1->KnotVectorGetter(1)}, solution_ctrl_pts1, domain1->WeightVectorGetter());
+    Vector2d u;
+    u << 0, 1;
+    cout << setprecision(10) << solution_domain1->AffineMap(u) << std::endl;
 
     // ofstream myfile1, myfile2, myfile3, myfile4;
     // myfile1.open("domain1.txt");
