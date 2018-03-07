@@ -195,7 +195,7 @@ class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N
     }
 
     bool
-    Match(std::shared_ptr<Edge<N, T>> &counterpart)
+    Match(std::shared_ptr<Edge<N, T>> counterpart)
     {
         T tol = std::numeric_limits<T>::epsilon() * 1e3;
         if (_matched == true || counterpart->_matched == true)

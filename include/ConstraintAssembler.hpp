@@ -14,7 +14,7 @@ class ConstraintAssembler
         {
             for (int j = 0; j < 4; j++)
             {
-                if (i->EdgePointerGetter(j)->IsMatched()&&i->EdgePointerGetter(j)->IsSlave())
+                if (i->EdgePointerGetter(j)->IsMatched() && i->EdgePointerGetter(j)->IsSlave())
                 {
                     std::unique_ptr<BiharmonicInterfaceVisitor<3, T>> biharmonic_interface(new BiharmonicInterfaceVisitor<3, T>());
                     i->EdgePointerGetter(j)->Accept(*biharmonic_interface);
