@@ -15,6 +15,8 @@ class PhyTensorNURBSBasis : public PhyTensorBsplineBasis<d, N, T>
     using Pts = typename PhyTensorBsplineBasis<d, N, T>::Pts;
     using PhyPts = typename PhyTensorBsplineBasis<d, N, T>::PhyPts;
     using GeometryVector = typename PhyTensorBsplineBasis<d, N, T>::GeometryVector;
+    using WeightedPhyPts = typename PhyTensorBsplineBasis<d, N + 1, T>::PhyPts;
+    using WeightedGeometryVector = typename PhyTensorBsplineBasis<d, N + 1, T>::GeometryVector;
     using WtPts = typename PhyTensorBsplineBasis<d, 1, T>::PhyPts;
     using WeightVector = typename PhyTensorBsplineBasis<d, 1, T>::GeometryVector;
     using DiffPattern = typename PhyTensorBsplineBasis<d, N, T>::DiffPattern;
@@ -34,6 +36,9 @@ class PhyTensorNURBSBasis : public PhyTensorBsplineBasis<d, N, T>
     PhyTensorNURBSBasis(const std::vector<KnotVector<T>> &,
                         const GeometryVector &,
                         const WeightVector &);
+
+    PhyTensorNURBSBasis(const std::vector<KnotVector<T>> &,
+                        const WeightedGeometryVector &);
 
     BasisFunValPac_ptr
     EvalTensor(const vector &u,
@@ -88,6 +93,33 @@ PhyTensorNURBSBasis<d, N, T>::PhyTensorNURBSBasis(const std::vector<KnotVector<T
                                                   const PhyTensorNURBSBasis::WeightVector &weight)
     : PhyTensorBsplineBasis<d, N, T>(base, geometry), _weightFunction(base, weight)
 {
+}
+
+template <int d, int N, typename T>
+PhyTensorNURBSBasis<d, N, T>::PhyTensorNURBSBasis(const std::vector<KnotVector<T>> &base,
+                                                  const PhyTensorNURBSBasis::WeightedGeometryVector &weighted_geometry)
+{
+    for (int i = 0; i < d; i++)
+    {
+        this->KnotVectorSetter(base[i], i);
+    }
+    GeometryVector geometry;
+    WeightVector weights;
+    for (const auto &i : weighted_geometry)
+    {
+        WtPts weight;
+        weight << i(N);
+
+        PhyPts ctrlpt;
+        for (int j = 0; j < N; j++)
+        {
+            ctrlpt(j) = i(j) / i(N);
+        }
+        weights.push_back(weight);
+        geometry.push_back(ctrlpt);
+    }
+    this->_geometricInfo = geometry;
+    _weightFunction = PhyTensorBsplineBasis<d, 1, T>(base, weights);
 }
 
 template <int d, int N, typename T>
