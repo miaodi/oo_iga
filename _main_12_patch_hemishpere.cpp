@@ -267,8 +267,7 @@ int main()
     for (auto &i : domains)
     {
         i->DegreeElevate(degree);
-        i->UniformRefine(0, refine, 3);
-        i->UniformRefine(1, refine, 3);
+        i->UniformRefine(refine);
     }
     vector<shared_ptr<Surface<3, double>>> cells;
     for (int i = 0; i < 12; i++)
@@ -296,7 +295,7 @@ int main()
     ConstraintAssembler<double> constraint_assemble(dof);
     auto num_of_constraints = constraint_assemble.Assemble(cells, constraint);
     auto start_index = dof.StartingDof(cells[0]->GetID());
-    auto indices = cells[0]->VertexPointerGetter(2)->Indices(1, 1);
+    auto indices = cells[0]->VertexPointerGetter(2)->Indices(1, 0);
     for (auto &i : indices)
     {
         constraint.push_back(Triplet<double>(num_of_constraints, start_index + 3 * i, 1));
@@ -425,12 +424,21 @@ int main()
             solution_ctrl_pts[i].push_back(temp);
         }
     }
-
+    for (auto &i : solution_ctrl_pts[0])
+    {
+        cout << i.transpose() << endl;
+    }
     array<shared_ptr<PhyTensorNURBSBasis<2, 3, double>>, 12> solution_domains;
     for (int i = 0; i < 12; i++)
     {
         solution_domains[i] = make_shared<PhyTensorNURBSBasis<2, 3, double>>(std::vector<KnotVector<double>>{domains[i]->KnotVectorGetter(0), domains[i]->KnotVectorGetter(1)}, solution_ctrl_pts[i], domains[i]->WeightVectorGetter());
     }
+
+    u << 0, 1;
+    cout << solution_domains[9]->AffineMap(u) << endl;
+    // // u << 1, 0;
+    // // cout << solution_domain->AffineMap(u) << endl;
+    // u << 0, 1;
 
     VectorXd position;
     VectorXd result;
@@ -443,12 +451,14 @@ int main()
             {
                 position = domains[k]->AffineMap(u);
                 result = solution_domains[k]->AffineMap(u);
-                myfiles[k] << 50 * result(0) + position(0) << " " << 50 * result(1) + position(1) << " " << 50 * result(2) + position(2) << " " << result(0) << endl;
+                myfiles[k] << 20 * result(0) + position(0) << " " << 20 * result(1) + position(1) << " " << 20 * result(2) + position(2) << " " << result(0) << endl;
+                if (abs(position.norm() - 10) > 1e-13)
+                {
+                    cout << "retard" << endl;
+                }
             }
         }
     }
-    u << 0, 1;
-    cout << solution_domains[9]->AffineMap(u) << endl;
     // for (int i = 0; i < 12; i++)
     // {
     //     myfiles[i].close();

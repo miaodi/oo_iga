@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 14)
 set(CLANG_LINK_DIR /usr/local/opt/llvm/lib)
 set(OPENBLAS_LINK_DIR /usr/local/opt/openblas/lib)
 set(OPENBLAS_INCLUDE /usr/local/opt/openblas/include)
-set(CMAKE_CXX_FLAGS "-Ofast -Wno-switch -fopenmp -DEIGEN_USE_BLAS -march=native")
+set(CMAKE_CXX_FLAGS "-Ofast -Wno-switch -fopenmp -march=native")
 set(CMAKE_EXE_LINKER_FLAGS "-lopenblas -lgmp")
 
 link_directories(${CLANG_LINK_DIR} ${OPENBLAS_LINK_DIR})
@@ -17,3 +17,4 @@ add_executable(oo_iga ${SOURCE_FILES})
 
 
 #  MultiArray.h PhyTensorBsplineBasis.h PhyTensorNURBSBasis.h Topology.hpp Surface.hpp Visitor.hpp Edge.hpp Vertex.hpp DofMapper.hpp PoissonMapper.hpp DomainVisitor.hpp PoissonStiffnessVisitor.hpp DirichletBoundaryVisitor.hpp StiffnessVisitor.hpp BiharmonicStiffnessVisitor.hpp PoissonDirichletBoundaryVisitor.hpp AbstractMapper.hpp BiharmonicMapper.hpp BiharmonicDirichletBoundaryVisitor.hpp InterfaceVisitor.hpp Utility.hpp PoissonInterface.hpp PostProcess.hpp PoissonVertexVisitor.hpp
+#-DEIGEN_USE_BLAS

@@ -148,7 +148,7 @@ void BiharmonicInterfaceVisitor<N, T>::C1IntegralElementAssembler(Matrix &slave_
     auto master_evals = master_domain->EvalDerAllTensor(master_quadrature_abscissa, 1);
 
     //  Evaluate Lagrange multiplier basis
-    auto multiplier_evals = multiplier_domain->EvalDerAllTensor(u.first, 0);
+    auto multiplier_evals = multiplier_domain->EvalDualAllTensor(u.first);
 
     // Resize integration matrices
     slave_constraint_basis.resize(1, slave_evals->size());

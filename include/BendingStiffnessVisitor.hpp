@@ -29,8 +29,8 @@ class BendingStiffnessVisitor : public StiffnessVisitor<3, 3, T>
                                           Matrix &linear_form_test, const DomainShared_ptr domain, const Knot &u) const;
 
   protected:
-    T _nu{.0};
-    T _E{6.825e6};
+    T _nu{.3};
+    T _E{6.825e7};
     T _h{0.04};
 };
 
