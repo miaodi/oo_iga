@@ -174,8 +174,8 @@ void BiharmonicInterfaceVisitor<N, T>::C1IntegralElementAssembler(Matrix &slave_
 
     Eigen::Matrix<T, 3, 3> rotation_matrix = Accessory::RotationMatrix(m_n, s_n);
 
-    Matrix gramian = slave_jacobian.transpose() * slave_jacobian;
-    Matrix rhs = slave_jacobian.transpose() * rotation_matrix * master_jacobian;
+    Matrix gramian = master_jacobian.transpose() * master_jacobian;
+    Matrix rhs = master_jacobian.transpose() * rotation_matrix * slave_jacobian;
 
     Matrix sol = gramian.partialPivLu().solve(rhs);
 
@@ -192,7 +192,7 @@ void BiharmonicInterfaceVisitor<N, T>::C1IntegralElementAssembler(Matrix &slave_
         }
         for (int j = 0; j < master_evals->size(); ++j)
         {
-            master_constraint_basis(0, j) = (*master_evals)[j].second[1] * sol(1, 0) + (*master_evals)[j].second[2] * sol(1, 1);
+            master_constraint_basis(0, j) = (*master_evals)[j].second[1] * sol(0, 1) + (*master_evals)[j].second[2] * sol(1, 1);
         }
         break;
     }
@@ -206,7 +206,7 @@ void BiharmonicInterfaceVisitor<N, T>::C1IntegralElementAssembler(Matrix &slave_
         }
         for (int j = 0; j < master_evals->size(); ++j)
         {
-            master_constraint_basis(0, j) = (*master_evals)[j].second[1] * sol(0, 0) + (*master_evals)[j].second[2] * sol(0, 1);
+            master_constraint_basis(0, j) = (*master_evals)[j].second[1] * sol(0, 0) + (*master_evals)[j].second[2] * sol(1, 0);
         }
         break;
     }

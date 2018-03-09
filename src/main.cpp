@@ -267,8 +267,7 @@ int main()
     for (auto &i : domains)
     {
         i->DegreeElevate(degree);
-        i->UniformRefine(0, refine, 3);
-        i->UniformRefine(1, refine, 3);
+        i->UniformRefine(refine);
     }
     vector<shared_ptr<Surface<3, double>>> cells;
     for (int i = 0; i < 12; i++)
