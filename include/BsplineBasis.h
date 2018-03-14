@@ -72,6 +72,9 @@ class BsplineBasis
 
     void BezierDualInitialize();
 
+    // Reduce the order of first two and last two elements by one (Serve as the Lagrange multiplier). The weights for boundary basis are computed. (Only C^{p-1} spline are considered.)
+    void ModifyBoundaryInitialize();
+
     BasisFunValDerAllList_ptr BezierDual(const T &u) const;
 
   protected:

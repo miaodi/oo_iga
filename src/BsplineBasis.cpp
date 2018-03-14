@@ -169,6 +169,52 @@ void BsplineBasis<T>::BezierDualInitialize()
     _reconstruction = *Accessory::BezierReconstruction<T>(_basisKnot);
 }
 
+// Reduce the order of first two and last two elements by one (Serve as the Lagrange multiplier). The weights for boundary basis are computed.
+template <typename T>
+void BsplineBasis<T>::ModifyBoundaryInitialize()
+{
+    // p >= 1 and num of elements >= 5
+    const int degree = _basisKnot.GetDegree();
+    auto spans = _basisKnot.KnotSpans();
+    const int elements = spans.size();
+    ASSERT(degree >= 1, "The polynomial degree is too low for the modification.");
+    ASSERT(elements >= 5, "There must be at least 5 elements for the modification.");
+
+    const int boundary_degree = degree - 1;
+    KnotVector<T> first_element_knot, second_element_knot, second_last_element_knot, last_element_knot;
+    first_element_knot.InitClosed(boundary_degree, spans[0].first, spans[0].second);
+    second_element_knot.InitClosed(boundary_degree, spans[1].first, spans[1].second);
+    second_last_element_knot.InitClosed(boundary_degree, spans[elements - 2].first, spans[elements - 2].second);
+    last_element_knot.InitClosed(boundary_degree, spans[elements - 1].first, spans[elements - 1].second);
+    BsplineBasis<T> first_element(first_element_knot), second_element(second_element_knot), second_last_element(second_last_element_knot), last_element(last_element_knot);
+
+    auto second_end_eval = second_element.EvalDerAll(spans[1].second, boundary_degree);
+    auto second_begin_eval = second_element.EvalDerAll(spans[1].first, boundary_degree);
+    auto first_end_eval = second_element.EvalDerAll(spans[0].second, boundary_degree);
+    matrix second_end(boundary_degree + 1, boundary_degree + 1), second_begin(boundary_degree + 1, boundary_degree + 1), first_end(boundary_degree + 1, boundary_degree + 1);
+    for (int i = 0; i < boundary_degree + 1; i++)
+    {
+        for (int j = 0; j < boundary_degree + 1; j++)
+        {
+            second_end(i, j) = (*second_end_eval)[j].second[i];
+            second_begin(i, j) = (*second_begin_eval)[j].second[i];
+            first_end(i, j) = (*first_end_eval)[j].second[i];
+        }
+    }
+    vector first_basis_eval(boundary_degree + 1);
+    vector second_basis_eval(boundary_degree + 1);
+    for (int i = 0; i < boundary_degree + 1; i++)
+    {
+        first_basis_eval(i) = this->EvalSingle(spans[1].second, 2, i);
+        second_basis_eval(i) = this->EvalSingle(spans[1].second, 3, i);
+    }
+    vector first_basis_in_second_element = second_end.fullPivLu().solve(first_basis_eval);
+    vector second_basis_in_second_element = second_end.fullPivLu().solve(second_basis_eval);
+    std::cout << first_basis_in_second_element << std::endl;
+    vector first_basis_in_first_element = first_end.fullPivLu().solve(second_begin * first_basis_in_second_element);
+    std::cout << first_basis_in_first_element << std::endl;
+}
+
 template <typename T>
 std::unique_ptr<typename BsplineBasis<T>::matrix> BsplineBasis<T>::BasisWeight() const
 {
