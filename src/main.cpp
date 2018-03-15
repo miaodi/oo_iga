@@ -33,7 +33,10 @@ int main()
     knot_vector.printKnotVector();
     BsplineBasis<double> a(knot_vector);
     a.ModifyBoundaryInitialize();
-    cout << a.FindSpan(.875) << endl
-         << a.FindSpan(1);
+    auto res = a.EvalModifiedDerAll(.8, 0);
+    for (auto &i : *res)
+    {
+        cout << i.first << " " << i.second[0] << endl;
+    }
     return 0;
 }

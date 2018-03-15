@@ -211,12 +211,6 @@ void BsplineBasis<T>::ModifyBoundaryInitialize()
             last_begin(i, j) = (*last_begin_eval)[j].second[i];
         }
     }
-    std::cout << second_end << std::endl
-              << second_begin << std::endl
-              << first_end << std::endl
-              << second_last_begin << std::endl
-              << second_last_end << std::endl
-              << last_begin << std::endl;
     std::vector<vector> front_basis_eval(boundary_degree + 1);
     std::vector<vector> back_basis_eval(boundary_degree + 1);
     for (int i = 0; i < boundary_degree + 1; i++)
@@ -228,9 +222,6 @@ void BsplineBasis<T>::ModifyBoundaryInitialize()
             front_basis_eval[i](j) = this->EvalSingle(spans[1].second, 2 + i, j);
             back_basis_eval[i](j) = this->EvalSingle(spans[elements - 2].first, dof - 3 - boundary_degree + i, j);
         }
-        std::cout << front_basis_eval[i] << std::endl;
-        std::cout << back_basis_eval[i] << std::endl
-                  << std::endl;
     }
     std::vector<vector> weights_in_second_element(boundary_degree + 1);
     std::vector<vector> weights_in_second_last_element(boundary_degree + 1);
@@ -254,7 +245,6 @@ void BsplineBasis<T>::ModifyBoundaryInitialize()
         _basisWeight.col(i + 2 * (boundary_degree + 1)) = weights_in_second_last_element[i];
         _basisWeight.col(i + 3 * (boundary_degree + 1)) = weights_in_last_element[i];
     }
-    std::cout << std::setprecision(5) << _basisWeight << std::endl;
 }
 
 template <typename T>
@@ -300,8 +290,120 @@ std::unique_ptr<typename BsplineBasis<T>::matrix> BsplineBasis<T>::BasisWeight()
 template <typename T>
 typename BsplineBasis<T>::BasisFunValDerAllList_ptr BsplineBasis<T>::EvalModifiedDerAll(const T &u, int i) const
 {
-    const int span_num = this->FindSpan(u);
-    
+    const int degree = _basisKnot.GetDegree();
+    const int dof = _basisKnot.GetDOF();
+    const int element_num = this->FindSpan(u) - degree;
+    const int boundary_degree = degree - 1;
+    auto spans = _basisKnot.KnotSpans();
+    const int elements = spans.size();
+
+    if (element_num == 0)
+    {
+        KnotVector<T> first_element_knot;
+        first_element_knot.InitClosed(boundary_degree, spans[0].first, spans[0].second);
+        BsplineBasis<T> first_element(first_element_knot);
+        auto res = first_element.EvalDerAll(u, i);
+        matrix matrix_form(i + 1, boundary_degree + 1);
+        for (int k = 0; k <= i; k++)
+        {
+            for (int j = 0; j < boundary_degree + 1; j++)
+            {
+                matrix_form(k, j) = (*res)[j].second[k];
+            }
+        }
+        matrix res_matrix_form = matrix_form * _basisWeight.block(0, 0, boundary_degree + 1, boundary_degree + 1);
+        for (int k = 0; k <= i; k++)
+        {
+            for (int j = 0; j < boundary_degree + 1; j++)
+            {
+                (*res)[j].second[k] = res_matrix_form(k, j);
+            }
+        }
+        return res;
+    }
+    else if (element_num == 1)
+    {
+        KnotVector<T> second_element_knot;
+        second_element_knot.InitClosed(boundary_degree, spans[1].first, spans[1].second);
+        BsplineBasis<T> second_element(second_element_knot);
+        auto res = second_element.EvalDerAll(u, i);
+        matrix matrix_form(i + 1, boundary_degree + 1);
+        for (int k = 0; k <= i; k++)
+        {
+            for (int j = 0; j < boundary_degree + 1; j++)
+            {
+                matrix_form(k, j) = (*res)[j].second[k];
+            }
+        }
+        matrix res_matrix_form = matrix_form * _basisWeight.block(0, boundary_degree + 1, boundary_degree + 1, boundary_degree + 1);
+        for (int k = 0; k <= i; k++)
+        {
+            for (int j = 0; j < boundary_degree + 1; j++)
+            {
+                (*res)[j].second[k] = res_matrix_form(k, j);
+            }
+        }
+        return res;
+    }
+    else if (element_num == elements - 2)
+    {
+        KnotVector<T> second_last_element_knot;
+        second_last_element_knot.InitClosed(boundary_degree, spans[elements - 2].first, spans[elements - 2].second);
+        BsplineBasis<T> second_last_element(second_last_element_knot);
+        auto res = second_last_element.EvalDerAll(u, i);
+        matrix matrix_form(boundary_degree + 1, boundary_degree + 1);
+        for (int k = 0; k <= i; k++)
+        {
+            for (int j = 0; j < boundary_degree + 1; j++)
+            {
+                matrix_form(k, j) = (*res)[j].second[k];
+            }
+        }
+        matrix res_matrix_form = matrix_form * _basisWeight.block(0, 2 * (boundary_degree + 1), boundary_degree + 1, boundary_degree + 1);
+        for (int j = 0; j < boundary_degree + 1; j++)
+        {
+            (*res)[j].first = dof - 5 - boundary_degree + j;
+            for (int k = 0; k <= i; k++)
+            {
+                (*res)[j].second[k] = res_matrix_form(k, j);
+            }
+        }
+        return res;
+    }
+    else if (element_num == elements - 1)
+    {
+        KnotVector<T> last_element_knot;
+        last_element_knot.InitClosed(boundary_degree, spans[elements - 1].first, spans[elements - 1].second);
+        BsplineBasis<T> last_element(last_element_knot);
+        auto res = last_element.EvalDerAll(u, i);
+        matrix matrix_form(boundary_degree + 1, boundary_degree + 1);
+        for (int k = 0; k <= i; k++)
+        {
+            for (int j = 0; j < boundary_degree + 1; j++)
+            {
+                matrix_form(k, j) = (*res)[j].second[k];
+            }
+        }
+        matrix res_matrix_form = matrix_form * _basisWeight.block(0, 3 * (boundary_degree + 1), boundary_degree + 1, boundary_degree + 1);
+        for (int j = 0; j < boundary_degree + 1; j++)
+        {
+            (*res)[j].first = dof - 5 - boundary_degree + j;
+            for (int k = 0; k <= i; k++)
+            {
+                (*res)[j].second[k] = res_matrix_form(k, j);
+            }
+        }
+        return res;
+    }
+    else
+    {
+        auto res = this->EvalDerAll(u, i);
+        for (auto &i : *res)
+        {
+            i.first -= 2;
+        }
+        return res;
+    }
 }
 
 template <typename T>
