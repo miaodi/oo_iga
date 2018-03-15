@@ -29,14 +29,35 @@ int main()
 {
     KnotVector<double> knot_vector;
     knot_vector.InitClosed(3, 0, 1);
-    knot_vector.UniformRefine(3);
+    knot_vector.UniformRefine(4);
     knot_vector.printKnotVector();
     BsplineBasis<double> a(knot_vector);
     a.ModifyBoundaryInitialize();
-    auto res = a.EvalModifiedDerAll(.8, 0);
-    for (auto &i : *res)
+    ofstream myfile;
+    myfile.open("basis.txt");
+    auto dof = a.GetDof() - 4;
+    myfile << "x ";
+    for (int i = 0; i < dof; i++)
     {
-        cout << i.first << " " << i.second[0] << endl;
+        myfile << "N" << i << " ";
     }
+    myfile << endl;
+    for (int i = 0; i < 201; i++)
+    {
+        double u = i * 1.0 / 200;
+        myfile << u << " ";
+        auto res = a.EvalModifiedDerAll(u, 0);
+        vector<double> values(dof, 0);
+        for (auto &i : *res)
+        {
+            values[i.first] = i.second[0];
+        }
+        for (auto &i : values)
+        {
+            myfile << setprecision(4) << i << " ";
+        }
+        myfile << endl;
+    }
+    myfile.close();
     return 0;
 }
