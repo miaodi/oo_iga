@@ -28,10 +28,12 @@ using Vector1d = Matrix<double, 1, 1>;
 int main()
 {
     KnotVector<double> knot_vector;
-    knot_vector.InitClosed(4, 0, 1);
+    knot_vector.InitClosed(3, 0, 1);
     knot_vector.UniformRefine(3);
     knot_vector.printKnotVector();
     BsplineBasis<double> a(knot_vector);
     a.ModifyBoundaryInitialize();
+    cout << a.FindSpan(.875) << endl
+         << a.FindSpan(1);
     return 0;
 }
