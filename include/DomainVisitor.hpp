@@ -156,6 +156,11 @@ class DomainVisitor : public Visitor<d, N, T>
         }
     }
 
+    inline void ThreadSetter(const u_int &threads)
+    {
+        _num_of_threads = threads;
+    }
+
   protected:
     //    Initialize quadrature rule
     virtual void InitializeQuadratureRule(Element<d, N, T> *g,
@@ -492,11 +497,6 @@ class DomainVisitor : public Visitor<d, N, T>
                "The size of given gramian matrix is not correct.\n");
         return gramian.partialPivLu().solve(rhs);
         ;
-    }
-
-    inline void ThreadSetter(const u_int &threads)
-    {
-        _num_of_threads = threads;
     }
 
   protected:

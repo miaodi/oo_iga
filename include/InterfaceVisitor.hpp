@@ -77,6 +77,7 @@ void
     auto edge = dynamic_cast<Edge<N, T> *>(g);
     if (edge->IsMatched() && edge->IsSlave())
     {
+        edge->GetDomain()->BasisGetter(0).ModifyBoundaryInitialize();
         InitializeTripletContainer();
         DomainVisitor<1, N, T>::Visit(g);
         SolveConstraint(edge);

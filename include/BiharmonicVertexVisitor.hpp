@@ -34,7 +34,7 @@ void BiharmonicVertexVisitor<N, T>::VertexConstraint(Vertex<N, T> *master_vertex
     }
     auto master_eval = master_domain->Eval2PhyDerAllTensor(master_parametric);
     auto slave_eval = slave_domain->Eval2PhyDerAllTensor(slave_parametric);
-    Matrix vertex_constraint(6, this->_dofMapper.Dof());
+    Matrix vertex_constraint(3, this->_dofMapper.Dof());
     vertex_constraint.setZero();
     int start_index_master = this->_dofMapper.StartingIndex(master_domain);
     for (auto it = (*master_eval).begin(); it != (*master_eval).end(); ++it)
@@ -42,9 +42,9 @@ void BiharmonicVertexVisitor<N, T>::VertexConstraint(Vertex<N, T> *master_vertex
         vertex_constraint(0, start_index_master + it->first) = it->second[0];
         vertex_constraint(1, start_index_master + it->first) = it->second[1];
         vertex_constraint(2, start_index_master + it->first) = it->second[2];
-        vertex_constraint(3, start_index_master + it->first) = it->second[3];
-        vertex_constraint(4, start_index_master + it->first) = it->second[4];
-        vertex_constraint(5, start_index_master + it->first) = it->second[5];
+        // vertex_constraint(3, start_index_master + it->first) = it->second[3];
+        // vertex_constraint(4, start_index_master + it->first) = it->second[4];
+        // vertex_constraint(5, start_index_master + it->first) = it->second[5];
     }
     int start_index_slave = this->_dofMapper.StartingIndex(slave_domain);
     for (auto it = (*slave_eval).begin(); it != (*slave_eval).end(); ++it)
@@ -52,9 +52,9 @@ void BiharmonicVertexVisitor<N, T>::VertexConstraint(Vertex<N, T> *master_vertex
         vertex_constraint(0, start_index_slave + it->first) = -it->second[0];
         vertex_constraint(1, start_index_slave + it->first) = -it->second[1];
         vertex_constraint(2, start_index_slave + it->first) = -it->second[2];
-        vertex_constraint(3, start_index_slave + it->first) = -it->second[3];
-        vertex_constraint(4, start_index_slave + it->first) = -it->second[4];
-        vertex_constraint(5, start_index_slave + it->first) = -it->second[5];
+        // vertex_constraint(3, start_index_slave + it->first) = -it->second[3];
+        // vertex_constraint(4, start_index_slave + it->first) = -it->second[4];
+        // vertex_constraint(5, start_index_slave + it->first) = -it->second[5];
     }
     this->_constraint.push_back(vertex_constraint);
 }

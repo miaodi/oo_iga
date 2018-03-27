@@ -88,13 +88,13 @@ void BiharmonicInterface<N, T>::SolveC1Constraint(Edge<N, T> *edge)
     constraint.setFromTriplets(_c1ConstraintsEquationElements.begin(), _c1ConstraintsEquationElements.end());
 
     Matrix dense_constraint = Matrix(constraint);
-    dense_constraint.row(2) = dense_constraint.row(0) + dense_constraint.row(1) + dense_constraint.row(2);
-    dense_constraint.row(dense_constraint.rows() - 3) = dense_constraint.row(dense_constraint.rows() - 3) + dense_constraint.row(dense_constraint.rows() - 2) + dense_constraint.row(dense_constraint.rows() - 1);
+    // dense_constraint.row(2) = dense_constraint.row(0) + dense_constraint.row(1) + dense_constraint.row(2);
+    // dense_constraint.row(dense_constraint.rows() - 3) = dense_constraint.row(dense_constraint.rows() - 3) + dense_constraint.row(dense_constraint.rows() - 2) + dense_constraint.row(dense_constraint.rows() - 1);
 
-    Accessory::removeRow<T>(dense_constraint, 0);
-    Accessory::removeRow<T>(dense_constraint, 0);
-    Accessory::removeRow<T>(dense_constraint, dense_constraint.rows() - 1);
-    Accessory::removeRow<T>(dense_constraint, dense_constraint.rows() - 1);
+    // Accessory::removeRow<T>(dense_constraint, 0);
+    // Accessory::removeRow<T>(dense_constraint, 0);
+    // Accessory::removeRow<T>(dense_constraint, dense_constraint.rows() - 1);
+    // Accessory::removeRow<T>(dense_constraint, dense_constraint.rows() - 1);
     _c1Constraint[edge] = std::move(dense_constraint);
 }
 
@@ -159,7 +159,7 @@ void BiharmonicInterface<N, T>::C1IntegralElementAssembler(Matrix &slave_constra
     auto master_evals = master_domain->EvalDerAllTensor(master_quadrature_abscissa, 1);
 
     //  Evaluate Lagrange multiplier basis
-    auto multiplier_evals = multiplier_domain->EvalDerAllTensor(u.first, 0);
+    auto multiplier_evals = multiplier_domain->BasisGetter(0).EvalModifiedDerAll(u.first(0), 0);
 
     // Resize integration matrices
     slave_constraint_basis.resize(1, slave_evals->size());
@@ -298,6 +298,11 @@ void BiharmonicInterface<N, T>::C1IntegralElementAssembler(Matrix &slave_constra
     }
     if (multiplier_basis_indices.size() == 0)
     {
-        multiplier_basis_indices = multiplier_domain->ActiveIndex(u.first);
+        std::vector<int> indices;
+        for (auto &i : *multiplier_evals)
+        {
+            indices.push_back(i.first);
+        }
+        multiplier_basis_indices = indices;
     }
 }

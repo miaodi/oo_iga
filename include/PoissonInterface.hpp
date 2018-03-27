@@ -87,13 +87,13 @@ void PoissonInterface<N, T>::SolveC0Constraint(Edge<N, T> *edge)
     constraint.setFromTriplets(_c0ConstraintsEquationElements.begin(), _c0ConstraintsEquationElements.end());
     Matrix dense_constraint = Matrix(constraint);
 
-    dense_constraint.row(2) = dense_constraint.row(0) + dense_constraint.row(1) + dense_constraint.row(2);
-    dense_constraint.row(dense_constraint.rows() - 3) = dense_constraint.row(dense_constraint.rows() - 3) + dense_constraint.row(dense_constraint.rows() - 2) + dense_constraint.row(dense_constraint.rows() - 1);
+    // dense_constraint.row(2) = dense_constraint.row(0) + dense_constraint.row(1) + dense_constraint.row(2);
+    // dense_constraint.row(dense_constraint.rows() - 3) = dense_constraint.row(dense_constraint.rows() - 3) + dense_constraint.row(dense_constraint.rows() - 2) + dense_constraint.row(dense_constraint.rows() - 1);
 
-    Accessory::removeRow<T>(dense_constraint, 0);
-    Accessory::removeRow<T>(dense_constraint, 0);
-    Accessory::removeRow<T>(dense_constraint, dense_constraint.rows() - 1);
-    Accessory::removeRow<T>(dense_constraint, dense_constraint.rows() - 1);
+    // Accessory::removeRow<T>(dense_constraint, 0);
+    // Accessory::removeRow<T>(dense_constraint, 0);
+    // Accessory::removeRow<T>(dense_constraint, dense_constraint.rows() - 1);
+    // Accessory::removeRow<T>(dense_constraint, dense_constraint.rows() - 1);
     _c0Constraint[edge] = std::move(dense_constraint);
 }
 
@@ -140,7 +140,6 @@ void PoissonInterface<N, T>::C0IntegralElementAssembler(Matrix &slave_constraint
     auto master_domain = edge->Counterpart().lock()->Parent(0).lock()->GetDomain();
     //    set up integration weights
     integral_weight = u.second;
-
     Vector slave_quadrature_abscissa, master_quadrature_abscissa;
     if (!Accessory::MapParametricPoint(&*multiplier_domain, u.first, &*slave_domain, slave_quadrature_abscissa))
     {
@@ -150,10 +149,9 @@ void PoissonInterface<N, T>::C0IntegralElementAssembler(Matrix &slave_constraint
     {
         std::cout << "MapParametericPoint failed" << std::endl;
     }
-
     auto slave_evals = slave_domain->EvalDerAllTensor(slave_quadrature_abscissa, 0);
     auto master_evals = master_domain->EvalDerAllTensor(master_quadrature_abscissa, 0);
-    auto multiplier_evals = multiplier_domain->EvalDerAllTensor(u.first, 0);
+    auto multiplier_evals = multiplier_domain->BasisGetter(0).EvalModifiedDerAll(u.first(0), 0);
 
     slave_constraint_basis.resize(1, slave_evals->size());
     master_constraint_basis.resize(1, master_evals->size());
@@ -184,6 +182,11 @@ void PoissonInterface<N, T>::C0IntegralElementAssembler(Matrix &slave_constraint
     }
     if (multiplier_basis_indices.size() == 0)
     {
-        multiplier_basis_indices = multiplier_domain->ActiveIndex(u.first);
+        std::vector<int> indices;
+        for (auto &i : *multiplier_evals)
+        {
+            indices.push_back(i.first);
+        }
+        multiplier_basis_indices = indices;
     }
 }
