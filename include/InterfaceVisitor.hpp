@@ -53,6 +53,7 @@ class InterfaceVisitor : public DomainVisitor<1, N, T>
     {
         return _constraintData;
     }
+
   protected:
     // Initialize quadrature rule by the highest polynomial order of coupled domains
     void
@@ -178,6 +179,7 @@ void
                                      weights);
 
     std::lock_guard<std::mutex> lock(this->_mutex);
+    stiff.Print();
     this->Triplet(stiff, slave_constraints_equation_element);
     this->Triplet(load, master_constraints_equation_element);
 }

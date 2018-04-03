@@ -47,7 +47,7 @@ class BiharmonicInterfaceVisitor : public InterfaceVisitor<N, T>
                                                                            const Quadrature &u);
 
     template <int n = N>
-    typename std::enable_if<n == 1, void>::type C1IntegralElementAssembler(Matrix &slave_constraint_basis,
+    typename std::enable_if<n == 2, void>::type C1IntegralElementAssembler(Matrix &slave_constraint_basis,
                                                                            std::vector<int> &slave_constraint_basis_indices,
                                                                            Matrix &master_constrint_basis,
                                                                            std::vector<int> &master_constraint_basis_indices,
@@ -77,7 +77,7 @@ void BiharmonicInterfaceVisitor<N, T>::SolveConstraint(Edge<N, T> *edge)
     std::vector<int> slave_indices = Accessory::ColIndicesVector(_c1Slave);
     std::vector<int> master_indices = Accessory::ColIndicesVector(_c1Master);
     std::vector<int> multiplier_indices = Accessory::RowIndicesVector(_c1Slave);
-    std::vector<int> c0_slave_indices = edge->Indices(N, 0);
+    std::vector<int> c0_slave_indices = *(_poisson.ConstraintData()._rowIndices);
 
     std::vector<int> c1_slave_indices;
     std::set_difference(slave_indices.begin(), slave_indices.end(), c0_slave_indices.begin(),
@@ -122,7 +122,7 @@ void BiharmonicInterfaceVisitor<N, T>::LocalAssemble(Element<1, N, T> *g,
     // non-static member function take this pointer.
     using namespace std::placeholders;
     auto c1_function =
-        std::bind(&BiharmonicInterfaceVisitor<N, T>::C1IntegralElementAssembler, this, _1, _2, _3, _4, _5, _6, _7, _8, _9);
+        std::bind(&BiharmonicInterfaceVisitor<N, T>::C1IntegralElementAssembler<>, this, _1, _2, _3, _4, _5, _6, _7, _8, _9);
     this->ConstraintLocalAssemble(g, quadrature_rule, knot_span, c1_function, _c1Slave, _c1Master);
 }
 
@@ -278,7 +278,7 @@ typename std::enable_if<n == 3, void>::type BiharmonicInterfaceVisitor<N, T>::C1
 
 template <int N, typename T>
 template <int n>
-typename std::enable_if<n == 1, void>::type BiharmonicInterfaceVisitor<N, T>::C1IntegralElementAssembler(Matrix &slave_constraint_basis,
+typename std::enable_if<n == 2, void>::type BiharmonicInterfaceVisitor<N, T>::C1IntegralElementAssembler(Matrix &slave_constraint_basis,
                                                                                                          std::vector<int> &slave_constraint_basis_indices,
                                                                                                          Matrix &master_constraint_basis,
                                                                                                          std::vector<int> &master_constraint_basis_indices,
@@ -288,5 +288,108 @@ typename std::enable_if<n == 1, void>::type BiharmonicInterfaceVisitor<N, T>::C1
                                                                                                          Edge<N, T> *edge,
                                                                                                          const Quadrature &u)
 {
+    auto multiplier_domain = edge->GetDomain();
+    auto slave_domain = edge->Parent(0).lock()->GetDomain();
+    auto master_domain = edge->Counterpart().lock()->Parent(0).lock()->GetDomain();
 
+    //    set up integration weights
+    integral_weight = u.second;
+
+    // Map abscissa from Lagrange multiplier space to slave and master domain
+    Vector slave_quadrature_abscissa, master_quadrature_abscissa;
+    if (!Accessory::MapParametricPoint(&*multiplier_domain, u.first, &*slave_domain, slave_quadrature_abscissa))
+    {
+        std::cout << "MapParametericPoint failed" << std::endl;
+    }
+    if (!Accessory::MapParametricPoint(&*multiplier_domain, u.first, &*master_domain, master_quadrature_abscissa))
+    {
+        std::cout << "MapParametericPoint failed" << std::endl;
+    }
+
+    // Evaluate derivative upto 1^st order in slave and master domain
+    auto slave_evals = slave_domain->EvalDerAllTensor(slave_quadrature_abscissa, 1);
+    auto master_evals = master_domain->EvalDerAllTensor(master_quadrature_abscissa, 1);
+
+    //  Evaluate Lagrange multiplier basis
+    auto multiplier_evals = multiplier_domain->EvalDualAllTensor(u.first);
+
+    // Resize integration matrices
+    slave_constraint_basis.resize(1, slave_evals->size());
+    master_constraint_basis.resize(1, master_evals->size());
+    multiplier_basis.resize(1, multiplier_evals->size());
+
+    // Compute the following matrix
+    // +-----------+-----------+
+    // | ∂ξ_m/∂ξ_s | ∂η_m/∂ξ_s |
+    // +-----------+-----------+
+    // | ∂ξ_m/∂η_s | ∂η_m/∂η_s |
+    // +-----------+-----------+
+    Matrix slave_jacobian = slave_domain->JacobianMatrix(slave_quadrature_abscissa);
+    Matrix master_jacobian = master_domain->JacobianMatrix(master_quadrature_abscissa);
+
+    // Substitute master coordinate of master basis by slave coordinate
+    for (auto &i : *master_evals)
+    {
+        Vector tmp = slave_jacobian * master_jacobian.partialPivLu().solve((Vector(2) << i.second[1], i.second[2]).finished());
+        i.second[1] = tmp(0);
+        i.second[2] = tmp(1);
+    }
+
+    // Two strategies for horizontal edge and vertical edge.
+    switch (edge->GetOrient())
+    {
+    // For south and north edge derivative w.r.t η_s should be consistent
+    case Orientation::south:
+    case Orientation::north:
+    {
+        for (int j = 0; j < slave_evals->size(); ++j)
+        {
+            slave_constraint_basis(0, j) = (*slave_evals)[j].second[2];
+        }
+        for (int j = 0; j < master_evals->size(); ++j)
+        {
+            master_constraint_basis(0, j) = (*master_evals)[j].second[2];
+        }
+        break;
+    }
+    // For south and north edge derivative w.r.t ξ_s should be consistent
+    case Orientation::east:
+    case Orientation::west:
+    {
+        for (int j = 0; j < slave_evals->size(); ++j)
+        {
+            slave_constraint_basis(0, j) = (*slave_evals)[j].second[1];
+        }
+        for (int j = 0; j < master_evals->size(); ++j)
+        {
+            master_constraint_basis(0, j) = (*master_evals)[j].second[1];
+        }
+        break;
+    }
+    }
+
+    // Lagrange multiplier basis
+    for (int j = 0; j < multiplier_evals->size(); ++j)
+    {
+        multiplier_basis(0, j) = (*multiplier_evals)[j].second[0];
+    }
+
+    // set up indices corresponding to test basis functions and trial basis functions
+    if (slave_constraint_basis_indices.size() == 0)
+    {
+        slave_constraint_basis_indices = slave_domain->ActiveIndex(slave_quadrature_abscissa);
+    }
+    if (master_constraint_basis_indices.size() == 0)
+    {
+        master_constraint_basis_indices = master_domain->ActiveIndex(master_quadrature_abscissa);
+    }
+    if (multiplier_basis_indices.size() == 0)
+    {
+        std::vector<int> indices;
+        for (auto &i : *multiplier_evals)
+        {
+            indices.push_back(i.first);
+        }
+        multiplier_basis_indices = indices;
+    }
 }

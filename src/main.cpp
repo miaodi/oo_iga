@@ -20,143 +20,50 @@
 
 using namespace Eigen;
 using namespace std;
-using GeometryVector = PhyTensorBsplineBasis<2, 3, double>::GeometryVector;
-using WeightedGeometryVector = PhyTensorNURBSBasis<2, 3, double>::WeightedGeometryVector;
-using WeightVector = PhyTensorNURBSBasis<2, 3, double>::WeightVector;
+using GeometryVector = PhyTensorBsplineBasis<2, 2, double>::GeometryVector;
+using WeightedGeometryVector = PhyTensorNURBSBasis<2, 2, double>::WeightedGeometryVector;
+using WeightVector = PhyTensorNURBSBasis<2, 2, double>::WeightVector;
 using Vector1d = Matrix<double, 1, 1>;
 
 int main()
 {
     KnotVector<double> knot_vector;
-    knot_vector.InitClosed(3, 0, 1);
-    knot_vector.UniformRefine(3);
-    knot_vector.printKnotVector();
-    BsplineBasis<double> a(knot_vector);
-    a.ModifyBoundaryInitialize();
-    ofstream myfile;
-    myfile.open("basis_reduce_degree.txt");
-    auto dof = a.GetDof() - 4;
-    myfile << "x ";
-    for (int i = 0; i < dof; i++)
-    {
-        myfile << "N" << i << " ";
-    }
-    myfile << endl;
-    for (int i = 0; i < 201; i++)
-    {
-        double u = i * 1.0 / 200;
-        myfile << u << " ";
-        auto res = a.EvalModifiedDerAll(u, 0);
-        vector<double> values(dof, 0);
-        for (auto &i : *res)
-        {
-            values[i.first] = i.second[0];
-        }
-        for (auto &i : values)
-        {
-            myfile << setprecision(4) << i << " ";
-        }
-        myfile << endl;
-    }
-    myfile.close();
-    ofstream myfile1;
-    myfile1.open("basis_original.txt");
+    knot_vector.InitClosed(2, 0, 1);
 
-    auto dof1 = a.GetDof();
-    myfile1 << "x ";
-    for (int i = 0; i < dof1; i++)
-    {
-        myfile1 << "N" << i << " ";
-    }
-    myfile1 << endl;
-    for (int i = 0; i < 201; i++)
-    {
-        double u = i * 1.0 / 200;
-        myfile1 << u << " ";
-        auto res = a.EvalDerAll(u, 0);
-        vector<double> values(dof1, 0);
-        for (auto &i : *res)
-        {
-            values[i.first] = i.second[0];
-        }
-        for (auto &i : values)
-        {
-            myfile1 << setprecision(4) << i << " ";
-        }
-        myfile1 << endl;
-    }
-    myfile1.close();
+    Vector2d point11(-2.7, -.7), point12(-2.2, -.1), point13(-2, .9), point14(-1.3, -1), point15(-1.3, -.5), point16(-.7, .6), point17(-.4, -.9), point18(.1, -.3), point19(0, 0);
+    Vector2d point21(-.4, -.9), point22(.1, -.3), point23(0, 0), point24(1.2, -.8), point25(1.0, .1), point26(.8, 1.2), point27(2.5, -1), point28(2.3, -.5), point29(1.9, 1.8);
+    Vector2d point31(-2, .9), point32(-1.3, 1.2), point33(.1, 2.1), point34(-.7, .6), point35(-.1, 1.3), point36(1.2, 2), point37(0, 0), point38(.8, 1.2), point39(1.9, 1.8);
 
-    ofstream myfile2;
-    myfile2.open("basis_coarse.txt");
-    myfile2 << "x ";
-    for (int i = 0; i < dof; i++)
-    {
-        myfile2 << "N" << i << " ";
-    }
-    myfile2 << endl;
-    for (int i = 0; i < 201; i++)
-    {
-        double u = i * 1.0 / 200;
-        myfile2 << u << " ";
-        auto res = a.EvalDerAll(u, 0);
-        vector<double> values1(dof1, 0);
-        for (auto &i : *res)
-        {
-            values1[i.first] = i.second[0];
-        }
-        vector<double> values(dof, 0);
-        int k = 0;
-        for (auto &i : values)
-        {
-            i = values1[k + 2];
-            k++;
-        }
-        values[0] = values1[0] + values1[1] + values1[2];
-        *values.rbegin() = *values1.rbegin() + *(values1.rbegin() + 1) + *(values1.rbegin() + 2);
-        for (auto &i : values)
-        {
-            myfile2 << setprecision(4) << i << " ";
-        }
-        myfile2 << endl;
-    }
-    myfile2.close();
+    GeometryVector points1{point11, point12, point13, point14, point15, point16, point17, point18, point19};
+    GeometryVector points2{point21, point22, point23, point24, point25, point26, point27, point28, point29};
+    GeometryVector points3{point31, point32, point33, point34, point35, point36, point37, point38, point39};
 
-    a.BezierDualInitialize();
+    array<shared_ptr<PhyTensorBsplineBasis<2, 2, double>>, 3> domains;
+    domains[0] = make_shared<PhyTensorBsplineBasis<2, 2, double>>(std::vector<KnotVector<double>>{knot_vector, knot_vector}, points1);
+    domains[1] = make_shared<PhyTensorBsplineBasis<2, 2, double>>(std::vector<KnotVector<double>>{knot_vector, knot_vector}, points2);
+    domains[2] = make_shared<PhyTensorBsplineBasis<2, 2, double>>(std::vector<KnotVector<double>>{knot_vector, knot_vector}, points3);
 
-    ofstream myfile3;
-    myfile3.open("dual_basis_coarse.txt");
-    myfile3 << "x ";
-    for (int i = 0; i < dof; i++)
+    vector<shared_ptr<Surface<2, double>>> cells;
+    for (int i = 0; i < 3; i++)
     {
-        myfile3 << "N" << i << " ";
+        cells.push_back(make_shared<Surface<2, double>>(domains[i]));
+        cells[i]->SurfaceInitialize();
     }
-    myfile2 << endl;
-    for (int i = 0; i < 201; i++)
+
+    for (int i = 0; i < 2; i++)
     {
-        double u = i * 1.0 / 200;
-        myfile3 << u << " ";
-        auto res = a.BezierDual(u);
-        vector<double> values1(dof1, 0);
-        for (auto &i : *res)
+        for (int j = i + 1; j < 3; j++)
         {
-            values1[i.first] = i.second[0];
+            cells[i]->Match(cells[j]);
         }
-        vector<double> values(dof, 0);
-        int k = 0;
-        for (auto &i : values)
-        {
-            i = values1[k + 2];
-            k++;
-        }
-        values[0] = values1[0] + values1[1] + values1[2];
-        *values.rbegin() = *values1.rbegin() + *(values1.rbegin() + 1) + *(values1.rbegin() + 2);
-        for (auto &i : values)
-        {
-            myfile3 << setprecision(4) << i << " ";
-        }
-        myfile3 << endl;
     }
-    myfile3.close();
+    DofMapper dof;
+    for (auto &i : cells)
+    {
+        dof.Insert(i->GetID(), i->GetDomain()->GetDof());
+    }
+    ConstraintAssembler<2, 2, double> constraint_assemble(dof);
+    vector<Triplet<double>> constraint;
+    auto num_of_constraints = constraint_assemble.Assemble(cells, constraint);
     return 0;
 }

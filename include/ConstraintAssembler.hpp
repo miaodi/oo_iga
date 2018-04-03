@@ -1,22 +1,22 @@
 #pragma once
 #include "BiharmonicInterfaceVisitor.hpp"
 #include "Surface.hpp"
-template <typename T>
+template <int d, int N, typename T>
 class ConstraintAssembler
 {
   public:
     ConstraintAssembler(DofMapper &dof) : _dof(dof) {}
 
-    int Assemble(const std::vector<std::shared_ptr<Surface<3, T>>> &cells, std::vector<Eigen::Triplet<T>> &constraint_triplets)
+    int Assemble(const std::vector<std::shared_ptr<Surface<N, T>>> &cells, std::vector<Eigen::Triplet<T>> &constraint_triplets)
     {
-        std::vector<std::unique_ptr<BiharmonicInterfaceVisitor<3, T>>> biharmonic_interface_visitors;
+        std::vector<std::unique_ptr<BiharmonicInterfaceVisitor<d, T>>> biharmonic_interface_visitors;
         for (auto &i : cells)
         {
             for (int j = 0; j < 4; j++)
             {
                 if (i->EdgePointerGetter(j)->IsMatched() && i->EdgePointerGetter(j)->IsSlave())
                 {
-                    std::unique_ptr<BiharmonicInterfaceVisitor<3, T>> biharmonic_interface(new BiharmonicInterfaceVisitor<3, T>());
+                    std::unique_ptr<BiharmonicInterfaceVisitor<d, T>> biharmonic_interface(new BiharmonicInterfaceVisitor<d, T>());
                     i->EdgePointerGetter(j)->Accept(*biharmonic_interface);
                     biharmonic_interface_visitors.push_back(std::move(biharmonic_interface));
                 }
