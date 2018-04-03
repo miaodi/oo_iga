@@ -35,15 +35,16 @@ class BiharmonicInterfaceVisitor : public InterfaceVisitor<N, T>
                        const QuadratureRule<T> &,
                        const KnotSpan &);
 
-    void C1IntegralElementAssembler(Matrix &slave_constraint_basis,
-                                    std::vector<int> &slave_constraint_basis_indices,
-                                    Matrix &master_constrint_basis,
-                                    std::vector<int> &master_constraint_basis_indices,
-                                    Matrix &multiplier_basis,
-                                    std::vector<int> &multiplier_basis_indices,
-                                    T &integral_weight,
-                                    Edge<N, T> *edge,
-                                    const Quadrature &u);
+    template <int n = N>
+    typename std::enable_if<n == 3, void>::type C1IntegralElementAssembler(Matrix &slave_constraint_basis,
+                                                                           std::vector<int> &slave_constraint_basis_indices,
+                                                                           Matrix &master_constrint_basis,
+                                                                           std::vector<int> &master_constraint_basis_indices,
+                                                                           Matrix &multiplier_basis,
+                                                                           std::vector<int> &multiplier_basis_indices,
+                                                                           T &integral_weight,
+                                                                           Edge<N, T> *edge,
+                                                                           const Quadrature &u);
 
   protected:
     std::vector<Eigen::Triplet<T>> _c1Slave;
@@ -65,7 +66,7 @@ void BiharmonicInterfaceVisitor<N, T>::SolveConstraint(Edge<N, T> *edge)
     std::vector<int> slave_indices = Accessory::ColIndicesVector(_c1Slave);
     std::vector<int> master_indices = Accessory::ColIndicesVector(_c1Master);
     std::vector<int> multiplier_indices = Accessory::RowIndicesVector(_c1Slave);
-    std::vector<int> c0_slave_indices = edge->Indices(3, 0);
+    std::vector<int> c0_slave_indices = edge->Indices(N, 0);
 
     std::vector<int> c1_slave_indices;
     std::set_difference(slave_indices.begin(), slave_indices.end(), c0_slave_indices.begin(),
@@ -115,15 +116,16 @@ void BiharmonicInterfaceVisitor<N, T>::LocalAssemble(Element<1, N, T> *g,
 }
 
 template <int N, typename T>
-void BiharmonicInterfaceVisitor<N, T>::C1IntegralElementAssembler(Matrix &slave_constraint_basis,
-                                                                  std::vector<int> &slave_constraint_basis_indices,
-                                                                  Matrix &master_constraint_basis,
-                                                                  std::vector<int> &master_constraint_basis_indices,
-                                                                  Matrix &multiplier_basis,
-                                                                  std::vector<int> &multiplier_basis_indices,
-                                                                  T &integral_weight,
-                                                                  Edge<N, T> *edge,
-                                                                  const Quadrature &u)
+template <int n>
+typename std::enable_if<n == 3, void>::type BiharmonicInterfaceVisitor<N, T>::C1IntegralElementAssembler(Matrix &slave_constraint_basis,
+                                                                                                         std::vector<int> &slave_constraint_basis_indices,
+                                                                                                         Matrix &master_constraint_basis,
+                                                                                                         std::vector<int> &master_constraint_basis_indices,
+                                                                                                         Matrix &multiplier_basis,
+                                                                                                         std::vector<int> &multiplier_basis_indices,
+                                                                                                         T &integral_weight,
+                                                                                                         Edge<N, T> *edge,
+                                                                                                         const Quadrature &u)
 {
     auto multiplier_domain = edge->GetDomain();
     auto slave_domain = edge->Parent(0).lock()->GetDomain();

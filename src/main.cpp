@@ -121,5 +121,42 @@ int main()
         myfile2 << endl;
     }
     myfile2.close();
+
+    a.BezierDualInitialize();
+
+    ofstream myfile3;
+    myfile3.open("dual_basis_coarse.txt");
+    myfile3 << "x ";
+    for (int i = 0; i < dof; i++)
+    {
+        myfile3 << "N" << i << " ";
+    }
+    myfile2 << endl;
+    for (int i = 0; i < 201; i++)
+    {
+        double u = i * 1.0 / 200;
+        myfile3 << u << " ";
+        auto res = a.BezierDual(u);
+        vector<double> values1(dof1, 0);
+        for (auto &i : *res)
+        {
+            values1[i.first] = i.second[0];
+        }
+        vector<double> values(dof, 0);
+        int k = 0;
+        for (auto &i : values)
+        {
+            i = values1[k + 2];
+            k++;
+        }
+        values[0] = values1[0] + values1[1] + values1[2];
+        *values.rbegin() = *values1.rbegin() + *(values1.rbegin() + 1) + *(values1.rbegin() + 2);
+        for (auto &i : values)
+        {
+            myfile3 << setprecision(4) << i << " ";
+        }
+        myfile3 << endl;
+    }
+    myfile3.close();
     return 0;
 }

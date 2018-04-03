@@ -136,7 +136,7 @@ void PoissonInterfaceVisitor<N, T>::C0IntegralElementAssembler(Matrix &slave_con
         multiplier_basis(0, j) = (*multiplier_evals)[j].second[0];
     }
 
-    Eigen::Matrix<T, 3, 3> identity;
+    Eigen::Matrix<T, N, N> identity;
     identity.setIdentity();
 
     master_constraint_basis = kroneckerProduct(master_constraint_basis, identity).eval();
@@ -149,9 +149,9 @@ void PoissonInterfaceVisitor<N, T>::C0IntegralElementAssembler(Matrix &slave_con
         auto index = slave_domain->ActiveIndex(slave_quadrature_abscissa);
         for (auto &i : index)
         {
-            for (int j = 0; j < 3; j++)
+            for (int j = 0; j < N; j++)
             {
-                slave_constraint_basis_indices.push_back(3 * i + j);
+                slave_constraint_basis_indices.push_back(N * i + j);
             }
         }
     }
@@ -160,9 +160,9 @@ void PoissonInterfaceVisitor<N, T>::C0IntegralElementAssembler(Matrix &slave_con
         auto index = master_domain->ActiveIndex(master_quadrature_abscissa);
         for (auto &i : index)
         {
-            for (int j = 0; j < 3; j++)
+            for (int j = 0; j < N; j++)
             {
-                master_constraint_basis_indices.push_back(3 * i + j);
+                master_constraint_basis_indices.push_back(N * i + j);
             }
         }
     }
@@ -171,9 +171,9 @@ void PoissonInterfaceVisitor<N, T>::C0IntegralElementAssembler(Matrix &slave_con
         auto index = multiplier_domain->ActiveIndex(u.first);
         for (auto &i : index)
         {
-            for (int j = 0; j < 3; j++)
+            for (int j = 0; j < N; j++)
             {
-                multiplier_basis_indices.push_back(3 * i + j);
+                multiplier_basis_indices.push_back(N * i + j);
             }
         }
     }
