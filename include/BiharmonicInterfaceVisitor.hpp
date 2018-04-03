@@ -46,6 +46,17 @@ class BiharmonicInterfaceVisitor : public InterfaceVisitor<N, T>
                                                                            Edge<N, T> *edge,
                                                                            const Quadrature &u);
 
+    template <int n = N>
+    typename std::enable_if<n == 1, void>::type C1IntegralElementAssembler(Matrix &slave_constraint_basis,
+                                                                           std::vector<int> &slave_constraint_basis_indices,
+                                                                           Matrix &master_constrint_basis,
+                                                                           std::vector<int> &master_constraint_basis_indices,
+                                                                           Matrix &multiplier_basis,
+                                                                           std::vector<int> &multiplier_basis_indices,
+                                                                           T &integral_weight,
+                                                                           Edge<N, T> *edge,
+                                                                           const Quadrature &u);
+
   protected:
     std::vector<Eigen::Triplet<T>> _c1Slave;
     std::vector<Eigen::Triplet<T>> _c1Master;
@@ -263,4 +274,19 @@ typename std::enable_if<n == 3, void>::type BiharmonicInterfaceVisitor<N, T>::C1
             }
         }
     }
+}
+
+template <int N, typename T>
+template <int n>
+typename std::enable_if<n == 1, void>::type BiharmonicInterfaceVisitor<N, T>::C1IntegralElementAssembler(Matrix &slave_constraint_basis,
+                                                                                                         std::vector<int> &slave_constraint_basis_indices,
+                                                                                                         Matrix &master_constraint_basis,
+                                                                                                         std::vector<int> &master_constraint_basis_indices,
+                                                                                                         Matrix &multiplier_basis,
+                                                                                                         std::vector<int> &multiplier_basis_indices,
+                                                                                                         T &integral_weight,
+                                                                                                         Edge<N, T> *edge,
+                                                                                                         const Quadrature &u)
+{
+
 }
