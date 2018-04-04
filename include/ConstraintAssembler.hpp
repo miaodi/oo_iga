@@ -7,10 +7,10 @@ class ConstraintAssembler
   public:
     ConstraintAssembler(DofMapper &dof) : _dof(dof) {}
 
-    int AssembleByReducedKernel(const std::vector<std::shared_ptr<Surface<N, T>>> &cells, std::vector<Eigen::Triplet<T>> &constraint_triplets)
+    void ConstraintCreator(const std::vector<std::shared_ptr<Surface<N, T>>> &cells)
     {
-        std::vector<Eigen::SparseVector<T>> constraint_container;
-        std::vector<Eigen::SparseVector<T>> kernel_vector_container;
+        _matrix_data_container.clear();
+        _vertex_indices.clear();
         for (auto &i : cells)
         {
             for (int j = 0; j < 4; j++)
@@ -24,56 +24,100 @@ class ConstraintAssembler
                     int slave_starting_dof = _dof.StartingDof(slave_id);
                     int master_starting_dof = _dof.StartingDof(master_id);
 
-                    std::vector<int> vertex_indices;
                     for (int k = 0; k <= 1; k++)
                     {
-                        auto slave_vert_ind = i->EdgePointerGetter(j)->VertexPointerGetter(k)->Indices(1, 1);
-                        vertex_indices.insert(vertex_indices.end(), slave_vert_ind.begin(), slave_vert_ind.end());
+                        auto vertex = i->EdgePointerGetter(j)->VertexPointerGetter(k);
+                        if (vertex->Position()(0) == 0 && vertex->Position()(0) == 0)
+                        {
+                            auto slave_vert_ind = i->EdgePointerGetter(j)->VertexPointerGetter(k)->Indices(1, 1);
+                            std::for_each(slave_vert_ind.begin(), slave_vert_ind.end(), [&](int &index) { index += slave_starting_dof; });
+                            _vertex_indices.insert(_vertex_indices.end(), slave_vert_ind.begin(), slave_vert_ind.end());
+                        }
                     }
                     auto constraint_data = biharmonic_interface.ConstraintData();
-                    std::for_each(vertex_indices.begin(), vertex_indices.end(), [&](int &index) { index += slave_starting_dof; });
                     std::for_each(constraint_data._rowIndices->begin(), constraint_data._rowIndices->end(), [&](int &index) { index += slave_starting_dof; });
                     std::for_each(constraint_data._colIndices->begin(), constraint_data._colIndices->end(), [&](int &index) { index += master_starting_dof; });
-                    int total_dof = _dof.TotalDof();
-                    for (auto m = constraint_data._rowIndices->begin(); m != constraint_data._rowIndices->end();)
-                    {
-                        if (std::find(vertex_indices.begin(), vertex_indices.end(), *m) != vertex_indices.end())
-                        {
-                            Eigen::SparseVector<T> sparse_vector(total_dof);
-                            sparse_vector.coeffRef(*m) = 1.0;
-                            for (int n = 0; n < constraint_data._colIndices->size(); n++)
-                            {
-                                sparse_vector.coeffRef((*constraint_data._colIndices)[n]) = (*constraint_data._matrix)(m - constraint_data._rowIndices->begin(), n);
-                            }
-                            constraint_container.push_back(sparse_vector);
-                            constraint_data.RowRemove(m - constraint_data._rowIndices->begin());
-                        }
-                        else
-                        {
-                            m++;
-                        }
-                    }
-                    for (auto n = constraint_data._colIndices->begin(); n != constraint_data._colIndices->end(); n++)
-                    {
-                        Eigen::SparseVector<T> sparse_vector(total_dof);
-                        sparse_vector.coeffRef(*n) = 1.0;
-                        for (int m = 0; m < constraint_data._rowIndices->size(); m++)
-                        {
-                            sparse_vector.coeffRef((*constraint_data._rowIndices)[m]) = -(*constraint_data._matrix)(m, n - constraint_data._colIndices->begin());
-                        }
-                        kernel_vector_container.push_back(sparse_vector);
-                    }
-                    std::sort(vertex_indices.begin(), vertex_indices.end());
-                    vertex_indices.erase(unique(vertex_indices.begin(), vertex_indices.end()), vertex_indices.end());
-                    for (const auto &i : vertex_indices)
-                    {
-                        Eigen::SparseVector<T> sparse_vector(total_dof);
-                        sparse_vector.coeffRef(i) = 1.0;
-                        kernel_vector_container.push_back(sparse_vector);
-                    }
+                    _matrix_data_container.push_back(constraint_data);
                 }
             }
         }
+        std::sort(_vertex_indices.begin(), _vertex_indices.end());
+        _vertex_indices.erase(unique(_vertex_indices.begin(), _vertex_indices.end()), _vertex_indices.end());
+    }
+
+    void AssembleConstraint(Eigen::SparseMatrix<T, Eigen::RowMajor> &sparse_constraint_matrix)
+    {
+        std::vector<Eigen::SparseVector<T>> constraint_container;
+        int total_dof = _dof.TotalDof();
+        for (auto &i : _matrix_data_container)
+        {
+            for (auto m = i._rowIndices->begin(); m != i._rowIndices->end(); m++)
+            {
+                Eigen::SparseVector<T> sparse_vector(total_dof);
+                sparse_vector.coeffRef(*m) = 1.0;
+                for (int n = 0; n < i._colIndices->size(); n++)
+                {
+                    sparse_vector.coeffRef((*i._colIndices)[n]) = (*i._matrix)(m - i._rowIndices->begin(), n);
+                }
+                constraint_container.push_back(sparse_vector);
+            }
+        }
+        sparse_constraint_matrix.resize(constraint_container.size(), _dof.TotalDof());
+        for (int i = 0; i < constraint_container.size(); i++)
+        {
+            sparse_constraint_matrix.row(i) = constraint_container[i].transpose();
+        }
+    }
+
+    void AssembleByReducedKernel(Eigen::SparseMatrix<T> &sparse_kernel_matrix)
+    {
+        std::vector<Eigen::SparseVector<T>> constraint_container;
+        std::vector<Eigen::SparseVector<T>> kernel_vector_container;
+        int total_dof = _dof.TotalDof();
+        for (auto &i : _matrix_data_container)
+        {
+            for (auto m = i._rowIndices->begin(); m != i._rowIndices->end();)
+            {
+                if (std::find(_vertex_indices.begin(), _vertex_indices.end(), *m) != _vertex_indices.end())
+                {
+                    Eigen::SparseVector<T> sparse_vector(total_dof);
+                    sparse_vector.coeffRef(*m) = 1.0;
+                    for (int n = 0; n < i._colIndices->size(); n++)
+                    {
+                        sparse_vector.coeffRef((*i._colIndices)[n]) = (*i._matrix)(m - i._rowIndices->begin(), n);
+                    }
+                    constraint_container.push_back(sparse_vector);
+                    i.RowRemove(m - i._rowIndices->begin());
+                }
+                else
+                {
+                    m++;
+                }
+            }
+        }
+        MatrixData<T> global;
+        for (auto &i : _matrix_data_container)
+        {
+            global = global + i;
+        }
+        global.Print();
+        for (auto n = global._colIndices->begin(); n != global._colIndices->end(); n++)
+        {
+            Eigen::SparseVector<T> sparse_vector(total_dof);
+            sparse_vector.coeffRef(*n) = 1.0;
+            for (int m = 0; m < global._rowIndices->size(); m++)
+            {
+                sparse_vector.coeffRef((*global._rowIndices)[m]) = -(*global._matrix)(m, n - global._colIndices->begin());
+            }
+            kernel_vector_container.push_back(sparse_vector);
+        }
+        for (const auto &i : _vertex_indices)
+        {
+            Eigen::SparseVector<T> sparse_vector(total_dof);
+            sparse_vector.coeffRef(i) = 1.0;
+            kernel_vector_container.push_back(sparse_vector);
+        }
+
         Eigen::SparseMatrix<T, Eigen::RowMajor> sparse_constraint_matrix;
         sparse_constraint_matrix.resize(constraint_container.size(), _dof.TotalDof());
         for (int i = 0; i < constraint_container.size(); i++)
@@ -81,19 +125,34 @@ class ConstraintAssembler
             sparse_constraint_matrix.row(i) = constraint_container[i].transpose();
         }
 
-        std::vector<Eigen::SparseVector<T>> pre_kernel_vector_container;
-        auto pre_kernel_it = std::partition(kernel_vector_container.begin(), kernel_vector_container.end(), [&](const Eigen::SparseVector<T> &i) { return (sparse_constraint_matrix * i).norm() > 0; });
+        Eigen::SparseMatrix<T, Eigen::RowMajor> sparse_constraint_matrix_2;
+        this->AssembleConstraint(sparse_constraint_matrix_2);
+
+        auto pre_kernel_it = std::partition(kernel_vector_container.begin(), kernel_vector_container.end(), [&sparse_constraint_matrix](const Eigen::SparseVector<T> &ii) { return (sparse_constraint_matrix * ii).norm() > 0; });
         Eigen::SparseMatrix<T, Eigen::ColMajor> sparse_pre_kernel_matrix;
         sparse_pre_kernel_matrix.resize(_dof.TotalDof(), pre_kernel_it - kernel_vector_container.begin());
         for (int i = 0; i < pre_kernel_it - kernel_vector_container.begin(); i++)
         {
             sparse_pre_kernel_matrix.col(i) = kernel_vector_container[i];
         }
-        std::cout << Eigen::MatrixXd(sparse_constraint_matrix * sparse_pre_kernel_matrix) << std::endl;
-        int num_of_constraint = 0;
-        return num_of_constraint;
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> dense_constraint_matrix = sparse_constraint_matrix * sparse_pre_kernel_matrix;
+        Eigen::FullPivLU<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>> lu_decomp(dense_constraint_matrix);
+        sparse_kernel_matrix = (sparse_pre_kernel_matrix * lu_decomp.kernel()).sparseView(1e-10);
+        std::cout << sparse_constraint_matrix * sparse_kernel_matrix << std::endl
+                  << std::endl;
+        for (auto it = pre_kernel_it; it != kernel_vector_container.end(); it++)
+        {
+            sparse_kernel_matrix.conservativeResize(_dof.TotalDof(), sparse_kernel_matrix.cols() + 1);
+            sparse_kernel_matrix.rightCols(1) = *it;
+        }
+        for (auto &i : kernel_vector_container)
+        {
+            std::cout << (sparse_constraint_matrix_2 * i).transpose() << std::endl;
+        }
     }
 
   protected:
     const DofMapper _dof;
+    std::vector<MatrixData<T>> _matrix_data_container;
+    std::vector<int> _vertex_indices;
 };

@@ -77,8 +77,11 @@ int main()
         dof.Insert(i->GetID(), i->GetDomain()->GetDof());
     }
     ConstraintAssembler<2, 2, double> constraint_assemble(dof);
-    vector<Triplet<double>> constraint;
-    auto num_of_constraints = constraint_assemble.AssembleByReducedKernel(cells, constraint);
-
+    constraint_assemble.ConstraintCreator(cells);
+    SparseMatrix<double> sp;
+    constraint_assemble.AssembleByReducedKernel(sp);
+    // SparseMatrix<double,RowMajor> constraint;
+    // constraint_assemble.AssembleConstraint(constraint);
+    // cout << constraint * sp;
     return 0;
 }
