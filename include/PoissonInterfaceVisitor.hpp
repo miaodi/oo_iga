@@ -80,6 +80,8 @@ void PoissonInterfaceVisitor<N, T>::SolveConstraint(Edge<N, T> *edge)
                           condensed_gramian, gramian_matrix);
     this->MatrixAssembler(multiplier_indices_inverse_map.size(), activated_master_indices_inverse_map.size(),
                           condensed_rhs, rhs_matrix);
+    Accessory::removeNoise(gramian_matrix, 1e-7 * abs(gramian_matrix(0, 0)));
+    Accessory::removeNoise(rhs_matrix, 1e-14);
     Matrix constraint = this->SolveNonSymmetric(gramian_matrix, rhs_matrix);
     MatrixData<T> constraint_data(constraint, slave_activated_indices, master_activated_indices);
     this->_constraintData = std::move(constraint_data);

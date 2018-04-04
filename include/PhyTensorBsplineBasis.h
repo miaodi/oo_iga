@@ -114,6 +114,8 @@ class PhyTensorBsplineBasis : public TensorBsplineBasis<d, T>
                                T,
                                int = 1);
 
+    void KnotsInsertion(int, const std::vector<T> &);
+
     inline virtual void DegreeElevate(int p)
     {
         if (p == 0)
@@ -139,7 +141,7 @@ class PhyTensorBsplineBasis : public TensorBsplineBasis<d, T>
         return _geometricInfo[i];
     }
 
-    const inline GeometryVector& CtrPtsVecGetter() const
+    const inline GeometryVector &CtrPtsVecGetter() const
     {
         return _geometricInfo;
     }
@@ -151,7 +153,7 @@ class PhyTensorBsplineBasis : public TensorBsplineBasis<d, T>
     }
 
     virtual HyperPlaneSharedPts MakeHyperPlane(const int &orientation,
-                                      const int &layer) const;
+                                               const int &layer) const;
 
     // Only defined for 2D domain represented by 2D parametric domain
     template <int D = d, int n = N>
@@ -189,10 +191,10 @@ class PhyTensorBsplineBasis<0, N, T> : public TensorBsplineBasis<0, T>
     using HyperPlane = PhyTensorBsplineBasis<-1, N, T>;
     using HyperPlaneSharedPts = std::shared_ptr<PhyTensorBsplineBasis<-1, N, T>>;
     using GeometryVector = Accessory::ContPtsList<T, N>;
-    PhyTensorBsplineBasis(){}
+    PhyTensorBsplineBasis() {}
 
     PhyTensorBsplineBasis(const std::vector<KnotVector<T>> &,
-                          const GeometryVector &){}
+                          const GeometryVector &) {}
 
     HyperPlane MakeHyperPlane(const int &orientation,
                               const int &layer) const {}

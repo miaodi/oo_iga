@@ -103,10 +103,11 @@ void BiharmonicInterfaceVisitor<N, T>::SolveConstraint(Edge<N, T> *edge)
                           condensed_rhs, rhs_matrix);
     this->MatrixAssembler(multiplier_indices_inverse_map.size(), c0_slave_indices_inverse_map.size(),
                           condensed_c0_slave, c0_slave_matrix);
-
+    Accessory::removeNoise(gramian_matrix, 1e-7 * abs(gramian_matrix(0, 0)));
+    Accessory::removeNoise(rhs_matrix, 1e-14);
+    Accessory::removeNoise(c0_slave_matrix, 1e-7 * abs(c0_slave_matrix(0, 0)));
     Matrix c1_constraint = this->SolveNonSymmetric(gramian_matrix, rhs_matrix);
     Matrix c0_c1_constraint = this->SolveNonSymmetric(gramian_matrix, -c0_slave_matrix);
-
     auto c1_slave_indices_copy = c1_slave_indices;
     MatrixData<T> c1_constraint_data(c1_constraint, c1_slave_indices, master_indices);
     MatrixData<T> c0_c1constraint_data(c0_c1_constraint, c1_slave_indices_copy, c0_slave_indices);

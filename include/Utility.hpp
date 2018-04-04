@@ -715,4 +715,24 @@ Eigen::Matrix<T, 3, 3> RotationMatrix(const Eigen::Matrix<T, 3, 1> &from,
     w << 0, -v(2), v(1), v(2), 0, -v(0), -v(1), v(0), 0;
     return Eigen::Matrix<T, 3, 3>::Identity() + w + w * w * 1.0 / (1 + c);
 }
+
+template <typename T>
+struct removeNoise_helper
+{
+    removeNoise_helper(const T &tol)
+        : m_tol(tol) {}
+
+    inline const T operator()(const T &val) const
+    {
+        return (abs(val) < m_tol ? 0 : val);
+    }
+
+    const T &m_tol;
+};
+
+template <typename T>
+void removeNoise(Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> &matrix, const T tol)
+{
+    matrix.noalias() = matrix.unaryExpr(removeNoise_helper<T>(tol));
+}
 }

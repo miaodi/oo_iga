@@ -52,7 +52,15 @@ struct MatrixData
         return MatrixData(temp, row_indices, col_indices);
     }
 
-    MatrixData operator+(const MatrixData &matrix)
+    void RowRemove(const int &row_index)
+    {
+        ASSERT(row_index >= 0 && row_index < _rowIndices->size(), "Row index is out of range.\n");
+        _rowIndices->erase(_rowIndices->begin() + row_index);
+        Accessory::removeRow(*_matrix, row_index);
+    }
+
+    MatrixData
+    operator+(const MatrixData &matrix)
     {
         std::vector<int> sum_row, sum_col;
         std::set_union(_rowIndices->begin(), _rowIndices->end(), matrix._rowIndices->begin(),
@@ -547,7 +555,6 @@ class DomainVisitor : public Visitor<d, N, T>
         ASSERT(gramian.rows() == gramian.cols(),
                "The size of given gramian matrix is not correct.\n");
         return gramian.partialPivLu().solve(rhs);
-        ;
     }
 
     inline void ThreadSetter(const u_int &threads)

@@ -383,6 +383,12 @@ class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N
         return temp.compute(this, u);
     }
 
+    auto VertexPointerGetter(const int &i)
+    {
+        ASSERT(i >= 0 && i <= 1, "Invalid vertex index.\n");
+        return _vertices[i];
+    }
+
   protected:
     Orientation _position;
     bool _matched;

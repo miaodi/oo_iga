@@ -531,6 +531,16 @@ void PhyTensorBsplineBasis<d, N, T>::KnotInsertion(int orientation,
 }
 
 template <int d, int N, typename T>
+void PhyTensorBsplineBasis<d, N, T>::KnotsInsertion(int orientation,
+                                                    const std::vector<T> &knots)
+{
+    for (const auto &i : knots)
+    {
+        this->KnotInsertion(orientation, i);
+    }
+}
+
+template <int d, int N, typename T>
 void PhyTensorBsplineBasis<d, N, T>::PrintCtrPts() const
 {
     for (int i = 0; i != _geometricInfo.size(); ++i)

@@ -43,6 +43,20 @@ int main()
     domains[1] = make_shared<PhyTensorBsplineBasis<2, 2, double>>(std::vector<KnotVector<double>>{knot_vector, knot_vector}, points2);
     domains[2] = make_shared<PhyTensorBsplineBasis<2, 2, double>>(std::vector<KnotVector<double>>{knot_vector, knot_vector}, points3);
 
+    int degree, refine;
+    cin >> degree >> refine;
+    for (auto &i : domains)
+    {
+        i->DegreeElevate(degree);
+        i->UniformRefine(refine);
+    }
+    domains[0]->KnotsInsertion(0, {1.0 / 3, 2.0 / 3});
+    domains[0]->KnotsInsertion(1, {1.0 / 3, 2.0 / 3});
+    domains[1]->KnotsInsertion(0, {1.0 / 2});
+    domains[1]->KnotsInsertion(1, {1.0 / 2});
+    domains[2]->KnotsInsertion(0, {1.0 / 5, 2.0 / 5, 3.0 / 5, 4.0 / 5});
+    domains[2]->KnotsInsertion(1, {1.0 / 5, 2.0 / 5, 3.0 / 5, 4.0 / 5});
+
     vector<shared_ptr<Surface<2, double>>> cells;
     for (int i = 0; i < 3; i++)
     {
@@ -65,5 +79,6 @@ int main()
     ConstraintAssembler<2, 2, double> constraint_assemble(dof);
     vector<Triplet<double>> constraint;
     auto num_of_constraints = constraint_assemble.Assemble(cells, constraint);
+
     return 0;
 }
