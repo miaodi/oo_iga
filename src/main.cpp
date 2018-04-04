@@ -78,7 +78,7 @@ int main()
     }
     ConstraintAssembler<2, 2, double> constraint_assemble(dof);
     vector<Triplet<double>> constraint;
-    auto num_of_constraints = constraint_assemble.Assemble(cells, constraint);
+    auto num_of_constraints = constraint_assemble.AssembleByReducedKernel(cells, constraint);
 
     return 0;
 }

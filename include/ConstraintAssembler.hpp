@@ -7,7 +7,7 @@ class ConstraintAssembler
   public:
     ConstraintAssembler(DofMapper &dof) : _dof(dof) {}
 
-    int Assemble(const std::vector<std::shared_ptr<Surface<N, T>>> &cells, std::vector<Eigen::Triplet<T>> &constraint_triplets)
+    int AssembleByReducedKernel(const std::vector<std::shared_ptr<Surface<N, T>>> &cells, std::vector<Eigen::Triplet<T>> &constraint_triplets)
     {
         std::vector<Eigen::SparseVector<T>> constraint_container;
         std::vector<Eigen::SparseVector<T>> kernel_vector_container;
@@ -63,6 +63,14 @@ class ConstraintAssembler
                         }
                         kernel_vector_container.push_back(sparse_vector);
                     }
+                    std::sort(vertex_indices.begin(), vertex_indices.end());
+                    vertex_indices.erase(unique(vertex_indices.begin(), vertex_indices.end()), vertex_indices.end());
+                    for (const auto &i : vertex_indices)
+                    {
+                        Eigen::SparseVector<T> sparse_vector(total_dof);
+                        sparse_vector.coeffRef(i) = 1.0;
+                        kernel_vector_container.push_back(sparse_vector);
+                    }
                 }
             }
         }
@@ -72,22 +80,16 @@ class ConstraintAssembler
         {
             sparse_constraint_matrix.row(i) = constraint_container[i].transpose();
         }
-        Eigen::SparseMatrix<T, Eigen::ColMajor> sparse_pre_ker_matrix;
-        sparse_pre_ker_matrix.resize(_dof.TotalDof(), kernel_vector_container.size());
-        for (int i = 0; i < kernel_vector_container.size(); i++)
+
+        std::vector<Eigen::SparseVector<T>> pre_kernel_vector_container;
+        auto pre_kernel_it = std::partition(kernel_vector_container.begin(), kernel_vector_container.end(), [&](const Eigen::SparseVector<T> &i) { return (sparse_constraint_matrix * i).norm() > 0; });
+        Eigen::SparseMatrix<T, Eigen::ColMajor> sparse_pre_kernel_matrix;
+        sparse_pre_kernel_matrix.resize(_dof.TotalDof(), pre_kernel_it - kernel_vector_container.begin());
+        for (int i = 0; i < pre_kernel_it - kernel_vector_container.begin(); i++)
         {
-            sparse_pre_ker_matrix.col(i) = kernel_vector_container[i];
+            sparse_pre_kernel_matrix.col(i) = kernel_vector_container[i];
         }
-        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> modified_constraint_matrix = sparse_constraint_matrix * sparse_pre_ker_matrix;
-        int num = 0;
-        for (int i = 0; i < modified_constraint_matrix.cols(); i++)
-        {
-            if (modified_constraint_matrix.col(i).norm() == 0)
-            {
-                num++;
-            }
-        }
-        std::cout << modified_constraint_matrix.cols() << " " << num << " " << modified_constraint_matrix.cols() - num << std::endl;
+        std::cout << Eigen::MatrixXd(sparse_constraint_matrix * sparse_pre_kernel_matrix) << std::endl;
         int num_of_constraint = 0;
         return num_of_constraint;
     }
