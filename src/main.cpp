@@ -5,6 +5,7 @@
 #include "Utility.hpp"
 #include "PhyTensorNURBSBasis.h"
 #include "MembraneStiffnessVisitor.hpp"
+#include "BiharmonicStiffnessVisitor.hpp"
 #include "BendingStiffnessVisitor.hpp"
 #include "PostProcess.hpp"
 #include "H1DomainSemiNormVisitor.hpp"
@@ -15,6 +16,7 @@
 #include <boost/math/constants/constants.hpp>
 #include "BiharmonicInterfaceVisitor.hpp"
 #include "StiffnessAssembler.hpp"
+#include "BiharmonicStiffnessAssembler.hpp"
 #include "ConstraintAssembler.hpp"
 #include <eigen3/unsupported/Eigen/KroneckerProduct>
 
@@ -78,10 +80,31 @@ int main()
     }
     ConstraintAssembler<2, 2, double> constraint_assemble(dof);
     constraint_assemble.ConstraintCreator(cells);
+    SparseMatrix<double, RowMajor> constraint;
+    constraint_assemble.AssembleConstraint(constraint);
     SparseMatrix<double> sp;
     constraint_assemble.AssembleByReducedKernel(sp);
-    // SparseMatrix<double,RowMajor> constraint;
-    // constraint_assemble.AssembleConstraint(constraint);
-    // cout << constraint * sp;
+
+    cout << (constraint * sp).norm() << endl;
+    MatrixXd dense_constraint = constraint;
+    cout << dense_constraint.rows() << " " << dense_constraint.cols() << endl;
+    FullPivLU<MatrixXd> lu_decomp(dense_constraint);
+    MatrixXd kernel = lu_decomp.kernel();
+
+    cout << (constraint * kernel).norm() << endl;
+
+    function<vector<double>(const VectorXd &)> body_force = [](const VectorXd &u) {
+        return vector<double>{0};
+    };
+    BiharmonicStiffnessAssembler<double> stiffness_assemble(dof);
+    SparseMatrix<double> stiffness_matrix, load_vector;
+    stiffness_assemble.Assemble(cells, body_force, stiffness_matrix, load_vector);
+    ofstream fout0;
+    fout0.open("proposed.txt");
+    fout0 << MatrixXd(sp.transpose() * stiffness_matrix * sp) << endl;
+    ofstream fout1;
+    fout1.open("direct.txt");
+    fout1 << MatrixXd(kernel.transpose() * stiffness_matrix * kernel) << endl;
+    cout << stiffness_matrix.cols() << endl;
     return 0;
 }

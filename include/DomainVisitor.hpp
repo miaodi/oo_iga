@@ -59,6 +59,16 @@ struct MatrixData
         Accessory::removeRow(*_matrix, row_index);
     }
 
+    int rows() const
+    {
+        return _matrix->rows();
+    }
+
+    int cols() const
+    {
+        return _matrix->cols();
+    }
+
     MatrixData
     operator+(const MatrixData &matrix)
     {
