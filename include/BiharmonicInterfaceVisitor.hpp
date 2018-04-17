@@ -325,8 +325,9 @@ typename std::enable_if<n == 2, void>::type BiharmonicInterfaceVisitor<N, T>::C1
     // +-----------+-----------+
     // | ∂ξ_m/∂η_s | ∂η_m/∂η_s |
     // +-----------+-----------+
-    Matrix slave_jacobian = slave_domain->JacobianMatrix(slave_quadrature_abscissa);
-    Matrix master_jacobian = master_domain->JacobianMatrix(master_quadrature_abscissa);
+    // Why transpose?
+    Matrix slave_jacobian = slave_domain->JacobianMatrix(slave_quadrature_abscissa).transpose();
+    Matrix master_jacobian = master_domain->JacobianMatrix(master_quadrature_abscissa).transpose();
 
     // Substitute master coordinate of master basis by slave coordinate
     for (auto &i : *master_evals)
