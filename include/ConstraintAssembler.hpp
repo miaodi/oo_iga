@@ -14,6 +14,7 @@ class ConstraintAssembler
         _matrix_data_container.clear();
         _vertex_indices.clear();
         _involved_indices.clear();
+        
         for (auto &i : cells)
         {
             for (int j = 0; j < 4; j++)
@@ -30,12 +31,9 @@ class ConstraintAssembler
                     for (int k = 0; k <= 1; k++)
                     {
                         auto vertex = i->EdgePointerGetter(j)->VertexPointerGetter(k);
-                        if (vertex->Position()(0) == 0 && vertex->Position()(0) == 0)
-                        {
-                            auto slave_vert_ind = i->EdgePointerGetter(j)->VertexPointerGetter(k)->Indices(1, 1);
-                            std::for_each(slave_vert_ind.begin(), slave_vert_ind.end(), [&](int &index) { index += slave_starting_dof; });
-                            _vertex_indices.insert(_vertex_indices.end(), slave_vert_ind.begin(), slave_vert_ind.end());
-                        }
+                        auto slave_vert_ind = i->EdgePointerGetter(j)->VertexPointerGetter(k)->Indices(1, 1);
+                        std::for_each(slave_vert_ind.begin(), slave_vert_ind.end(), [&](int &index) { index += slave_starting_dof; });
+                        _vertex_indices.insert(_vertex_indices.end(), slave_vert_ind.begin(), slave_vert_ind.end());
                     }
                     auto constraint_data = biharmonic_interface.ConstraintData();
                     std::for_each(constraint_data._rowIndices->begin(), constraint_data._rowIndices->end(), [&](int &index) { index += slave_starting_dof; });

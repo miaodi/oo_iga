@@ -597,8 +597,10 @@ bool MapParametricPoint(const PhyTensorBsplineBasis<d_from, N, T> *const from_do
     ASSERT(from_domain->InDomain(from_point),
            "The point about to be mapped is out of the domain.");
     Eigen::Matrix<T, N, 1> physical_point = from_domain->AffineMap(from_point);
-    return to_domain->InversePts(physical_point,
-                                 to_point);
+    bool res = to_domain->InversePts(physical_point,
+                                     to_point);
+    to_domain->FixOnBoundary(to_point);
+    return res;
 }
 
 std::map<int, int> IndicesInverseMap(const std::vector<int> &forward_map);

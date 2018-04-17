@@ -73,6 +73,7 @@ void KnotVector<T>::printKnotVector() const
     {
         std::cout << std::setprecision(std::numeric_limits<T>::digits) << e << " ";
     }
+    std::cout.precision (5);
     std::cout << std::endl;
 }
 

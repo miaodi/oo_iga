@@ -390,7 +390,7 @@ bool TensorBsplineBasis<d, T>::InDomain(const TensorBsplineBasis<d, T>::vector &
     ASSERT((u.size() == d), "Invalid input vector size.");
     for (int i = 0; i < d; ++i)
     {
-        if (u(i) < DomainStart(i) || u(i) > DomainEnd(i))
+        if (u(i) < DomainStart(i)  || u(i) > DomainEnd(i))
         {
             return false;
         }
@@ -398,7 +398,25 @@ bool TensorBsplineBasis<d, T>::InDomain(const TensorBsplineBasis<d, T>::vector &
     return true;
 }
 
-// (TODO) there is a bug when p=1
+template <int d, typename T>
+void TensorBsplineBasis<d, T>::FixOnBoundary(TensorBsplineBasis<d, T>::vector &u, T tol) const
+{
+    ASSERT((u.size() == d), "Invalid input vector size.");
+    for (int i = 0; i < d; ++i)
+    {
+        T domain_length = DomainEnd(i) - DomainStart(i);
+        if (abs(DomainStart(i) - u(i)) / domain_length < tol)
+        {
+            u(i) = DomainStart(i);
+        }
+        if (abs(DomainEnd(i) - u(i)) / domain_length < tol)
+        {
+            u(i) = DomainEnd(i);
+        }
+    }
+}
+
+
 template <int d, typename T>
 void TensorBsplineBasis<d, T>::BezierDualInitialize()
 {
@@ -468,9 +486,9 @@ std::vector<int> TensorBsplineBasis<d, T>::ActiveIndex(const vector &u) const
     std::function<void(std::vector<int> &, const std::vector<int> &, int)> recursive;
     std::vector<int> multiIndex(d);
     recursive = [this, &startIndex, &temp, &multiIndex, &recursive](
-        std::vector<int> &indexes,
-        const std::vector<int> &endPerIndex,
-        int direction) {
+                    std::vector<int> &indexes,
+                    const std::vector<int> &endPerIndex,
+                    int direction) {
         if (direction == indexes.size())
         {
             temp.push_back(Index(multiIndex));

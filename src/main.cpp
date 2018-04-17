@@ -27,18 +27,18 @@ using WeightedGeometryVector = PhyTensorNURBSBasis<2, 2, double>::WeightedGeomet
 using WeightVector = PhyTensorNURBSBasis<2, 2, double>::WeightVector;
 using Vector1d = Matrix<double, 1, 1>;
 
+const double Pi = 3.14159265358979323846264338327;
+
 int main()
 {
     KnotVector<double> knot_vector;
-    knot_vector.InitClosed(2, 0, 1);
+    knot_vector.InitClosed(1, 0, 1);
 
-    Vector2d point11(-2.7, -.7), point12(-2.2, -.1), point13(-2, .9), point14(-1.3, -1), point15(-1.3, -.5), point16(-.7, .6), point17(-.4, -.9), point18(.1, -.3), point19(0, 0);
-    Vector2d point21(-.4, -.9), point22(.1, -.3), point23(0, 0), point24(1.2, -.8), point25(1.0, .1), point26(.8, 1.2), point27(2.5, -1), point28(2.3, -.5), point29(1.9, 1.8);
-    Vector2d point31(-2, .9), point32(-1.3, 1.2), point33(.1, 2.1), point34(-.7, .6), point35(-.1, 1.3), point36(1.2, 2), point37(0, 0), point38(.8, 1.2), point39(1.9, 1.8);
+    Vector2d point1(0, 0), point2(.5, 1.5), point3(1.0, 3.0), point4(1.5, 0), point5(1.6, 1.1), point6(2, 1.5), point7(3, 0);
 
-    GeometryVector points1{point11, point12, point13, point14, point15, point16, point17, point18, point19};
-    GeometryVector points2{point21, point22, point23, point24, point25, point26, point27, point28, point29};
-    GeometryVector points3{point31, point32, point33, point34, point35, point36, point37, point38, point39};
+    GeometryVector points1{point1, point2, point4, point5};
+    GeometryVector points2{point2, point3, point5, point6};
+    GeometryVector points3{point4, point5, point7, point6};
 
     array<shared_ptr<PhyTensorBsplineBasis<2, 2, double>>, 3> domains;
     domains[0] = make_shared<PhyTensorBsplineBasis<2, 2, double>>(std::vector<KnotVector<double>>{knot_vector, knot_vector}, points1);
@@ -50,7 +50,6 @@ int main()
     for (auto &i : domains)
     {
         i->DegreeElevate(degree);
-        i->UniformRefine(refine);
     }
     domains[0]->KnotsInsertion(0, {1.0 / 3, 2.0 / 3});
     domains[0]->KnotsInsertion(1, {1.0 / 3, 2.0 / 3});
@@ -58,6 +57,11 @@ int main()
     domains[1]->KnotsInsertion(1, {1.0 / 2});
     domains[2]->KnotsInsertion(0, {1.0 / 5, 2.0 / 5, 3.0 / 5, 4.0 / 5});
     domains[2]->KnotsInsertion(1, {1.0 / 5, 2.0 / 5, 3.0 / 5, 4.0 / 5});
+
+    for (auto &i : domains)
+    {
+        i->UniformRefine(refine);
+    }
 
     vector<shared_ptr<Surface<2, double>>> cells;
     for (int i = 0; i < 3; i++)
@@ -94,17 +98,38 @@ int main()
     cout << (constraint * kernel).norm() << endl;
 
     function<vector<double>(const VectorXd &)> body_force = [](const VectorXd &u) {
-        return vector<double>{0};
+        double x = u(0);
+        double y = u(1);
+        return vector<double>{pow(x, 2) * pow(3 * x - y, 2) * pow(-9 + 3 * x + 2 * y, 2) * sin(2 * Pi * x) * sin(2 * Pi * y)};
     };
-    BiharmonicStiffnessAssembler<double> stiffness_assemble(dof);
-    SparseMatrix<double> stiffness_matrix, load_vector;
-    stiffness_assemble.Assemble(cells, body_force, stiffness_matrix, load_vector);
-    ofstream fout0;
-    fout0.open("proposed.txt");
-    fout0 << MatrixXd(sp.transpose() * stiffness_matrix * sp) << endl;
-    ofstream fout1;
-    fout1.open("direct.txt");
-    fout1 << MatrixXd(kernel.transpose() * stiffness_matrix * kernel) << endl;
-    cout << stiffness_matrix.cols() << endl;
+
+    function<vector<double>(const VectorXd &)> analytical_solution = [](const VectorXd &u) {
+        double x = u(0);
+        double y = u(1);
+        return vector<double>{8 * (-4 * Pi * cos(2 * Pi * x) * (-2 * Pi * x * (135 * pow(x, 3) - 108 * pow(x, 2) * y - 27 * x * (27 - 18 * y + 2 * pow(y, 2)) + 2 * y * (81 - 54 * y + 8 * pow(y, 2))) * cos(2 * Pi * y) + (972 * pow(Pi, 2) * pow(x, 5) + 540 * pow(Pi, 2) * pow(x, 4) * (-9 + y) + 9 * y * (81 - 27 * y + 2 * pow(y, 2)) - 9 * pow(x, 2) * (-783 + 12 * (7 + 27 * pow(Pi, 2)) * y - 108 * pow(Pi, 2) * pow(y, 2) + 8 * pow(Pi, 2) * pow(y, 3)) + x * (-4455 + 108 * y + 6 * (23 + 54 * pow(Pi, 2)) * pow(y, 2) - 144 * pow(Pi, 2) * pow(y, 3) + 16 * pow(Pi, 2) * pow(y, 4)) - 216 * pow(x, 3) * (11 + pow(Pi, 2) * (-27 + pow(y, 2)))) * sin(2 * Pi * y)) +
+                                   sin(2 * Pi * x) * (-4 * Pi * (108 * pow(Pi, 2) * pow(x, 5) - 108 * pow(Pi, 2) * pow(x, 4) * y + y * (-81 + 54 * y - 8 * pow(y, 2)) + 27 * x * (27 - 18 * y + 2 * pow(y, 2)) + 2 * pow(x, 2) * (27 + 3 * (23 + 54 * pow(Pi, 2)) * y - 108 * pow(Pi, 2) * pow(y, 2) + 16 * pow(Pi, 2) * pow(y, 3)) - 36 * pow(x, 3) * (7 + pow(Pi, 2) * (27 - 18 * y + 2 * pow(y, 2)))) * cos(2 * Pi * y) +
+                                                      (2268 + 648 * pow(Pi, 4) * pow(x, 6) + 432 * pow(Pi, 4) * pow(x, 5) * (-9 + y) -
+                                                       108 * y - 3 * (19 + 216 * pow(Pi, 2)) * pow(y, 2) + 288 * pow(Pi, 2) * pow(y, 3) -
+                                                       32 * pow(Pi, 2) * pow(y, 4) -
+                                                       48 * pow(Pi, 2) * pow(x, 3) *
+                                                           (-783 + (84 + 81 * pow(Pi, 2)) * y - 27 * pow(Pi, 2) * pow(y, 2) +
+                                                            2 * pow(Pi, 2) * pow(y, 3)) +
+                                                       18 * x * (-378 + (39 + 648 * pow(Pi, 2)) * y - 216 * pow(Pi, 2) * pow(y, 2) + 16 * pow(Pi, 2) * pow(y, 3)) -
+                                                       216 * pow(Pi, 2) * pow(x, 4) * (44 + pow(Pi, 2) * (-27 + pow(y, 2))) +
+                                                       pow(x, 2) * (3495 + 8 * pow(Pi, 4) * pow(9 - 2 * y, 2) * pow(y, 2) +
+                                                                    24 * pow(Pi, 2) * (-1485 + 36 * y + 46 * pow(y, 2)))) *
+                                                          sin(2 * Pi * y)))};
+    };
+
+    // BiharmonicStiffnessAssembler<double> stiffness_assemble(dof);
+    // SparseMatrix<double> stiffness_matrix, load_vector;
+    // stiffness_assemble.Assemble(cells, body_force, stiffness_matrix, load_vector);
+    // ofstream fout0;
+    // fout0.open("proposed.txt");
+    // fout0 << MatrixXd(sp.transpose() * stiffness_matrix * sp) << endl;
+    // ofstream fout1;
+    // fout1.open("direct.txt");
+    // fout1 << MatrixXd(kernel.transpose() * stiffness_matrix * kernel) << endl;
+    // cout << stiffness_matrix.cols() << endl;
     return 0;
 }

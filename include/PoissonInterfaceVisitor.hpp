@@ -66,7 +66,6 @@ void PoissonInterfaceVisitor<N, T>::SolveConstraint(Edge<N, T> *edge)
     std::vector<int> slave_activated_indices = Accessory::ColIndicesVector(_c0Slave);
     std::vector<int> master_activated_indices = Accessory::ColIndicesVector(_c0Master);
     std::vector<int> multiplier_indices = Accessory::RowIndicesVector(_c0Slave);
-
     auto activated_slave_indices_inverse_map = Accessory::IndicesInverseMap(slave_activated_indices);
     auto activated_master_indices_inverse_map = Accessory::IndicesInverseMap(master_activated_indices);
     auto multiplier_indices_inverse_map = Accessory::IndicesInverseMap(multiplier_indices);
@@ -221,7 +220,6 @@ typename std::enable_if<n == 2, void>::type PoissonInterfaceVisitor<N, T>::C0Int
     {
         std::cout << "MapParametericPoint failed" << std::endl;
     }
-
     auto slave_evals = slave_domain->EvalDerAllTensor(slave_quadrature_abscissa, 0);
     auto master_evals = master_domain->EvalDerAllTensor(master_quadrature_abscissa, 0);
     auto multiplier_evals = multiplier_domain->EvalDualAllTensor(u.first);

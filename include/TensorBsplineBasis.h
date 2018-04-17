@@ -132,11 +132,13 @@ class TensorBsplineBasis
 
     void KnotSpanGetter(KnotSpanList &) const;
 
+    // check if the given parametric point is in the domain.
     bool InDomain(const vector &u) const;
+
+    void FixOnBoundary(vector &u, T tol = 1e-10) const;
 
   protected:
     std::array<BsplineBasis<T>, d> _basis;
-
 };
 
 template <typename T>
