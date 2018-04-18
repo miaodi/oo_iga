@@ -14,6 +14,7 @@ class ConstraintAssembler
         _matrix_data_container.clear();
         _vertex_indices.clear();
         _involved_indices.clear();
+        _additional_constraint.clear();
 
         for (auto &i : cells)
         {
@@ -61,13 +62,13 @@ class ConstraintAssembler
         {
             for (auto m = i._rowIndices->begin(); m != i._rowIndices->end(); m++)
             {
-                if (std::find(_additional_constraint.begin(), _additional_constraint.end(), *m) == _additional_constraint.end())
+                // if (std::find(_additional_constraint.begin(), _additional_constraint.end(), *m) == _additional_constraint.end())
                 {
                     Eigen::SparseVector<T> sparse_vector(total_dof);
                     sparse_vector.coeffRef(*m) = 1.0;
                     for (int n = 0; n < i._colIndices->size(); n++)
                     {
-                        if (std::find(_additional_constraint.begin(), _additional_constraint.end(), (*i._colIndices)[n]) == _additional_constraint.end())
+                        // if (std::find(_additional_constraint.begin(), _additional_constraint.end(), (*i._colIndices)[n]) == _additional_constraint.end())
                         {
                             sparse_vector.coeffRef((*i._colIndices)[n]) = -(*i._matrix)(m - i._rowIndices->begin(), n);
                         }
@@ -94,19 +95,13 @@ class ConstraintAssembler
             {
                 if (std::find(_vertex_indices.begin(), _vertex_indices.end(), *m) != _vertex_indices.end())
                 {
-                    if (std::find(_additional_constraint.begin(), _additional_constraint.end(), *m) == _additional_constraint.end())
+                    Eigen::SparseVector<T> sparse_vector(total_dof);
+                    sparse_vector.coeffRef(*m) = 1.0;
+                    for (int n = 0; n < i._colIndices->size(); n++)
                     {
-                        Eigen::SparseVector<T> sparse_vector(total_dof);
-                        sparse_vector.coeffRef(*m) = 1.0;
-                        for (int n = 0; n < i._colIndices->size(); n++)
-                        {
-                            if (std::find(_additional_constraint.begin(), _additional_constraint.end(), (*i._colIndices)[n]) == _additional_constraint.end())
-                            {
-                                sparse_vector.coeffRef((*i._colIndices)[n]) = -(*i._matrix)(m - i._rowIndices->begin(), n);
-                            }
-                        }
-                        constraint_container.push_back(sparse_vector);
+                        sparse_vector.coeffRef((*i._colIndices)[n]) = -(*i._matrix)(m - i._rowIndices->begin(), n);
                     }
+                    constraint_container.push_back(sparse_vector);
                     i.RowRemove(m - i._rowIndices->begin());
                 }
                 else
@@ -115,32 +110,40 @@ class ConstraintAssembler
                 }
             }
         }
+
         MatrixData<T> global;
         for (auto &i : _matrix_data_container)
         {
             global = global + i;
         }
+        std::vector<int> active_boundary_constraint;
+        std::set_intersection(_additional_constraint.begin(), _additional_constraint.end(), _involved_indices.begin(), _involved_indices.end(),
+                              std::back_inserter(active_boundary_constraint));
+
         for (auto n = global._colIndices->begin(); n != global._colIndices->end(); n++)
         {
-            Eigen::SparseVector<T> sparse_vector(total_dof);
-            sparse_vector.coeffRef(*n) = 1.0;
-            for (int m = 0; m < global._rowIndices->size(); m++)
+            auto it = std::find(active_boundary_constraint.begin(), active_boundary_constraint.end(), *n);
+            if (it == active_boundary_constraint.end())
             {
-                if (std::find(_additional_constraint.begin(), _additional_constraint.end(), (*global._rowIndices)[m]) == _additional_constraint.end())
+                Eigen::SparseVector<T> sparse_vector(total_dof);
+                sparse_vector.coeffRef(*n) = 1.0;
+                for (int m = 0; m < global._rowIndices->size(); m++)
                 {
                     sparse_vector.coeffRef((*global._rowIndices)[m]) = (*global._matrix)(m, n - global._colIndices->begin());
                 }
+                kernel_vector_container.push_back(sparse_vector);
             }
-            kernel_vector_container.push_back(sparse_vector);
+            else
+            {
+                active_boundary_constraint.erase(it);
+            }
         }
         std::vector<int> pure_slave_vertex_indices;
 
         std::set_difference(_vertex_indices.begin(), _vertex_indices.end(), global._colIndices->begin(), global._colIndices->end(),
                             std::back_inserter(pure_slave_vertex_indices));
-        std::vector<int> pure_slave_vertex_indices_constrained;
-        std::set_difference(pure_slave_vertex_indices.begin(), pure_slave_vertex_indices.end(), _additional_constraint.begin(), _additional_constraint.end(),
-                            std::back_inserter(pure_slave_vertex_indices_constrained));
-        for (const auto &i : pure_slave_vertex_indices_constrained)
+
+        for (const auto &i : pure_slave_vertex_indices)
         {
             Eigen::SparseVector<T> sparse_vector(total_dof);
             sparse_vector.coeffRef(i) = 1.0;
@@ -148,10 +151,14 @@ class ConstraintAssembler
         }
 
         Eigen::SparseMatrix<T, Eigen::RowMajor> sparse_constraint_matrix;
-        sparse_constraint_matrix.resize(constraint_container.size(), _dof.TotalDof());
+        sparse_constraint_matrix.resize(constraint_container.size() + active_boundary_constraint.size(), _dof.TotalDof());
         for (int i = 0; i < constraint_container.size(); i++)
         {
             sparse_constraint_matrix.row(i) = constraint_container[i].transpose();
+        }
+        for (int i = 0; i < active_boundary_constraint.size(); i++)
+        {
+            sparse_constraint_matrix.coeffRef(constraint_container.size() + i, active_boundary_constraint[i]) = 1.0;
         }
 
         auto pre_kernel_it = std::partition(kernel_vector_container.begin(), kernel_vector_container.end(), [&sparse_constraint_matrix](const Eigen::SparseVector<T> &ii) { return (sparse_constraint_matrix * ii).norm() > 0; });
@@ -163,6 +170,7 @@ class ConstraintAssembler
         }
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> dense_constraint_matrix = sparse_constraint_matrix * sparse_pre_kernel_matrix;
         Eigen::FullPivLU<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>> lu_decomp(dense_constraint_matrix);
+        lu_decomp.setThreshold(1e-12);
         sparse_kernel_matrix = (sparse_pre_kernel_matrix * lu_decomp.kernel()).sparseView(1e-15);
 
         for (auto it = pre_kernel_it; it != kernel_vector_container.end(); it++)
@@ -173,7 +181,6 @@ class ConstraintAssembler
         std::vector<int> dof_indices(total_dof);
         std::iota(dof_indices.begin(), dof_indices.end(), 0);
         std::vector<int> idle_index;
-
         std::set_difference(dof_indices.begin(), dof_indices.end(), _involved_indices.begin(), _involved_indices.end(),
                             std::back_inserter(idle_index));
 
@@ -188,8 +195,6 @@ class ConstraintAssembler
             sparse_vector.coeffRef(i) = 1.0;
             sparse_kernel_matrix.rightCols(1) = sparse_vector;
         }
-        std::cout << dense_constraint_matrix.rows() << " " << dense_constraint_matrix.cols() << std::endl;
-        std::cout << _involved_indices.size() << std::endl;
     }
 
     void Additional_Constraint(const std::vector<int> &indices)

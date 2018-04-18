@@ -103,8 +103,8 @@ int main()
     boundary_indices.erase(unique(boundary_indices.begin(), boundary_indices.end()), boundary_indices.end());
 
     ConstraintAssembler<2, 2, double> constraint_assemble(dof);
-    constraint_assemble.Additional_Constraint(boundary_indices);
     constraint_assemble.ConstraintCreator(cells);
+    constraint_assemble.Additional_Constraint(boundary_indices);
     SparseMatrix<double, RowMajor> constraint;
     constraint_assemble.AssembleConstraint(constraint);
 
@@ -127,9 +127,9 @@ int main()
 
     SparseMatrix<double> sp1;
     constraint_assemble.AssembleByReducedKernel(sp1);
-
     cout << MatrixXd(constraint * sp1).norm() << endl;
-
+    cout << MatrixXd(constraint * sp).norm() << endl;
+    cout << sp1.cols() << " " << sp.cols() << endl;
     function<vector<double>(const VectorXd &)> analytical_solution = [](const VectorXd &u) {
         double x = u(0);
         double y = u(1);
@@ -146,11 +146,11 @@ int main()
     BiharmonicStiffnessAssembler<double> stiffness_assemble(dof);
     SparseMatrix<double> stiffness_matrix, load_vector;
     stiffness_assemble.Assemble(cells, body_force, stiffness_matrix, load_vector);
-    SparseMatrix<double> constrained_stiffness_matrix = sp.transpose() * stiffness_matrix * sp;
-    SparseMatrix<double> constrained_rhs = sp.transpose() * load_vector;
+    SparseMatrix<double> constrained_stiffness_matrix = sp1.transpose() * stiffness_matrix * sp1;
+    SparseMatrix<double> constrained_rhs = sp1.transpose() * load_vector;
     ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower | Eigen::Upper> cg;
     cg.compute(constrained_stiffness_matrix);
-    VectorXd Solution = sp * cg.solve(constrained_rhs);
+    VectorXd Solution = sp1 * cg.solve(constrained_rhs);
 
     vector<KnotVector<double>> solutionDomain1, solutionDomain2, solutionDomain3;
     solutionDomain1.push_back(domains[0]->KnotVectorGetter(0));
