@@ -170,4 +170,5 @@ int main()
     u << .5, .5;
     cout << setprecision(15) << solutions[0]->AffineMap(u) << " " << analytical_solution(domains[0]->AffineMap(u))[0];
     return 0;
+    return 0;
 }
