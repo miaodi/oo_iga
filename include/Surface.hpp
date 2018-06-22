@@ -29,9 +29,9 @@ class Surface : public Element<2, N, T>, public std::enable_shared_from_this<Sur
     typedef typename Element<2, N, T>::CoordinatePairList CoordinatePairList;
     using SurfaceShared_Ptr = typename std::shared_ptr<Surface<N, T>>;
 
-    Surface() : Element<2, N, T>(), _currentID(++_ID) {}
+    Surface() : Element<2, N, T>() {}
 
-    Surface(DomainShared_ptr m) : Element<2, N, T>(m), _currentID(++_ID)
+    Surface(DomainShared_ptr m) : Element<2, N, T>(m)
     {
     }
 
@@ -179,16 +179,12 @@ class Surface : public Element<2, N, T>, public std::enable_shared_from_this<Sur
         return this->_domain->Jacobian(u);
     }
 
-    int GetID() const
-    {
-        return _currentID;
-    }
+
 
   protected:
     std::array<std::shared_ptr<Edge<N, T>>, 4> _edges;
     std::array<std::shared_ptr<Vertex<N, T>>, 4> _vertices;
-    static int _ID;
-    const int _currentID;
+
 
     std::shared_ptr<PhyTensorBsplineBasis<1, N, T>> MakeEdge(const Orientation &orient) const
     {
@@ -237,7 +233,5 @@ class Surface : public Element<2, N, T>, public std::enable_shared_from_this<Sur
     }
 };
 
-template <int N, typename T>
-int Surface<N, T>::_ID = 0;
 
 #endif //OO_IGA_SURFACE_H

@@ -52,17 +52,27 @@ class Element
         return _domain;
     }
 
+    int GetID() const
+    {
+        return _currentID;
+    }
+
   protected:
     DomainShared_ptr _domain;
+    static int _ID;
+    const int _currentID;
 };
 
 template <int d, int N, typename T>
-Element<d, N, T>::Element() : _domain{std::make_shared<PhyTensorBsplineBasis<d, N, T>>()}
+int Element<d, N, T>::_ID = 0;
+
+template <int d, int N, typename T>
+Element<d, N, T>::Element() : _domain{std::make_shared<PhyTensorBsplineBasis<d, N, T>>()}, _currentID(++_ID)
 {
 }
 
 template <int d, int N, typename T>
-Element<d, N, T>::Element(const Element::DomainShared_ptr &m) : _domain{m}
+Element<d, N, T>::Element(const Element::DomainShared_ptr &m) : _domain{m}, _currentID(++_ID)
 {
 }
 

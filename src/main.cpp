@@ -8,17 +8,16 @@
 #include "BiharmonicStiffnessVisitor.hpp"
 #include "BendingStiffnessVisitor.hpp"
 #include "PostProcess.hpp"
-#include "H1DomainSemiNormVisitor.hpp"
-#include "NeumannBoundaryVisitor.hpp"
+#include "L2StiffnessVisitor.hpp"
 #include "DofMapper.hpp"
 #include <fstream>
 #include <time.h>
 #include <boost/math/constants/constants.hpp>
 #include "BiharmonicInterfaceVisitor.hpp"
 #include "StiffnessAssembler.hpp"
-#include "BiharmonicStiffnessAssembler.hpp"
 #include "ConstraintAssembler.hpp"
 #include <eigen3/unsupported/Eigen/KroneckerProduct>
+#include <boost/math/special_functions/legendre.hpp>
 
 using namespace Eigen;
 using namespace std;
@@ -143,7 +142,7 @@ int main()
                               8 * sin(2 * Pi * x) * (-12 * Pi * (108 * pow(Pi, 2) * pow(x, 4) * y + 27 * pow(x, 3) * (-1 + 4 * pow(Pi, 2) * (-6 + y) * y) + x * (243 + 162 * y - 3 * (7 + 324 * pow(Pi, 2)) * pow(y, 2) + 432 * pow(Pi, 2) * pow(y, 3) - 40 * pow(Pi, 2) * pow(y, 4)) + y * (-405 + 180 * y + (-22 + 216 * pow(Pi, 2)) * pow(y, 2) - 120 * pow(Pi, 2) * pow(y, 3) + 16 * pow(Pi, 2) * pow(y, 4)) - 36 * pow(x, 2) * y * (3 + pow(Pi, 2) * (-27 + 2 * pow(y, 2)))) * cos(2 * Pi * y) + (972 - 540 * y + (261 - 9720 * pow(Pi, 2)) * pow(y, 2) + 2880 * pow(Pi, 2) * pow(y, 3) + 24 * pow(Pi, 2) * (-11 + 27 * pow(Pi, 2)) * pow(y, 4) - 288 * pow(Pi, 4) * pow(y, 5) + 32 * pow(Pi, 4) * pow(y, 6) + 648 * pow(Pi, 2) * pow(x, 4) * (-1 + pow(Pi, 2) * pow(y, 2)) + 432 * pow(Pi, 2) * pow(x, 3) * (9 - 3 * y - 9 * pow(Pi, 2) * pow(y, 2) + pow(Pi, 2) * pow(y, 3)) - 6 * x * (162 - 3 * (17 + 648 * pow(Pi, 2)) * y - 648 * pow(Pi, 2) * pow(y, 2) + 8 * pow(Pi, 2) * (7 + 81 * pow(Pi, 2)) * pow(y, 3) - 216 * pow(Pi, 4) * pow(y, 4) + 16 * pow(Pi, 4) * pow(y, 5)) - 27 * pow(x, 2) * (-15 + 8 * pow(Pi, 4) * pow(y, 2) * (-27 + pow(y, 2)) + 24 * pow(Pi, 2) * (9 + 4 * pow(y, 2)))) * sin(2 * Pi * y))};
     };
 
-    BiharmonicStiffnessAssembler<double> stiffness_assemble(dof);
+    StiffnessAssembler<BiharmonicStiffnessVisitor<double>> stiffness_assemble(dof);
     SparseMatrix<double> stiffness_matrix, load_vector;
     stiffness_assemble.Assemble(cells, body_force, stiffness_matrix, load_vector);
     SparseMatrix<double> constrained_stiffness_matrix = sp1.transpose() * stiffness_matrix * sp1;

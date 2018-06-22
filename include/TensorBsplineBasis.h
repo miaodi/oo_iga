@@ -165,7 +165,10 @@ class TensorBsplineBasis<0, T>
     BasisFunValDerAllList_ptr
     EvalDualAllTensor(const vector &u) const
     {
+           std::cout << "heihei" << std::endl;
         BasisFunValDerAllList_ptr Result(new BasisFunValDerAllList);
+            std::cout << "heihei" << std::endl;
+ 
         std::vector<T> result(1, 0);
         if (u(0) == _basis)
         {

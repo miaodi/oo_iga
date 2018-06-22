@@ -30,6 +30,9 @@ class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N
     using PhyPts = typename PhyTensorBsplineBasis<2, N, T>::PhyPts;
     using EdgeShared_Ptr = typename std::shared_ptr<Edge<N, T>>;
 
+    Edge(DomainShared_ptr m, const Orientation &orient = Orientation::west)
+        : Element<1, N, T>(m), _position(orient){};
+
     Edge(const Orientation &orient = Orientation::west)
         : Element<1, N, T>(), _position(orient){};
 

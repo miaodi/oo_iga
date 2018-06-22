@@ -15,6 +15,7 @@ class BiharmonicStiffnessVisitor : public StiffnessVisitor<2, 1, T>
     using Matrix = typename StiffnessVisitor<2, 1, T>::Matrix;
     using Vector = typename StiffnessVisitor<2, 1, T>::Vector;
     using DomainShared_ptr = typename StiffnessVisitor<2, 1, T>::DomainShared_ptr;
+    using DataType = T;
 
   public:
     BiharmonicStiffnessVisitor(const LoadFunctor &body_force)

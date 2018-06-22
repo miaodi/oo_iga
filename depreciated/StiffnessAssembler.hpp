@@ -1,26 +1,40 @@
 #pragma once
+#include "BendingStiffnessVisitor.hpp"
+#include "MembraneStiffnessVisitor.hpp"
 #include "Surface.hpp"
-#include "BiharmonicStiffnessVisitor.hpp"
 template <typename T>
-class BiharmonicStiffnessAssembler
+class StiffnessAssembler
 {
   public:
     using LoadFunctor = typename BendingStiffnessVisitor<T>::LoadFunctor;
 
-    BiharmonicStiffnessAssembler(DofMapper &dof) : _dof(dof) {}
+    StiffnessAssembler(DofMapper &dof) : _dof(dof) {}
 
-    void Assemble(const std::vector<std::shared_ptr<Surface<2, T>>> &cells, const LoadFunctor &load, Eigen::SparseMatrix<T> &stiffness_matrix, Eigen::SparseMatrix<T> &load_vector)
+    void Assemble(const std::vector<std::shared_ptr<Surface<3, T>>> &cells, const LoadFunctor &load, Eigen::SparseMatrix<T> &stiffness_matrix, Eigen::SparseMatrix<T> &load_vector)
     {
-        std::vector<std::unique_ptr<BiharmonicStiffnessVisitor<T>>> bihamronic_visitors;
+        std::vector<std::unique_ptr<BendingStiffnessVisitor<T>>> bending_visitors;
+        std::vector<std::unique_ptr<MembraneStiffnessVisitor<T>>> membrane_visitors;
         for (auto &i : cells)
         {
-            std::unique_ptr<BiharmonicStiffnessVisitor<T>> biharmonic(new BiharmonicStiffnessVisitor<T>(load));
-            i->Accept(*biharmonic);
-            bihamronic_visitors.push_back(std::move(biharmonic));
+            std::unique_ptr<BendingStiffnessVisitor<T>> bending(new BendingStiffnessVisitor<T>(load));
+            std::unique_ptr<MembraneStiffnessVisitor<T>> membrane(new MembraneStiffnessVisitor<T>(load));
+            i->Accept(*bending);
+            i->Accept(*membrane);
+            bending_visitors.push_back(std::move(bending));
+            membrane_visitors.push_back(std::move(membrane));
         }
         std::vector<Eigen::Triplet<T>> stiffness_triplet, load_triplet;
-
-        for (auto &i : bihamronic_visitors)
+        for (auto &i : bending_visitors)
+        {
+            const auto stiffness_triplet_in = i->GetStiffness();
+            int id = i->ID();
+            int starting_dof = _dof.StartingDof(id);
+            for (const auto &j : stiffness_triplet_in)
+            {
+                stiffness_triplet.push_back(Eigen::Triplet<T>(starting_dof + j.row(), starting_dof + j.col(), j.value()));
+            }
+        }
+        for (auto &i : membrane_visitors)
         {
             const auto stiffness_triplet_in = i->GetStiffness();
             const auto load_triplet_in = i->GetRhs();
