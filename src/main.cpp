@@ -51,16 +51,6 @@ int main()
             domains[0]->DegreeElevate(1);
             domains[1]->DegreeElevate(1);
 
-            Vector2d modify1, modify2, modify3;
-            modify1 << .5, .4;
-            modify2 << .75, .45;
-            modify3 << .25, .45;
-
-            domains[0]->CtrPtsSetter(7, modify1);
-            domains[0]->CtrPtsSetter(4, modify3);
-            domains[1]->CtrPtsSetter(1, modify1);
-            domains[1]->CtrPtsSetter(4, modify2);
-
             for (auto &i : domains)
             {
                 i->DegreeElevate(d - 1);
@@ -116,16 +106,16 @@ int main()
             ConstraintAssembler<2, 2, double> constraint_assemble(dof);
             constraint_assemble.ConstraintCreator(cells);
             constraint_assemble.Additional_Constraint(boundary_indices);
-            SparseMatrix<double, RowMajor> constraint;
-            constraint_assemble.AssembleConstraint(constraint);
+            // SparseMatrix<double, RowMajor> constraint;
+            // constraint_assemble.AssembleConstraint(constraint);
 
-            for (auto i : boundary_indices)
-            {
-                constraint.conservativeResize(constraint.rows() + 1, dof.TotalDof());
-                SparseVector<double> sparse_vector(dof.TotalDof());
-                sparse_vector.coeffRef(i) = 1.0;
-                constraint.bottomRows(1) = sparse_vector.transpose();
-            }
+            // for (auto i : boundary_indices)
+            // {
+            //     constraint.conservativeResize(constraint.rows() + 1, dof.TotalDof());
+            //     SparseVector<double> sparse_vector(dof.TotalDof());
+            //     sparse_vector.coeffRef(i) = 1.0;
+            //     constraint.bottomRows(1) = sparse_vector.transpose();
+            // }
             // MatrixXd dense_constraint = MatrixXd(constraint);
             // FullPivLU<MatrixXd> lu_decomp(dense_constraint);
             // MatrixXd kernel = lu_decomp.kernel();
@@ -160,9 +150,10 @@ int main()
                                       18 * pi * pi * cos(6 * pi * y) * pow(sin(3 * pi * x), 2)};
             };
 
-            StiffnessAssembler<BiharmonicStiffnessVisitor<double>> stiffness_assemble(dof);
+            StiffnessAssembler<H2StiffnessVisitor<2, 2, double>> stiffness_assemble(dof);
             SparseMatrix<double> stiffness_matrix, load_vector;
             stiffness_assemble.Assemble(cells, body_force, stiffness_matrix, load_vector);
+
             SparseMatrix<double> constrained_stiffness_matrix = sp1.transpose() * stiffness_matrix * sp1;
             SparseMatrix<double> constrained_rhs = sp1.transpose() * load_vector;
             ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower | Eigen::Upper> cg;
