@@ -51,6 +51,13 @@ int main()
             domains[0]->DegreeElevate(1);
             domains[1]->DegreeElevate(1);
 
+            Vector2d modify1, modify2, modify3;
+            modify1 << .4, .4;
+            modify3 << .2, .45;
+
+            domains[0]->CtrPtsSetter(7, modify1);
+            domains[0]->CtrPtsSetter(4, modify3);
+
             for (auto &i : domains)
             {
                 i->DegreeElevate(d - 1);
@@ -152,7 +159,7 @@ int main()
 
             StiffnessAssembler<H2StiffnessVisitor<2, 2, double>> stiffness_assemble(dof);
             SparseMatrix<double> stiffness_matrix, load_vector;
-            stiffness_assemble.Assemble(cells, body_force, stiffness_matrix, load_vector);
+            stiffness_assemble.Assemble(cells, analytical_solution, stiffness_matrix, load_vector);
 
             SparseMatrix<double> constrained_stiffness_matrix = sp1.transpose() * stiffness_matrix * sp1;
             SparseMatrix<double> constrained_rhs = sp1.transpose() * load_vector;
