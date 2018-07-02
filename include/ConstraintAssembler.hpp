@@ -89,19 +89,28 @@ class ConstraintAssembler
         std::vector<Eigen::SparseVector<T>> constraint_container;
         std::vector<Eigen::SparseVector<T>> kernel_vector_container;
         int total_dof = _dof.TotalDof();
+
         for (auto &i : _matrix_data_container)
         {
             for (auto m = i._rowIndices->begin(); m != i._rowIndices->end();)
             {
-                if (std::find(_vertex_indices.begin(), _vertex_indices.end(), *m) != _vertex_indices.end())
+                auto it = std::find(_vertex_indices.begin(), _vertex_indices.end(), *m);
+                if (it != _vertex_indices.end())
                 {
-                    Eigen::SparseVector<T> sparse_vector(total_dof);
-                    sparse_vector.coeffRef(*m) = 1.0;
-                    for (int n = 0; n < i._colIndices->size(); n++)
+                    if (std::find(_additional_constraint.begin(), _additional_constraint.end(), *m) == _additional_constraint.end())
                     {
-                        sparse_vector.coeffRef((*i._colIndices)[n]) = -(*i._matrix)(m - i._rowIndices->begin(), n);
+                        Eigen::SparseVector<T> sparse_vector(total_dof);
+                        sparse_vector.coeffRef(*m) = 1.0;
+                        for (int n = 0; n < i._colIndices->size(); n++)
+                        {
+                            sparse_vector.coeffRef((*i._colIndices)[n]) = -(*i._matrix)(m - i._rowIndices->begin(), n);
+                        }
+                        constraint_container.push_back(sparse_vector);
                     }
-                    constraint_container.push_back(sparse_vector);
+                    else
+                    {
+                        _vertex_indices.erase(it);
+                    }
                     i.RowRemove(m - i._rowIndices->begin());
                 }
                 else
@@ -138,6 +147,7 @@ class ConstraintAssembler
                 active_boundary_constraint.erase(it);
             }
         }
+
         std::vector<int> pure_slave_vertex_indices;
 
         std::set_difference(_vertex_indices.begin(), _vertex_indices.end(), global._colIndices->begin(), global._colIndices->end(),
@@ -151,14 +161,10 @@ class ConstraintAssembler
         }
 
         Eigen::SparseMatrix<T, Eigen::RowMajor> sparse_constraint_matrix;
-        sparse_constraint_matrix.resize(constraint_container.size() + active_boundary_constraint.size(), _dof.TotalDof());
+        sparse_constraint_matrix.resize(constraint_container.size(), _dof.TotalDof());
         for (int i = 0; i < constraint_container.size(); i++)
         {
             sparse_constraint_matrix.row(i) = constraint_container[i].transpose();
-        }
-        for (int i = 0; i < active_boundary_constraint.size(); i++)
-        {
-            sparse_constraint_matrix.coeffRef(constraint_container.size() + i, active_boundary_constraint[i]) = 1.0;
         }
 
         auto pre_kernel_it = std::partition(kernel_vector_container.begin(), kernel_vector_container.end(), [&sparse_constraint_matrix](const Eigen::SparseVector<T> &ii) { return (sparse_constraint_matrix * ii).norm() > 0; });
@@ -169,9 +175,25 @@ class ConstraintAssembler
             sparse_pre_kernel_matrix.col(i) = kernel_vector_container[i];
         }
         Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> dense_constraint_matrix = sparse_constraint_matrix * sparse_pre_kernel_matrix;
-        Eigen::FullPivLU<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>> lu_decomp(dense_constraint_matrix);
-        lu_decomp.setThreshold(1e-12);
-        sparse_kernel_matrix = (sparse_pre_kernel_matrix * lu_decomp.kernel()).sparseView(1e-15);
+
+        // LU kernel
+        // Eigen::FullPivLU<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>> lu_decomp(dense_constraint_matrix);
+        // lu_decomp.setThreshold(1e-12);
+        // sparse_kernel_matrix = (sparse_pre_kernel_matrix * lu_decomp.kernel()).sparseView(1e-15);
+
+        // SVD kernel
+        Eigen::JacobiSVD<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>> svd(dense_constraint_matrix, Eigen::ComputeThinU | Eigen::ComputeFullV);
+        std::cout << svd.singularValues().transpose() << std::endl;
+        int count{0};
+        for (int i = 0; i < svd.singularValues().size(); ++i)
+        {
+            if (svd.singularValues()(i) < 1e-11)
+            {
+                break;
+            }
+            count++;
+        }
+        sparse_kernel_matrix = (sparse_pre_kernel_matrix * svd.matrixV().rightCols(svd.matrixV().cols() - count)).sparseView(1e-15);
 
         for (auto it = pre_kernel_it; it != kernel_vector_container.end(); it++)
         {
