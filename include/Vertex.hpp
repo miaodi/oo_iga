@@ -11,6 +11,9 @@ template <int d, int N, typename T>
 class Visitor;
 
 template <int N, typename T>
+class Edge;
+
+template <int N, typename T>
 class Vertex : public Element<0, N, T>, public std::enable_shared_from_this<Vertex<N, T>>
 {
   public:
