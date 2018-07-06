@@ -1,5 +1,6 @@
 #pragma once
 #include "BiharmonicInterfaceVisitor.hpp"
+#include "BiharmonicInterfaceH1.hpp"
 #include "DofMapper.hpp"
 #include "Surface.hpp"
 #include <numeric>
@@ -24,7 +25,7 @@ public:
             {
                 if ( i->EdgePointerGetter( j )->IsMatched() && i->EdgePointerGetter( j )->IsSlave() )
                 {
-                    BiharmonicInterfaceVisitor<d, T> biharmonic_interface;
+                    BiharmonicInterfaceH1Visitor<d, T> biharmonic_interface;
                     i->EdgePointerGetter( j )->Accept( biharmonic_interface );
                     int slave_id = biharmonic_interface.SlaveID();
                     int master_id = biharmonic_interface.MasterID();
@@ -199,7 +200,7 @@ public:
 
             // SVD kernel
             Eigen::JacobiSVD<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>> svd( dense_constraint_matrix, Eigen::ComputeThinU | Eigen::ComputeFullV );
-            // std::cout << svd.singularValues().transpose() << std::endl;
+            std::cout << svd.singularValues().transpose() << std::endl;
             int count{0};
             for ( int i = 0; i < svd.singularValues().size(); ++i )
             {

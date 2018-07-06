@@ -41,7 +41,7 @@ int main()
 
     int degree, refine;
     cin >> degree >> refine;
-    for ( int d = 1; d < degree; ++d )
+    for ( int d = 4; d < degree; ++d )
     {
         for ( int r = 0; r < refine; ++r )
         {
