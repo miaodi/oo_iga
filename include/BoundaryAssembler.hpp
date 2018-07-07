@@ -12,8 +12,9 @@ public:
     BoundaryAssembler( DofMapper& dof ) : _dof( dof )
     {
     }
-    void BoundaryValueCreator( const std::vector<std::shared_ptr<T>>& cells, const LoadFunctor& load_func )
+    void BoundaryValueCreator( const std::vector<std::shared_ptr<T>>& cells, const LoadFunctor& load_func, Eigen::SparseMatrix<DataType>& load_vector )
     {
+        _boundaryValues.clear();
         for ( auto& i : cells )
         {
             BiharmonicDirichletBoundaryVisitor<PhyDim, DataType> biharmonic_boundary( load_func );
@@ -34,9 +35,10 @@ public:
                 }
             }
         }
-        for ( auto i : _boundaryValues )
+        load_vector.resize( _dof.TotalDof(), 1 );
+        for ( auto& i : _boundaryValues )
         {
-            std::cout << i.first << " " << i.second << std::endl;
+            load_vector.insert( i.first, 0 ) = i.second;
         }
     }
 

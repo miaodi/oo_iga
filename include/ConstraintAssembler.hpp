@@ -1,6 +1,6 @@
 #pragma once
-#include "BiharmonicInterfaceVisitor.hpp"
 #include "BiharmonicInterfaceH1.hpp"
+#include "BiharmonicInterfaceVisitor.hpp"
 #include "DofMapper.hpp"
 #include "Surface.hpp"
 #include <numeric>
@@ -25,7 +25,7 @@ public:
             {
                 if ( i->EdgePointerGetter( j )->IsMatched() && i->EdgePointerGetter( j )->IsSlave() )
                 {
-                    BiharmonicInterfaceH1Visitor<d, T> biharmonic_interface;
+                    BiharmonicInterfaceVisitor<d, T> biharmonic_interface;
                     i->EdgePointerGetter( j )->Accept( biharmonic_interface );
                     int slave_id = biharmonic_interface.SlaveID();
                     int master_id = biharmonic_interface.MasterID();
@@ -194,23 +194,23 @@ public:
             Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> dense_constraint_matrix = sparse_constraint_matrix * sparse_pre_kernel_matrix;
 
             // LU kernel
-            // Eigen::FullPivLU<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>>
-            // lu_decomp(dense_constraint_matrix); lu_decomp.setThreshold(1e-12);
-            // sparse_kernel_matrix = (sparse_pre_kernel_matrix * lu_decomp.kernel()).sparseView(1e-15);
+            Eigen::FullPivLU<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>>
+            lu_decomp(dense_constraint_matrix); lu_decomp.setThreshold(1e-8);
+            sparse_kernel_matrix = (sparse_pre_kernel_matrix * lu_decomp.kernel()).sparseView(1e-15);
 
             // SVD kernel
-            Eigen::JacobiSVD<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>> svd( dense_constraint_matrix, Eigen::ComputeThinU | Eigen::ComputeFullV );
-            std::cout << svd.singularValues().transpose() << std::endl;
-            int count{0};
-            for ( int i = 0; i < svd.singularValues().size(); ++i )
-            {
-                if ( svd.singularValues()( i ) < 1e-11 )
-                {
-                    break;
-                }
-                count++;
-            }
-            sparse_kernel_matrix = ( sparse_pre_kernel_matrix * svd.matrixV().rightCols( svd.matrixV().cols() - count ) ).sparseView( 1e-15 );
+            // Eigen::JacobiSVD<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>> svd( dense_constraint_matrix, Eigen::ComputeThinU | Eigen::ComputeFullV );
+            // std::cout << svd.singularValues().transpose() << std::endl;
+            // int count{0};
+            // for ( int i = 0; i < svd.singularValues().size(); ++i )
+            // {
+            //     if ( svd.singularValues()( i ) < 1e-11 )
+            //     {
+            //         break;
+            //     }
+            //     count++;
+            // }
+            // sparse_kernel_matrix = ( sparse_pre_kernel_matrix * svd.matrixV().rightCols( svd.matrixV().cols() - count ) ).sparseView( 1e-15 );
 
             for ( auto it = pre_kernel_it; it != kernel_vector_container.end(); it++ )
             {

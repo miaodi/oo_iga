@@ -76,7 +76,6 @@ public:
             {
                 i.join();
             }
-            std::cout << sqrt( err_norm_per_patch / val_norm_per_patch ) << std::endl;
             err_norm += err_norm_per_patch;
             val_norm += val_norm_per_patch;
         }
@@ -143,7 +142,6 @@ public:
             {
                 i.join();
             }
-            std::cout << sqrt( err_norm_per_patch / val_norm_per_patch ) << std::endl;
             err_norm += err_norm_per_patch;
             val_norm += val_norm_per_patch;
         }
