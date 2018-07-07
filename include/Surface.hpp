@@ -28,6 +28,10 @@ class Surface : public Element<2, N, T>, public std::enable_shared_from_this<Sur
     typedef typename Element<2, N, T>::Coordinate Coordinate;
     typedef typename Element<2, N, T>::CoordinatePairList CoordinatePairList;
     using SurfaceShared_Ptr = typename std::shared_ptr<Surface<N, T>>;
+    using DataType = T;
+    static constexpr int PhyDim = N;
+
+
 
     Surface() : Element<2, N, T>() {}
 
