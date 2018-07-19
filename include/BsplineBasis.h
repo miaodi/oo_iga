@@ -68,6 +68,11 @@ class BsplineBasis
 
     std::unique_ptr<matrix> BasisWeight() const;
 
+    // Assembly matrix A for polynomial completeness dual.
+    std::unique_ptr<Eigen::SparseMatrix<T, Eigen::ColMajor>> BasisAssemblyMatrix() const;
+
+    void CompleteBezierDualInitialize();
+
     bool IsActive(const int i, const T u) const;
 
     void BezierDualInitialize();

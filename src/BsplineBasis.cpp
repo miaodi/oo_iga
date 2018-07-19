@@ -3,6 +3,7 @@
 //
 
 #include "BsplineBasis.h"
+#include <boost/math/special_functions/legendre.hpp>
 #include <boost/multiprecision/gmp.hpp>
 
 template <typename T>
@@ -11,7 +12,7 @@ BsplineBasis<T>::BsplineBasis()
 }
 
 template <typename T>
-BsplineBasis<T>::BsplineBasis(KnotVector<T> target) : _basisKnot(target)
+BsplineBasis<T>::BsplineBasis( KnotVector<T> target ) : _basisKnot( target )
 {
 }
 
@@ -28,60 +29,60 @@ int BsplineBasis<T>::GetDof() const
 }
 
 template <typename T>
-int BsplineBasis<T>::FindSpan(const T &u) const
+int BsplineBasis<T>::FindSpan( const T& u ) const
 {
-    return _basisKnot.FindSpan(u);
+    return _basisKnot.FindSpan( u );
 }
 
 template <typename T>
-bool BsplineBasis<T>::IsActive(const int i, const T u) const
+bool BsplineBasis<T>::IsActive( const int i, const T u ) const
 {
-    vector supp = Support(i);
-    return (u >= supp(0)) && (u < supp(1)) ? true : false;
+    vector supp = Support( i );
+    return ( u >= supp( 0 ) ) && ( u < supp( 1 ) ) ? true : false;
 }
 
 template <typename T>
-T BsplineBasis<T>::EvalSingle(const T &u, const int n, const int i) const
+T BsplineBasis<T>::EvalSingle( const T& u, const int n, const int i ) const
 {
     int p = GetDegree();
-    T *ders;
-    T **N;
-    T *ND;
-    N = new T *[p + 1];
-    for (int k = 0; k < p + 1; k++)
+    T* ders;
+    T** N;
+    T* ND;
+    N = new T*[p + 1];
+    for ( int k = 0; k < p + 1; k++ )
         N[k] = new T[p + 1];
     ND = new T[i + 1];
     ders = new T[i + 1];
-    if (u < _basisKnot[n] || u >= _basisKnot[n + p + 1])
+    if ( u < _basisKnot[n] || u >= _basisKnot[n + p + 1] )
     {
-        for (int k = 0; k <= i; k++)
+        for ( int k = 0; k <= i; k++ )
             ders[k] = 0;
         T der = ders[i];
         delete[] ders;
-        for (int k = 0; k < p + 1; k++)
+        for ( int k = 0; k < p + 1; k++ )
             delete N[k];
         delete[] N;
         delete[] ND;
         return der;
     }
-    for (int j = 0; j <= p; j++)
+    for ( int j = 0; j <= p; j++ )
     {
-        if (u >= _basisKnot[n + j] && u < _basisKnot[n + j + 1])
+        if ( u >= _basisKnot[n + j] && u < _basisKnot[n + j + 1] )
             N[j][0] = 1;
         else
             N[j][0] = 0;
     }
     T saved;
-    for (int k = 1; k <= p; k++)
+    for ( int k = 1; k <= p; k++ )
     {
-        if (N[0][k - 1] == 0.0)
+        if ( N[0][k - 1] == 0.0 )
             saved = 0;
         else
-            saved = ((u - _basisKnot[n]) * N[0][k - 1]) / (_basisKnot[n + k] - _basisKnot[n]);
-        for (int j = 0; j < p - k + 1; j++)
+            saved = ( ( u - _basisKnot[n] ) * N[0][k - 1] ) / ( _basisKnot[n + k] - _basisKnot[n] );
+        for ( int j = 0; j < p - k + 1; j++ )
         {
             T _basisKnotleft = _basisKnot[n + j + 1], _basisKnotright = _basisKnot[n + j + k + 1];
-            if (N[j + 1][k - 1] == 0)
+            if ( N[j + 1][k - 1] == 0 )
             {
                 N[j][k] = saved;
                 saved = 0;
@@ -89,38 +90,38 @@ T BsplineBasis<T>::EvalSingle(const T &u, const int n, const int i) const
             else
             {
                 T temp = 0;
-                if (_basisKnotright != _basisKnotleft)
-                    temp = N[j + 1][k - 1] / (_basisKnotright - _basisKnotleft);
-                N[j][k] = saved + (_basisKnotright - u) * temp;
-                saved = (u - _basisKnotleft) * temp;
+                if ( _basisKnotright != _basisKnotleft )
+                    temp = N[j + 1][k - 1] / ( _basisKnotright - _basisKnotleft );
+                N[j][k] = saved + ( _basisKnotright - u ) * temp;
+                saved = ( u - _basisKnotleft ) * temp;
             }
         }
     }
     ders[0] = N[0][p];
-    for (int k = 1; k <= i; k++)
+    for ( int k = 1; k <= i; k++ )
     {
-        for (int j = 0; j <= k; j++)
+        for ( int j = 0; j <= k; j++ )
             ND[j] = N[j][p - k];
-        for (int jj = 1; jj <= k; jj++)
+        for ( int jj = 1; jj <= k; jj++ )
         {
-            if (ND[0] == 0.0)
+            if ( ND[0] == 0.0 )
                 saved = 0;
             else
-                saved = ND[0] / (_basisKnot[n + p - k + jj] - _basisKnot[n]);
-            for (int j = 0; j < k - jj + 1; j++)
+                saved = ND[0] / ( _basisKnot[n + p - k + jj] - _basisKnot[n] );
+            for ( int j = 0; j < k - jj + 1; j++ )
             {
                 T _basisKnotleft = _basisKnot[n + j + 1], _basisKnotright = _basisKnot[n + j + p + 1];
-                if (ND[j + 1] == 0)
+                if ( ND[j + 1] == 0 )
                 {
-                    ND[j] = (p - k + jj) * saved;
+                    ND[j] = ( p - k + jj ) * saved;
                     saved = 0;
                 }
                 else
                 {
                     T temp = 0;
-                    if (_basisKnotright != _basisKnotleft)
-                        temp = ND[j + 1] / (_basisKnotright - _basisKnotleft);
-                    ND[j] = (p - k + jj) * (saved - temp);
+                    if ( _basisKnotright != _basisKnotleft )
+                        temp = ND[j + 1] / ( _basisKnotright - _basisKnotleft );
+                    ND[j] = ( p - k + jj ) * ( saved - temp );
                     saved = temp;
                 }
             }
@@ -129,7 +130,7 @@ T BsplineBasis<T>::EvalSingle(const T &u, const int n, const int i) const
     }
     T der = ders[i];
     delete[] ders;
-    for (int k = 0; k < p + 1; k++)
+    for ( int k = 0; k < p + 1; k++ )
         delete N[k];
     delete[] N;
     delete[] ND;
@@ -137,25 +138,25 @@ T BsplineBasis<T>::EvalSingle(const T &u, const int n, const int i) const
 }
 
 template <typename T>
-typename BsplineBasis<T>::BasisFunValDerAllList_ptr BsplineBasis<T>::BezierDual(const T &u) const
+typename BsplineBasis<T>::BasisFunValDerAllList_ptr BsplineBasis<T>::BezierDual( const T& u ) const
 {
     int degree = _basisKnot.GetDegree();
-    vector span = InSpan(u);
-    T uPara = (u - span(0)) / (span(1) - span(0));
-    auto bernstein = Accessory::AllBernstein(degree, uPara);
-    Eigen::Map<vector> bernsteinVector(bernstein.data(), bernstein.size());
-    int spanNum = _basisKnot.SpanNum(u);
-    int firstIndex = FirstActive(u);
-    vector weight = _basisWeight.block(spanNum, firstIndex, 1, degree + 1).transpose();
-    vector dual = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>(weight.asDiagonal()) * _reconstruction[spanNum].transpose() * _gramianInv *
-                  bernsteinVector / (span(1) - span(0));
-    BasisFunValDerAll aaa{0, std::vector<T>(1, 0)};
-    BasisFunValDerAllList_ptr result(new BasisFunValDerAllList(degree + 1, aaa));
-    for (int ii = 0; ii != result->size(); ii++)
-        (*result)[ii].second[0] = dual(ii);
-    for (int ii = 0; ii != result->size(); ++ii)
+    vector span = InSpan( u );
+    T uPara = ( u - span( 0 ) ) / ( span( 1 ) - span( 0 ) );
+    auto bernstein = Accessory::AllBernstein( degree, uPara );
+    Eigen::Map<vector> bernsteinVector( bernstein.data(), bernstein.size() );
+    int spanNum = _basisKnot.SpanNum( u );
+    int firstIndex = FirstActive( u );
+    vector weight = _basisWeight.block( spanNum, firstIndex, 1, degree + 1 ).transpose();
+    vector dual = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>( weight.asDiagonal() ) * _reconstruction[spanNum].transpose() * _gramianInv *
+                  bernsteinVector / ( span( 1 ) - span( 0 ) );
+    BasisFunValDerAll aaa{0, std::vector<T>( 1, 0 )};
+    BasisFunValDerAllList_ptr result( new BasisFunValDerAllList( degree + 1, aaa ) );
+    for ( int ii = 0; ii != result->size(); ii++ )
+        ( *result )[ii].second[0] = dual( ii );
+    for ( int ii = 0; ii != result->size(); ++ii )
     {
-        (*result)[ii].first = firstIndex + ii;
+        ( *result )[ii].first = firstIndex + ii;
     }
     return result;
 }
@@ -164,9 +165,80 @@ template <typename T>
 void BsplineBasis<T>::BezierDualInitialize()
 {
     int degree = _basisKnot.GetDegree();
-    _gramianInv = Accessory::GramianInverse<T>(degree);
+    _gramianInv = Accessory::GramianInverse<T>( degree );
     _basisWeight = *BasisWeight();
-    _reconstruction = *Accessory::BezierReconstruction<T>(_basisKnot);
+    _reconstruction = *Accessory::BezierReconstruction<T>( _basisKnot );
+}
+
+template <typename T>
+void BsplineBasis<T>::CompleteBezierDualInitialize()
+{
+    using namespace boost::math;
+    using QuadList = typename QuadratureRule<T>::QuadList;
+    int degree = _basisKnot.GetDegree();
+    _gramianInv = Accessory::GramianInverse<T>( degree );
+    _reconstruction = *Accessory::BezierReconstruction<T>( _basisKnot );
+    auto sm = BasisAssemblyMatrix();
+    sm->makeCompressed();
+    int nz = sm->nonZeros();
+    auto oiptr = sm->outerIndexPtr();
+    std::vector<T> weight;
+    for ( auto it = oiptr; it != oiptr + sm->cols(); ++it )
+    {
+        if ( it == oiptr + sm->cols() - 1 )
+        {
+            weight.push_back( nz - *it );
+        }
+        else
+        {
+            weight.push_back( *( it + 1 ) - *( it ) );
+        }
+    }
+    for ( int i = 0; i < sm->cols(); ++i )
+    {
+        sm->col( i ) /= sqrt( weight[i] );
+    }
+
+    Eigen::SparseMatrix<T> diag( sm->rows(), sm->rows() );
+    for ( int i = 0; i < nz; ++i )
+    {
+        diag.coeffRef( *( sm->innerIndexPtr() + i ), *( sm->innerIndexPtr() + i ) ) = 1.0 / *( sm->valuePtr() + i );
+    }
+    int num_of_completeness = degree;
+
+    auto spans = _basisKnot.KnotEigenSpans();
+    QuadratureRule<T> quadrature( degree + 1 );
+    matrix rhs( spans.size() * ( degree + 1 ), num_of_completeness );
+    rhs.setZero();
+    T u_b = *_basisKnot.begin();
+    T u_e = *( _basisKnot.end() - 1 );
+    auto f = [u_e, u_b]( T u ) { return 2 * ( u - u_b ) / ( u_e - u_b ) - 1; };
+    for ( int i = 0; i < spans.size(); ++i )
+    {
+        QuadList quadList;
+        quadrature.MapToQuadrature( spans[i], quadList );
+        for ( auto& j : quadList )
+        {
+            T u = j.first( 0 );
+            auto evals = EvalDerAll( u, 0 );
+            matrix temp( 1, ( degree + 1 ) );
+            for ( int j = 0; j < evals->size(); ++j )
+            {
+                temp( 0, j ) = ( *evals )[j].second[0];
+            }
+            matrix polynomials( 1, num_of_completeness );
+            for ( int i = 0; i < num_of_completeness; i++ )
+            {
+                polynomials( 0, i ) = legendre_p( i, f( u ) );
+            }
+            rhs.block( ( degree + 1 ) * i, 0, ( degree + 1 ), num_of_completeness ) += j.second * temp.transpose() * polynomials;
+        }
+    }
+    std::cout << sm->transpose() * diag * rhs << std::endl;
+    Eigen::EigenSolver<matrix> eigensolver( matrix( sm->transpose() * diag * rhs ).block( 1, 0, num_of_completeness, num_of_completeness ) );
+    std::cout << eigensolver.eigenvalues() << std::endl;
+
+    _basisWeight = *BasisWeight();
 }
 
 // Reduce the order of first two and last two elements by one (Serve as the Lagrange multiplier). The weights for boundary basis are computed.
@@ -178,72 +250,75 @@ void BsplineBasis<T>::ModifyBoundaryInitialize()
     const int dof = _basisKnot.GetDOF();
     auto spans = _basisKnot.KnotSpans();
     const int elements = spans.size();
-    ASSERT(degree >= 1, "The polynomial degree is too low for the modification.");
-    ASSERT(elements >= 5, "There must be at least 5 elements for the modification.");
+    ASSERT( degree >= 1, "The polynomial degree is too low for the modification." );
+    ASSERT( elements >= 5, "There must be at least 5 elements for the modification." );
 
     const int boundary_degree = degree - 1;
     KnotVector<T> first_element_knot, second_element_knot, second_last_element_knot, last_element_knot;
-    first_element_knot.InitClosed(boundary_degree, spans[0].first, spans[0].second);
-    second_element_knot.InitClosed(boundary_degree, spans[1].first, spans[1].second);
-    second_last_element_knot.InitClosed(boundary_degree, spans[elements - 2].first, spans[elements - 2].second);
-    last_element_knot.InitClosed(boundary_degree, spans[elements - 1].first, spans[elements - 1].second);
-    BsplineBasis<T> first_element(first_element_knot), second_element(second_element_knot), second_last_element(second_last_element_knot), last_element(last_element_knot);
+    first_element_knot.InitClosed( boundary_degree, spans[0].first, spans[0].second );
+    second_element_knot.InitClosed( boundary_degree, spans[1].first, spans[1].second );
+    second_last_element_knot.InitClosed( boundary_degree, spans[elements - 2].first, spans[elements - 2].second );
+    last_element_knot.InitClosed( boundary_degree, spans[elements - 1].first, spans[elements - 1].second );
+    BsplineBasis<T> first_element( first_element_knot ), second_element( second_element_knot ), second_last_element( second_last_element_knot ),
+        last_element( last_element_knot );
 
-    auto second_end_eval = second_element.EvalDerAll(spans[1].second, boundary_degree);
-    auto second_begin_eval = second_element.EvalDerAll(spans[1].first, boundary_degree);
-    auto first_end_eval = first_element.EvalDerAll(spans[0].second, boundary_degree);
+    auto second_end_eval = second_element.EvalDerAll( spans[1].second, boundary_degree );
+    auto second_begin_eval = second_element.EvalDerAll( spans[1].first, boundary_degree );
+    auto first_end_eval = first_element.EvalDerAll( spans[0].second, boundary_degree );
 
-    auto second_last_begin_eval = second_last_element.EvalDerAll(spans[elements - 2].first, boundary_degree);
-    auto second_last_end_eval = second_last_element.EvalDerAll(spans[elements - 2].second, boundary_degree);
-    auto last_begin_eval = last_element.EvalDerAll(spans[elements - 1].first, boundary_degree);
-    matrix second_end(boundary_degree + 1, boundary_degree + 1), second_begin(boundary_degree + 1, boundary_degree + 1), first_end(boundary_degree + 1, boundary_degree + 1);
-    matrix second_last_begin(boundary_degree + 1, boundary_degree + 1), second_last_end(boundary_degree + 1, boundary_degree + 1), last_begin(boundary_degree + 1, boundary_degree + 1);
-    for (int i = 0; i < boundary_degree + 1; i++)
+    auto second_last_begin_eval = second_last_element.EvalDerAll( spans[elements - 2].first, boundary_degree );
+    auto second_last_end_eval = second_last_element.EvalDerAll( spans[elements - 2].second, boundary_degree );
+    auto last_begin_eval = last_element.EvalDerAll( spans[elements - 1].first, boundary_degree );
+    matrix second_end( boundary_degree + 1, boundary_degree + 1 ), second_begin( boundary_degree + 1, boundary_degree + 1 ),
+        first_end( boundary_degree + 1, boundary_degree + 1 );
+    matrix second_last_begin( boundary_degree + 1, boundary_degree + 1 ), second_last_end( boundary_degree + 1, boundary_degree + 1 ),
+        last_begin( boundary_degree + 1, boundary_degree + 1 );
+    for ( int i = 0; i < boundary_degree + 1; i++ )
     {
-        for (int j = 0; j < boundary_degree + 1; j++)
+        for ( int j = 0; j < boundary_degree + 1; j++ )
         {
-            second_end(i, j) = (*second_end_eval)[j].second[i];
-            second_begin(i, j) = (*second_begin_eval)[j].second[i];
-            first_end(i, j) = (*first_end_eval)[j].second[i];
+            second_end( i, j ) = ( *second_end_eval )[j].second[i];
+            second_begin( i, j ) = ( *second_begin_eval )[j].second[i];
+            first_end( i, j ) = ( *first_end_eval )[j].second[i];
 
-            second_last_begin(i, j) = (*second_last_begin_eval)[j].second[i];
-            second_last_end(i, j) = (*second_last_end_eval)[j].second[i];
-            last_begin(i, j) = (*last_begin_eval)[j].second[i];
+            second_last_begin( i, j ) = ( *second_last_begin_eval )[j].second[i];
+            second_last_end( i, j ) = ( *second_last_end_eval )[j].second[i];
+            last_begin( i, j ) = ( *last_begin_eval )[j].second[i];
         }
     }
-    std::vector<vector> front_basis_eval(boundary_degree + 1);
-    std::vector<vector> back_basis_eval(boundary_degree + 1);
-    for (int i = 0; i < boundary_degree + 1; i++)
+    std::vector<vector> front_basis_eval( boundary_degree + 1 );
+    std::vector<vector> back_basis_eval( boundary_degree + 1 );
+    for ( int i = 0; i < boundary_degree + 1; i++ )
     {
-        front_basis_eval[i].resize(boundary_degree + 1);
-        back_basis_eval[i].resize(boundary_degree + 1);
-        for (int j = 0; j < boundary_degree + 1; j++)
+        front_basis_eval[i].resize( boundary_degree + 1 );
+        back_basis_eval[i].resize( boundary_degree + 1 );
+        for ( int j = 0; j < boundary_degree + 1; j++ )
         {
-            front_basis_eval[i](j) = this->EvalSingle(spans[1].second, 2 + i, j);
-            back_basis_eval[i](j) = this->EvalSingle(spans[elements - 2].first, dof - 3 - boundary_degree + i, j);
+            front_basis_eval[i]( j ) = this->EvalSingle( spans[1].second, 2 + i, j );
+            back_basis_eval[i]( j ) = this->EvalSingle( spans[elements - 2].first, dof - 3 - boundary_degree + i, j );
         }
     }
-    std::vector<vector> weights_in_second_element(boundary_degree + 1);
-    std::vector<vector> weights_in_second_last_element(boundary_degree + 1);
-    for (int i = 0; i < boundary_degree + 1; i++)
+    std::vector<vector> weights_in_second_element( boundary_degree + 1 );
+    std::vector<vector> weights_in_second_last_element( boundary_degree + 1 );
+    for ( int i = 0; i < boundary_degree + 1; i++ )
     {
-        weights_in_second_element[i] = second_end.fullPivLu().solve(front_basis_eval[i]);
-        weights_in_second_last_element[i] = second_last_begin.fullPivLu().solve(back_basis_eval[i]);
+        weights_in_second_element[i] = second_end.fullPivLu().solve( front_basis_eval[i] );
+        weights_in_second_last_element[i] = second_last_begin.fullPivLu().solve( back_basis_eval[i] );
     }
-    std::vector<vector> weights_in_first_element(boundary_degree + 1);
-    std::vector<vector> weights_in_last_element(boundary_degree + 1);
-    for (int i = 0; i < boundary_degree + 1; i++)
+    std::vector<vector> weights_in_first_element( boundary_degree + 1 );
+    std::vector<vector> weights_in_last_element( boundary_degree + 1 );
+    for ( int i = 0; i < boundary_degree + 1; i++ )
     {
-        weights_in_first_element[i] = first_end.fullPivLu().solve(second_begin * weights_in_second_element[i]);
-        weights_in_last_element[i] = last_begin.fullPivLu().solve(second_last_end * weights_in_second_last_element[i]);
+        weights_in_first_element[i] = first_end.fullPivLu().solve( second_begin * weights_in_second_element[i] );
+        weights_in_last_element[i] = last_begin.fullPivLu().solve( second_last_end * weights_in_second_last_element[i] );
     }
-    _basisWeight.resize(boundary_degree + 1, 4 * (boundary_degree + 1));
-    for (int i = 0; i < boundary_degree + 1; i++)
+    _basisWeight.resize( boundary_degree + 1, 4 * ( boundary_degree + 1 ) );
+    for ( int i = 0; i < boundary_degree + 1; i++ )
     {
-        _basisWeight.col(i) = weights_in_first_element[i];
-        _basisWeight.col(i + boundary_degree + 1) = weights_in_second_element[i];
-        _basisWeight.col(i + 2 * (boundary_degree + 1)) = weights_in_second_last_element[i];
-        _basisWeight.col(i + 3 * (boundary_degree + 1)) = weights_in_last_element[i];
+        _basisWeight.col( i ) = weights_in_first_element[i];
+        _basisWeight.col( i + boundary_degree + 1 ) = weights_in_second_element[i];
+        _basisWeight.col( i + 2 * ( boundary_degree + 1 ) ) = weights_in_second_last_element[i];
+        _basisWeight.col( i + 3 * ( boundary_degree + 1 ) ) = weights_in_last_element[i];
     }
 }
 
@@ -251,154 +326,180 @@ template <typename T>
 std::unique_ptr<typename BsplineBasis<T>::matrix> BsplineBasis<T>::BasisWeight() const
 {
     using QuadList = typename QuadratureRule<T>::QuadList;
-    std::unique_ptr<matrix> result(new matrix);
+    std::unique_ptr<matrix> result( new matrix );
     int dof = _basisKnot.GetDOF();
     auto spans = _basisKnot.KnotEigenSpans();
     int elements = spans.size();
     int degree = _basisKnot.GetDegree();
-    result->resize(elements, dof);
+    result->resize( elements, dof );
     result->setZero();
-    QuadratureRule<T> quadrature((degree + 1) / 2 + (degree + 1) % 2);
+    QuadratureRule<T> quadrature( ( degree + 1 ) / 2 + ( degree + 1 ) % 2 );
     int num = 0;
-    for (auto &i : spans)
+    for ( auto& i : spans )
     {
         QuadList quadList;
-        quadrature.MapToQuadrature(i, quadList);
-        for (auto &j : quadList)
+        quadrature.MapToQuadrature( i, quadList );
+        for ( auto& j : quadList )
         {
-            auto evals = EvalDerAll(j.first(0), 0);
-            for (auto &k : *evals)
+            auto evals = EvalDerAll( j.first( 0 ), 0 );
+            for ( auto& k : *evals )
             {
-                (*result)(num, k.first) += j.second * k.second[0];
+                ( *result )( num, k.first ) += j.second * k.second[0];
             }
         }
         num++;
     }
-    vector sumWeight(dof);
+    vector sumWeight( dof );
     sumWeight.setZero();
-    for (int i = 0; i < dof; i++)
+    for ( int i = 0; i < dof; i++ )
     {
-        sumWeight(i) = result->col(i).sum();
+        sumWeight( i ) = result->col( i ).sum();
     }
-    for (int i = 0; i < dof; i++)
+    for ( int i = 0; i < dof; i++ )
     {
-        result->col(i) /= sumWeight(i);
+        result->col( i ) /= sumWeight( i );
+    }
+    return result;
+}
+
+// Assembly matrix A for polynomial completeness dual.
+template <typename T>
+std::unique_ptr<typename Eigen::SparseMatrix<T, Eigen::ColMajor>> BsplineBasis<T>::BasisAssemblyMatrix() const
+{
+    std::unique_ptr<Eigen::SparseMatrix<T, Eigen::ColMajor>> result( new Eigen::SparseMatrix<T, Eigen::ColMajor> );
+
+    // basic variables
+    int dof = _basisKnot.GetDOF();
+    auto spans = _basisKnot.KnotSpans();
+    int elements = spans.size();
+    int degree = _basisKnot.GetDegree();
+    int dof_in_element = degree + 1;
+    result->resize( elements * dof_in_element, dof );
+    for ( const auto& i : spans )
+    {
+        T u = ( i.first + i.second ) / 2;
+        int spanNum = _basisKnot.SpanNum( u );
+        int firstIndex = FirstActive( u );
+        for ( int j = 0; j < dof_in_element; ++j )
+        {
+            ( *result ).coeffRef( dof_in_element * spanNum + j, firstIndex + j ) = 1;
+        }
     }
     return result;
 }
 
 template <typename T>
-typename BsplineBasis<T>::BasisFunValDerAllList_ptr BsplineBasis<T>::EvalModifiedDerAll(const T &u, int i) const
+typename BsplineBasis<T>::BasisFunValDerAllList_ptr BsplineBasis<T>::EvalModifiedDerAll( const T& u, int i ) const
 {
     const int degree = _basisKnot.GetDegree();
     const int dof = _basisKnot.GetDOF();
-    const int element_num = this->FindSpan(u) - degree;
+    const int element_num = this->FindSpan( u ) - degree;
     const int boundary_degree = degree - 1;
     auto spans = _basisKnot.KnotSpans();
     const int elements = spans.size();
 
-    if (element_num == 0)
+    if ( element_num == 0 )
     {
         KnotVector<T> first_element_knot;
-        first_element_knot.InitClosed(boundary_degree, spans[0].first, spans[0].second);
-        BsplineBasis<T> first_element(first_element_knot);
-        auto res = first_element.EvalDerAll(u, i);
-        matrix matrix_form(i + 1, boundary_degree + 1);
-        for (int k = 0; k <= i; k++)
+        first_element_knot.InitClosed( boundary_degree, spans[0].first, spans[0].second );
+        BsplineBasis<T> first_element( first_element_knot );
+        auto res = first_element.EvalDerAll( u, i );
+        matrix matrix_form( i + 1, boundary_degree + 1 );
+        for ( int k = 0; k <= i; k++ )
         {
-            for (int j = 0; j < boundary_degree + 1; j++)
+            for ( int j = 0; j < boundary_degree + 1; j++ )
             {
-                matrix_form(k, j) = (*res)[j].second[k];
+                matrix_form( k, j ) = ( *res )[j].second[k];
             }
         }
-        matrix res_matrix_form = matrix_form * _basisWeight.block(0, 0, boundary_degree + 1, boundary_degree + 1);
-        for (int k = 0; k <= i; k++)
+        matrix res_matrix_form = matrix_form * _basisWeight.block( 0, 0, boundary_degree + 1, boundary_degree + 1 );
+        for ( int k = 0; k <= i; k++ )
         {
-            for (int j = 0; j < boundary_degree + 1; j++)
+            for ( int j = 0; j < boundary_degree + 1; j++ )
             {
-                (*res)[j].second[k] = res_matrix_form(k, j);
+                ( *res )[j].second[k] = res_matrix_form( k, j );
             }
         }
         return res;
     }
-    else if (element_num == 1)
+    else if ( element_num == 1 )
     {
         KnotVector<T> second_element_knot;
-        second_element_knot.InitClosed(boundary_degree, spans[1].first, spans[1].second);
-        BsplineBasis<T> second_element(second_element_knot);
-        auto res = second_element.EvalDerAll(u, i);
-        matrix matrix_form(i + 1, boundary_degree + 1);
-        for (int k = 0; k <= i; k++)
+        second_element_knot.InitClosed( boundary_degree, spans[1].first, spans[1].second );
+        BsplineBasis<T> second_element( second_element_knot );
+        auto res = second_element.EvalDerAll( u, i );
+        matrix matrix_form( i + 1, boundary_degree + 1 );
+        for ( int k = 0; k <= i; k++ )
         {
-            for (int j = 0; j < boundary_degree + 1; j++)
+            for ( int j = 0; j < boundary_degree + 1; j++ )
             {
-                matrix_form(k, j) = (*res)[j].second[k];
+                matrix_form( k, j ) = ( *res )[j].second[k];
             }
         }
-        matrix res_matrix_form = matrix_form * _basisWeight.block(0, boundary_degree + 1, boundary_degree + 1, boundary_degree + 1);
-        for (int k = 0; k <= i; k++)
+        matrix res_matrix_form = matrix_form * _basisWeight.block( 0, boundary_degree + 1, boundary_degree + 1, boundary_degree + 1 );
+        for ( int k = 0; k <= i; k++ )
         {
-            for (int j = 0; j < boundary_degree + 1; j++)
+            for ( int j = 0; j < boundary_degree + 1; j++ )
             {
-                (*res)[j].second[k] = res_matrix_form(k, j);
+                ( *res )[j].second[k] = res_matrix_form( k, j );
             }
         }
         return res;
     }
-    else if (element_num == elements - 2)
+    else if ( element_num == elements - 2 )
     {
         KnotVector<T> second_last_element_knot;
-        second_last_element_knot.InitClosed(boundary_degree, spans[elements - 2].first, spans[elements - 2].second);
-        BsplineBasis<T> second_last_element(second_last_element_knot);
-        auto res = second_last_element.EvalDerAll(u, i);
-        matrix matrix_form(boundary_degree + 1, boundary_degree + 1);
-        for (int k = 0; k <= i; k++)
+        second_last_element_knot.InitClosed( boundary_degree, spans[elements - 2].first, spans[elements - 2].second );
+        BsplineBasis<T> second_last_element( second_last_element_knot );
+        auto res = second_last_element.EvalDerAll( u, i );
+        matrix matrix_form( boundary_degree + 1, boundary_degree + 1 );
+        for ( int k = 0; k <= i; k++ )
         {
-            for (int j = 0; j < boundary_degree + 1; j++)
+            for ( int j = 0; j < boundary_degree + 1; j++ )
             {
-                matrix_form(k, j) = (*res)[j].second[k];
+                matrix_form( k, j ) = ( *res )[j].second[k];
             }
         }
-        matrix res_matrix_form = matrix_form * _basisWeight.block(0, 2 * (boundary_degree + 1), boundary_degree + 1, boundary_degree + 1);
-        for (int j = 0; j < boundary_degree + 1; j++)
+        matrix res_matrix_form = matrix_form * _basisWeight.block( 0, 2 * ( boundary_degree + 1 ), boundary_degree + 1, boundary_degree + 1 );
+        for ( int j = 0; j < boundary_degree + 1; j++ )
         {
-            (*res)[j].first = dof - 5 - boundary_degree + j;
-            for (int k = 0; k <= i; k++)
+            ( *res )[j].first = dof - 5 - boundary_degree + j;
+            for ( int k = 0; k <= i; k++ )
             {
-                (*res)[j].second[k] = res_matrix_form(k, j);
+                ( *res )[j].second[k] = res_matrix_form( k, j );
             }
         }
         return res;
     }
-    else if (element_num == elements - 1)
+    else if ( element_num == elements - 1 )
     {
         KnotVector<T> last_element_knot;
-        last_element_knot.InitClosed(boundary_degree, spans[elements - 1].first, spans[elements - 1].second);
-        BsplineBasis<T> last_element(last_element_knot);
-        auto res = last_element.EvalDerAll(u, i);
-        matrix matrix_form(boundary_degree + 1, boundary_degree + 1);
-        for (int k = 0; k <= i; k++)
+        last_element_knot.InitClosed( boundary_degree, spans[elements - 1].first, spans[elements - 1].second );
+        BsplineBasis<T> last_element( last_element_knot );
+        auto res = last_element.EvalDerAll( u, i );
+        matrix matrix_form( boundary_degree + 1, boundary_degree + 1 );
+        for ( int k = 0; k <= i; k++ )
         {
-            for (int j = 0; j < boundary_degree + 1; j++)
+            for ( int j = 0; j < boundary_degree + 1; j++ )
             {
-                matrix_form(k, j) = (*res)[j].second[k];
+                matrix_form( k, j ) = ( *res )[j].second[k];
             }
         }
-        matrix res_matrix_form = matrix_form * _basisWeight.block(0, 3 * (boundary_degree + 1), boundary_degree + 1, boundary_degree + 1);
-        for (int j = 0; j < boundary_degree + 1; j++)
+        matrix res_matrix_form = matrix_form * _basisWeight.block( 0, 3 * ( boundary_degree + 1 ), boundary_degree + 1, boundary_degree + 1 );
+        for ( int j = 0; j < boundary_degree + 1; j++ )
         {
-            (*res)[j].first = dof - 5 - boundary_degree + j;
-            for (int k = 0; k <= i; k++)
+            ( *res )[j].first = dof - 5 - boundary_degree + j;
+            for ( int k = 0; k <= i; k++ )
             {
-                (*res)[j].second[k] = res_matrix_form(k, j);
+                ( *res )[j].second[k] = res_matrix_form( k, j );
             }
         }
         return res;
     }
     else
     {
-        auto res = this->EvalDerAll(u, i);
-        for (auto &i : *res)
+        auto res = this->EvalDerAll( u, i );
+        for ( auto& i : *res )
         {
             i.first -= 2;
         }
@@ -407,63 +508,63 @@ typename BsplineBasis<T>::BasisFunValDerAllList_ptr BsplineBasis<T>::EvalModifie
 }
 
 template <typename T>
-typename BsplineBasis<T>::BasisFunValPac_ptr BsplineBasis<T>::Eval(const T &u, const int i) const
+typename BsplineBasis<T>::BasisFunValPac_ptr BsplineBasis<T>::Eval( const T& u, const int i ) const
 {
     const int dof = GetDof();
     const int deg = GetDegree();
     matrix ders;
-    T *left = new T[2 * (deg + 1)];
-    T *right = &left[deg + 1];
-    matrix ndu(deg + 1, deg + 1);
+    T* left = new T[2 * ( deg + 1 )];
+    T* right = &left[deg + 1];
+    matrix ndu( deg + 1, deg + 1 );
     T saved, temp;
     int j, r;
-    int span = FindSpan(u);
-    ders.resize(i + 1, deg + 1);
+    int span = FindSpan( u );
+    ders.resize( i + 1, deg + 1 );
 
-    ndu(0, 0) = T(1);
-    for (j = 1; j <= deg; j++)
+    ndu( 0, 0 ) = T( 1 );
+    for ( j = 1; j <= deg; j++ )
     {
         left[j] = u - _basisKnot[span + 1 - j];
         right[j] = _basisKnot[span + j] - u;
-        saved = T(0);
+        saved = T( 0 );
 
-        for (r = 0; r < j; r++)
+        for ( r = 0; r < j; r++ )
         {
             // Lower triangle
-            ndu(j, r) = right[r + 1] + left[j - r];
-            temp = ndu(r, j - 1) / ndu(j, r);
+            ndu( j, r ) = right[r + 1] + left[j - r];
+            temp = ndu( r, j - 1 ) / ndu( j, r );
             // _basisKnotpper triangle
-            ndu(r, j) = saved + right[r + 1] * temp;
+            ndu( r, j ) = saved + right[r + 1] * temp;
             saved = left[j - r] * temp;
         }
 
-        ndu(j, j) = saved;
+        ndu( j, j ) = saved;
     }
 
-    for (j = deg; j >= 0; --j)
-        ders(0, j) = ndu(j, deg);
+    for ( j = deg; j >= 0; --j )
+        ders( 0, j ) = ndu( j, deg );
 
     // Compute the derivatives
-    matrix a(deg + 1, deg + 1);
-    for (r = 0; r <= deg; r++)
+    matrix a( deg + 1, deg + 1 );
+    for ( r = 0; r <= deg; r++ )
     {
         int s1, s2;
         s1 = 0;
         s2 = 1; // alternate rows in array a
-        a(0, 0) = T(1);
+        a( 0, 0 ) = T( 1 );
         // Compute the kth derivative
-        for (int k = 1; k <= i; k++)
+        for ( int k = 1; k <= i; k++ )
         {
             T d{0};
             int rk{r - k}, pk{deg - k}, j1{0}, j2{0};
 
-            if (r >= k)
+            if ( r >= k )
             {
-                a(s2, 0) = a(s1, 0) / ndu(pk + 1, rk);
-                d = a(s2, 0) * ndu(rk, pk);
+                a( s2, 0 ) = a( s1, 0 ) / ndu( pk + 1, rk );
+                d = a( s2, 0 ) * ndu( rk, pk );
             }
 
-            if (rk >= -1)
+            if ( rk >= -1 )
             {
                 j1 = 1;
             }
@@ -472,7 +573,7 @@ typename BsplineBasis<T>::BasisFunValPac_ptr BsplineBasis<T>::Eval(const T &u, c
                 j1 = -rk;
             }
 
-            if (r - 1 <= pk)
+            if ( r - 1 <= pk )
             {
                 j2 = k - 1;
             }
@@ -481,18 +582,18 @@ typename BsplineBasis<T>::BasisFunValPac_ptr BsplineBasis<T>::Eval(const T &u, c
                 j2 = deg - r;
             }
 
-            for (j = j1; j <= j2; j++)
+            for ( j = j1; j <= j2; j++ )
             {
-                a(s2, j) = (a(s1, j) - a(s1, j - 1)) / ndu(pk + 1, rk + j);
-                d += a(s2, j) * ndu(rk + j, pk);
+                a( s2, j ) = ( a( s1, j ) - a( s1, j - 1 ) ) / ndu( pk + 1, rk + j );
+                d += a( s2, j ) * ndu( rk + j, pk );
             }
 
-            if (r <= pk)
+            if ( r <= pk )
             {
-                a(s2, k) = -a(s1, k - 1) / ndu(pk + 1, r);
-                d += a(s2, k) * ndu(r, pk);
+                a( s2, k ) = -a( s1, k - 1 ) / ndu( pk + 1, r );
+                d += a( s2, k ) * ndu( r, pk );
             }
-            ders(k, r) = d;
+            ders( k, r ) = d;
             j = s1;
             s1 = s2;
             s2 = j; // Switch rows
@@ -501,86 +602,86 @@ typename BsplineBasis<T>::BasisFunValPac_ptr BsplineBasis<T>::Eval(const T &u, c
 
     // Multiply through by the correct factors
     r = deg;
-    for (int k = 1; k <= i; k++)
+    for ( int k = 1; k <= i; k++ )
     {
-        for (j = deg; j >= 0; --j)
-            ders(k, j) *= T(r);
+        for ( j = deg; j >= 0; --j )
+            ders( k, j ) *= T( r );
         r *= deg - k;
     }
     delete[] left;
-    BasisFunValPac_ptr result(new BasisFunValPac);
-    int firstIndex = FirstActive(u);
-    for (int ii = 0; ii != ders.cols(); ++ii)
+    BasisFunValPac_ptr result( new BasisFunValPac );
+    int firstIndex = FirstActive( u );
+    for ( int ii = 0; ii != ders.cols(); ++ii )
     {
-        result->push_back(BasisFunVal(firstIndex + ii, ders(i, ii)));
+        result->push_back( BasisFunVal( firstIndex + ii, ders( i, ii ) ) );
     }
     return result;
 }
 
 template <typename T>
-typename BsplineBasis<T>::vector BsplineBasis<T>::InSpan(const T &u) const
+typename BsplineBasis<T>::vector BsplineBasis<T>::InSpan( const T& u ) const
 {
-    auto span = FindSpan(u);
-    vector res(2);
+    auto span = FindSpan( u );
+    vector res( 2 );
     res << _basisKnot[span], _basisKnot[span + 1];
     return res;
 }
 
 template <typename T>
-typename BsplineBasis<T>::BasisFunValDerAllList_ptr BsplineBasis<T>::EvalDerAll(const T &u, int i) const
+typename BsplineBasis<T>::BasisFunValDerAllList_ptr BsplineBasis<T>::EvalDerAll( const T& u, int i ) const
 {
     const int deg = GetDegree();
-    BasisFunValDerAll aaa{0, std::vector<T>(i + 1, 0)};
-    BasisFunValDerAllList_ptr ders(new BasisFunValDerAllList(deg + 1, aaa));
-    T *left = new T[2 * (deg + 1)];
-    T *right = &left[deg + 1];
-    matrix ndu(deg + 1, deg + 1);
+    BasisFunValDerAll aaa{0, std::vector<T>( i + 1, 0 )};
+    BasisFunValDerAllList_ptr ders( new BasisFunValDerAllList( deg + 1, aaa ) );
+    T* left = new T[2 * ( deg + 1 )];
+    T* right = &left[deg + 1];
+    matrix ndu( deg + 1, deg + 1 );
     T saved, temp;
     int j, r;
-    int span = FindSpan(u);
-    ndu(0, 0) = T(1);
-    for (j = 1; j <= deg; j++)
+    int span = FindSpan( u );
+    ndu( 0, 0 ) = T( 1 );
+    for ( j = 1; j <= deg; j++ )
     {
         left[j] = u - _basisKnot[span + 1 - j];
         right[j] = _basisKnot[span + j] - u;
-        saved = T(0);
+        saved = T( 0 );
 
-        for (r = 0; r < j; r++)
+        for ( r = 0; r < j; r++ )
         {
             // Lower triangle
-            ndu(j, r) = right[r + 1] + left[j - r];
-            temp = ndu(r, j - 1) / ndu(j, r);
+            ndu( j, r ) = right[r + 1] + left[j - r];
+            temp = ndu( r, j - 1 ) / ndu( j, r );
             // _basisKnotpper triangle
-            ndu(r, j) = saved + right[r + 1] * temp;
+            ndu( r, j ) = saved + right[r + 1] * temp;
             saved = left[j - r] * temp;
         }
 
-        ndu(j, j) = saved;
+        ndu( j, j ) = saved;
     }
-    for (j = deg; j >= 0; --j)
-        (*ders)[j].second[0] = ndu(j, deg);
+    for ( j = deg; j >= 0; --j )
+        ( *ders )[j].second[0] = ndu( j, deg );
 
     // Compute the derivatives
-    matrix a(deg + 1, deg + 1);
-    for (r = 0; r <= deg; r++)
+    matrix a( deg + 1, deg + 1 );
+    for ( r = 0; r <= deg; r++ )
     {
         int s1, s2;
         s1 = 0;
         s2 = 1; // alternate rows in array a
-        a(0, 0) = T(1);
+        a( 0, 0 ) = T( 1 );
         // Compute the kth derivative
-        for (int k = 1; k <= i; k++)
+        for ( int k = 1; k <= i; k++ )
         {
             T d{0};
             int rk{r - k}, pk{deg - k}, j1, j2;
 
-            if (r >= k)
+            if ( r >= k )
             {
-                a(s2, 0) = a(s1, 0) / ndu(pk + 1, rk);
-                d = a(s2, 0) * ndu(rk, pk);
+                a( s2, 0 ) = a( s1, 0 ) / ndu( pk + 1, rk );
+                d = a( s2, 0 ) * ndu( rk, pk );
             }
 
-            if (rk >= -1)
+            if ( rk >= -1 )
             {
                 j1 = 1;
             }
@@ -589,7 +690,7 @@ typename BsplineBasis<T>::BasisFunValDerAllList_ptr BsplineBasis<T>::EvalDerAll(
                 j1 = -rk;
             }
 
-            if (r - 1 <= pk)
+            if ( r - 1 <= pk )
             {
                 j2 = k - 1;
             }
@@ -598,18 +699,18 @@ typename BsplineBasis<T>::BasisFunValDerAllList_ptr BsplineBasis<T>::EvalDerAll(
                 j2 = deg - r;
             }
 
-            for (j = j1; j <= j2; j++)
+            for ( j = j1; j <= j2; j++ )
             {
-                a(s2, j) = (a(s1, j) - a(s1, j - 1)) / ndu(pk + 1, rk + j);
-                d += a(s2, j) * ndu(rk + j, pk);
+                a( s2, j ) = ( a( s1, j ) - a( s1, j - 1 ) ) / ndu( pk + 1, rk + j );
+                d += a( s2, j ) * ndu( rk + j, pk );
             }
 
-            if (r <= pk)
+            if ( r <= pk )
             {
-                a(s2, k) = -a(s1, k - 1) / ndu(pk + 1, r);
-                d += a(s2, k) * ndu(r, pk);
+                a( s2, k ) = -a( s1, k - 1 ) / ndu( pk + 1, r );
+                d += a( s2, k ) * ndu( r, pk );
             }
-            (*ders)[r].second[k] = d;
+            ( *ders )[r].second[k] = d;
             j = s1;
             s1 = s2;
             s2 = j; // Switch rows
@@ -618,28 +719,28 @@ typename BsplineBasis<T>::BasisFunValDerAllList_ptr BsplineBasis<T>::EvalDerAll(
 
     // Multiply through by the correct factors
     r = deg;
-    for (int k = 1; k <= i; k++)
+    for ( int k = 1; k <= i; k++ )
     {
-        for (j = deg; j >= 0; --j)
-            (*ders)[j].second[k] *= T(r);
+        for ( j = deg; j >= 0; --j )
+            ( *ders )[j].second[k] *= T( r );
         r *= deg - k;
     }
     delete[] left;
 
-    int firstIndex = FirstActive(u);
-    for (int ii = 0; ii != ders->size(); ++ii)
+    int firstIndex = FirstActive( u );
+    for ( int ii = 0; ii != ders->size(); ++ii )
     {
-        (*ders)[ii].first = firstIndex + ii;
+        ( *ders )[ii].first = firstIndex + ii;
     }
     return ders;
 }
 
 template <typename T>
-typename BsplineBasis<T>::vector BsplineBasis<T>::Support(const int i) const
+typename BsplineBasis<T>::vector BsplineBasis<T>::Support( const int i ) const
 {
     const int deg = GetDegree();
-    ASSERT(i < GetDof(), "Invalid index of basis function.");
-    vector res(2);
+    ASSERT( i < GetDof(), "Invalid index of basis function." );
+    vector res( 2 );
     res << _basisKnot[i], _basisKnot[i + deg + 1];
     return res;
 }
