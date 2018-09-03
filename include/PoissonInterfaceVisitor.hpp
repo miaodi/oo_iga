@@ -72,8 +72,10 @@ void PoissonInterfaceVisitor<N, T>::SolveConstraint( Edge<N, T>* edge )
     this->CondensedTripletVia( multiplier_indices_inverse_map, activated_slave_indices_inverse_map, _c0Slave, condensed_gramian );
     this->CondensedTripletVia( multiplier_indices_inverse_map, activated_master_indices_inverse_map, _c0Master, condensed_rhs );
     Matrix gramian_matrix, rhs_matrix;
-    this->MatrixAssembler( multiplier_indices_inverse_map.size(), activated_slave_indices_inverse_map.size(), condensed_gramian, gramian_matrix );
-    this->MatrixAssembler( multiplier_indices_inverse_map.size(), activated_master_indices_inverse_map.size(), condensed_rhs, rhs_matrix );
+    this->MatrixAssembler( multiplier_indices_inverse_map.size(), activated_slave_indices_inverse_map.size(),
+                           condensed_gramian, gramian_matrix );
+    this->MatrixAssembler( multiplier_indices_inverse_map.size(), activated_master_indices_inverse_map.size(),
+                           condensed_rhs, rhs_matrix );
     // Accessory::removeNoise( gramian_matrix, 1e-7 * abs( gramian_matrix( 0, 0 ) ) );
     // Accessory::removeNoise( rhs_matrix, 1e-14 );
     Matrix constraint = this->SolveNonSymmetric( gramian_matrix, rhs_matrix );
@@ -86,21 +88,23 @@ void PoissonInterfaceVisitor<N, T>::LocalAssemble( Element<1, N, T>* g, const Qu
 {
     // non-static member function take this pointer.
     using namespace std::placeholders;
-    auto c0_function = std::bind( &PoissonInterfaceVisitor<N, T>::C0IntegralElementAssembler<>, this, _1, _2, _3, _4, _5, _6, _7, _8, _9 );
+    auto c0_function =
+        std::bind( &PoissonInterfaceVisitor<N, T>::C0IntegralElementAssembler<>, this, _1, _2, _3, _4, _5, _6, _7, _8, _9 );
     this->ConstraintLocalAssemble( g, quadrature_rule, knot_span, c0_function, _c0Slave, _c0Master );
 }
 
 template <int N, typename T>
 template <int n>
-typename std::enable_if<n == 3, void>::type PoissonInterfaceVisitor<N, T>::C0IntegralElementAssembler( Matrix& slave_constraint_basis,
-                                                                                                       std::vector<int>& slave_constraint_basis_indices,
-                                                                                                       Matrix& master_constraint_basis,
-                                                                                                       std::vector<int>& master_constraint_basis_indices,
-                                                                                                       Matrix& multiplier_basis,
-                                                                                                       std::vector<int>& multiplier_basis_indices,
-                                                                                                       T& integral_weight,
-                                                                                                       Edge<N, T>* edge,
-                                                                                                       const Quadrature& u )
+typename std::enable_if<n == 3, void>::type PoissonInterfaceVisitor<N, T>::C0IntegralElementAssembler(
+    Matrix& slave_constraint_basis,
+    std::vector<int>& slave_constraint_basis_indices,
+    Matrix& master_constraint_basis,
+    std::vector<int>& master_constraint_basis_indices,
+    Matrix& multiplier_basis,
+    std::vector<int>& multiplier_basis_indices,
+    T& integral_weight,
+    Edge<N, T>* edge,
+    const Quadrature& u )
 {
     auto multiplier_domain = edge->GetDomain();
     auto slave_domain = edge->Parent( 0 ).lock()->GetDomain();
@@ -170,6 +174,7 @@ typename std::enable_if<n == 3, void>::type PoissonInterfaceVisitor<N, T>::C0Int
             }
         }
     }
+    // TODO error for large support multiplier
     if ( multiplier_basis_indices.size() == 0 )
     {
         auto index = multiplier_domain->ActiveIndex( u.first );
@@ -185,15 +190,16 @@ typename std::enable_if<n == 3, void>::type PoissonInterfaceVisitor<N, T>::C0Int
 
 template <int N, typename T>
 template <int n>
-typename std::enable_if<n == 2, void>::type PoissonInterfaceVisitor<N, T>::C0IntegralElementAssembler( Matrix& slave_constraint_basis,
-                                                                                                       std::vector<int>& slave_constraint_basis_indices,
-                                                                                                       Matrix& master_constraint_basis,
-                                                                                                       std::vector<int>& master_constraint_basis_indices,
-                                                                                                       Matrix& multiplier_basis,
-                                                                                                       std::vector<int>& multiplier_basis_indices,
-                                                                                                       T& integral_weight,
-                                                                                                       Edge<N, T>* edge,
-                                                                                                       const Quadrature& u )
+typename std::enable_if<n == 2, void>::type PoissonInterfaceVisitor<N, T>::C0IntegralElementAssembler(
+    Matrix& slave_constraint_basis,
+    std::vector<int>& slave_constraint_basis_indices,
+    Matrix& master_constraint_basis,
+    std::vector<int>& master_constraint_basis_indices,
+    Matrix& multiplier_basis,
+    std::vector<int>& multiplier_basis_indices,
+    T& integral_weight,
+    Edge<N, T>* edge,
+    const Quadrature& u )
 {
     auto multiplier_domain = edge->GetDomain();
     auto slave_domain = edge->Parent( 0 ).lock()->GetDomain();
@@ -251,10 +257,9 @@ typename std::enable_if<n == 2, void>::type PoissonInterfaceVisitor<N, T>::C0Int
     }
     if ( multiplier_basis_indices.size() == 0 )
     {
-        auto index = multiplier_domain->ActiveIndex( u.first );
-        for ( auto& i : index )
+        for ( const auto& i : *multiplier_evals )
         {
-            multiplier_basis_indices.push_back( i );
+            multiplier_basis_indices.push_back( i.first );
         }
     }
 }

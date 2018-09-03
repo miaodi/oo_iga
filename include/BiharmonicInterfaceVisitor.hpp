@@ -80,7 +80,8 @@ void BiharmonicInterfaceVisitor<N, T>::SolveConstraint( Edge<N, T>* edge )
     std::vector<int> c0_slave_indices = *( _poisson.ConstraintData()._rowIndices );
 
     std::vector<int> c1_slave_indices;
-    std::set_difference( slave_indices.begin(), slave_indices.end(), c0_slave_indices.begin(), c0_slave_indices.end(), std::back_inserter( c1_slave_indices ) );
+    std::set_difference( slave_indices.begin(), slave_indices.end(), c0_slave_indices.begin(), c0_slave_indices.end(),
+                         std::back_inserter( c1_slave_indices ) );
 
     auto c1_slave_indices_inverse_map = Accessory::IndicesInverseMap( c1_slave_indices );
     auto c0_slave_indices_inverse_map = Accessory::IndicesInverseMap( c0_slave_indices );
@@ -95,7 +96,8 @@ void BiharmonicInterfaceVisitor<N, T>::SolveConstraint( Edge<N, T>* edge )
     Matrix gramian_matrix, rhs_matrix, c0_slave_matrix;
     this->MatrixAssembler( multiplier_indices_inverse_map.size(), c1_slave_indices_inverse_map.size(), condensed_gramian, gramian_matrix );
     this->MatrixAssembler( multiplier_indices_inverse_map.size(), master_indices_inverse_map.size(), condensed_rhs, rhs_matrix );
-    this->MatrixAssembler( multiplier_indices_inverse_map.size(), c0_slave_indices_inverse_map.size(), condensed_c0_slave, c0_slave_matrix );
+    this->MatrixAssembler( multiplier_indices_inverse_map.size(), c0_slave_indices_inverse_map.size(),
+                           condensed_c0_slave, c0_slave_matrix );
     // Accessory::removeNoise( gramian_matrix, 1e-7 * abs( gramian_matrix( 0, 0 ) ) );
     // Accessory::removeNoise( rhs_matrix, 1e-14 );
     // Accessory::removeNoise( c0_slave_matrix, 1e-7 * abs( c0_slave_matrix( 0, 0 ) ) );
@@ -113,21 +115,23 @@ void BiharmonicInterfaceVisitor<N, T>::LocalAssemble( Element<1, N, T>* g, const
 {
     // non-static member function take this pointer.
     using namespace std::placeholders;
-    auto c1_function = std::bind( &BiharmonicInterfaceVisitor<N, T>::C1IntegralElementAssembler<>, this, _1, _2, _3, _4, _5, _6, _7, _8, _9 );
+    auto c1_function =
+        std::bind( &BiharmonicInterfaceVisitor<N, T>::C1IntegralElementAssembler<>, this, _1, _2, _3, _4, _5, _6, _7, _8, _9 );
     this->ConstraintLocalAssemble( g, quadrature_rule, knot_span, c1_function, _c1Slave, _c1Master );
 }
 
 template <int N, typename T>
 template <int n>
-typename std::enable_if<n == 3, void>::type BiharmonicInterfaceVisitor<N, T>::C1IntegralElementAssembler( Matrix& slave_constraint_basis,
-                                                                                                          std::vector<int>& slave_constraint_basis_indices,
-                                                                                                          Matrix& master_constraint_basis,
-                                                                                                          std::vector<int>& master_constraint_basis_indices,
-                                                                                                          Matrix& multiplier_basis,
-                                                                                                          std::vector<int>& multiplier_basis_indices,
-                                                                                                          T& integral_weight,
-                                                                                                          Edge<N, T>* edge,
-                                                                                                          const Quadrature& u )
+typename std::enable_if<n == 3, void>::type BiharmonicInterfaceVisitor<N, T>::C1IntegralElementAssembler(
+    Matrix& slave_constraint_basis,
+    std::vector<int>& slave_constraint_basis_indices,
+    Matrix& master_constraint_basis,
+    std::vector<int>& master_constraint_basis_indices,
+    Matrix& multiplier_basis,
+    std::vector<int>& multiplier_basis_indices,
+    T& integral_weight,
+    Edge<N, T>* edge,
+    const Quadrature& u )
 {
     auto multiplier_domain = edge->GetDomain();
     auto slave_domain = edge->Parent( 0 ).lock()->GetDomain();
@@ -196,7 +200,8 @@ typename std::enable_if<n == 3, void>::type BiharmonicInterfaceVisitor<N, T>::C1
         }
         for ( int j = 0; j < master_evals->size(); ++j )
         {
-            master_constraint_basis( 0, j ) = ( *master_evals )[j].second[1] * sol( 0, 1 ) + ( *master_evals )[j].second[2] * sol( 1, 1 );
+            master_constraint_basis( 0, j ) =
+                ( *master_evals )[j].second[1] * sol( 0, 1 ) + ( *master_evals )[j].second[2] * sol( 1, 1 );
         }
         break;
     }
@@ -210,7 +215,8 @@ typename std::enable_if<n == 3, void>::type BiharmonicInterfaceVisitor<N, T>::C1
         }
         for ( int j = 0; j < master_evals->size(); ++j )
         {
-            master_constraint_basis( 0, j ) = ( *master_evals )[j].second[1] * sol( 0, 0 ) + ( *master_evals )[j].second[2] * sol( 1, 0 );
+            master_constraint_basis( 0, j ) =
+                ( *master_evals )[j].second[1] * sol( 0, 0 ) + ( *master_evals )[j].second[2] * sol( 1, 0 );
         }
         break;
     }
@@ -254,6 +260,7 @@ typename std::enable_if<n == 3, void>::type BiharmonicInterfaceVisitor<N, T>::C1
             }
         }
     }
+    //TODO here is wrong
     if ( multiplier_basis_indices.size() == 0 )
     {
         auto index = multiplier_domain->ActiveIndex( u.first );
@@ -269,15 +276,16 @@ typename std::enable_if<n == 3, void>::type BiharmonicInterfaceVisitor<N, T>::C1
 
 template <int N, typename T>
 template <int n>
-typename std::enable_if<n == 2, void>::type BiharmonicInterfaceVisitor<N, T>::C1IntegralElementAssembler( Matrix& slave_constraint_basis,
-                                                                                                          std::vector<int>& slave_constraint_basis_indices,
-                                                                                                          Matrix& master_constraint_basis,
-                                                                                                          std::vector<int>& master_constraint_basis_indices,
-                                                                                                          Matrix& multiplier_basis,
-                                                                                                          std::vector<int>& multiplier_basis_indices,
-                                                                                                          T& integral_weight,
-                                                                                                          Edge<N, T>* edge,
-                                                                                                          const Quadrature& u )
+typename std::enable_if<n == 2, void>::type BiharmonicInterfaceVisitor<N, T>::C1IntegralElementAssembler(
+    Matrix& slave_constraint_basis,
+    std::vector<int>& slave_constraint_basis_indices,
+    Matrix& master_constraint_basis,
+    std::vector<int>& master_constraint_basis_indices,
+    Matrix& multiplier_basis,
+    std::vector<int>& multiplier_basis_indices,
+    T& integral_weight,
+    Edge<N, T>* edge,
+    const Quadrature& u )
 {
     auto multiplier_domain = edge->GetDomain();
     auto slave_domain = edge->Parent( 0 ).lock()->GetDomain();
@@ -322,7 +330,8 @@ typename std::enable_if<n == 2, void>::type BiharmonicInterfaceVisitor<N, T>::C1
     // Substitute master coordinate of master basis by slave coordinate
     for ( auto& i : *master_evals )
     {
-        Vector tmp = slave_jacobian * master_jacobian.partialPivLu().solve( ( Vector( 2 ) << i.second[1], i.second[2] ).finished() );
+        Vector tmp =
+            slave_jacobian * master_jacobian.partialPivLu().solve( ( Vector( 2 ) << i.second[1], i.second[2] ).finished() );
         i.second[1] = tmp( 0 );
         i.second[2] = tmp( 1 );
     }
@@ -377,11 +386,9 @@ typename std::enable_if<n == 2, void>::type BiharmonicInterfaceVisitor<N, T>::C1
     }
     if ( multiplier_basis_indices.size() == 0 )
     {
-        std::vector<int> indices;
-        for ( auto& i : *multiplier_evals )
+        for ( const auto& i : *multiplier_evals )
         {
-            indices.push_back( i.first );
+            multiplier_basis_indices.push_back( i.first );
         }
-        multiplier_basis_indices = indices;
     }
 }

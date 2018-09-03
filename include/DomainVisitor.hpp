@@ -359,7 +359,7 @@ class DomainVisitor : public Visitor<d, N, T>
     //    Convert non-zero Symmetric MatrixData elements to Triplet
     void SymmetricTriplet(const MatrixData<T> &matrix,
                           std::vector<Eigen::Triplet<T>> &triplet,
-                          const T &tol = 1e-11) const
+                          const T &tol = 1e-15) const
     {
         ASSERT(matrix._rowIndices->size() == matrix._colIndices->size(),
                "Given matrix data does not fit to symmetric assembler.");
@@ -380,7 +380,7 @@ class DomainVisitor : public Visitor<d, N, T>
     //    Convert non-zero MatrixData elements to Triplet
     void Triplet(const MatrixData<T> &matrix,
                  std::vector<Eigen::Triplet<T>> &triplet,
-                 const T &tol = 1e-11) const
+                 const T &tol = 1e-15) const
     {
         for (int i = 0; i < matrix._rowIndices->size(); ++i)
         {
@@ -398,7 +398,7 @@ class DomainVisitor : public Visitor<d, N, T>
     //    Convert non-zero VectorData elements to Triplet
     void Triplet(const VectorData<T> &vector,
                  std::vector<Eigen::Triplet<T>> &triplet,
-                 const T &tol = 1e-11) const
+                 const T &tol = 1e-15) const
     {
         for (int i = 0; i < vector._rowIndices->size(); ++i)
         {

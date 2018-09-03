@@ -195,16 +195,16 @@ public:
 
             // LU kernel
             Eigen::FullPivLU<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>>
-            lu_decomp(dense_constraint_matrix); lu_decomp.setThreshold(1e-8);
-            sparse_kernel_matrix = (sparse_pre_kernel_matrix * lu_decomp.kernel()).sparseView(1e-15);
+            lu_decomp(dense_constraint_matrix); lu_decomp.setThreshold(6e-13);
+            sparse_kernel_matrix = (sparse_pre_kernel_matrix * lu_decomp.kernel()).sparseView();
 
             // SVD kernel
             // Eigen::JacobiSVD<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>> svd( dense_constraint_matrix, Eigen::ComputeThinU | Eigen::ComputeFullV );
-            // std::cout << svd.singularValues().transpose() << std::endl;
+            // // std::cout << svd.singularValues().transpose() << std::endl;
             // int count{0};
             // for ( int i = 0; i < svd.singularValues().size(); ++i )
             // {
-            //     if ( svd.singularValues()( i ) < 1e-11 )
+            //     if ( svd.singularValues()( i ) < 1e-12 )
             //     {
             //         break;
             //     }

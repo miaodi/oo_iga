@@ -5,14 +5,14 @@
 #pragma once
 
 #include "KnotVector.h"
-#include <memory>
-#include "Utility.hpp"
 #include "QuadratureRule.h"
+#include "Utility.hpp"
+#include <memory>
 
 template <typename T>
 class BsplineBasis
 {
-  public:
+public:
     using vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
     using matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
     using block = Eigen::Block<matrix>;
@@ -26,54 +26,73 @@ class BsplineBasis
 
     BsplineBasis();
 
-    BsplineBasis(KnotVector<T> target);
+    BsplineBasis( KnotVector<T> target );
 
     int GetDegree() const;
 
     int GetDof() const;
 
-    int FindSpan(const T &u) const;
+    int FindSpan( const T& u ) const;
 
-    BasisFunValDerAllList_ptr EvalDerAll(const T &u, int i) const;
+    BasisFunValDerAllList_ptr EvalDerAll( const T& u, int i ) const;
 
-    BasisFunValPac_ptr Eval(const T &u, const int i = 0) const;
+    BasisFunValPac_ptr Eval( const T& u, const int i = 0 ) const;
 
-    T EvalSingle(const T &u, const int n, const int i = 0) const;
+    T EvalSingle( const T& u, const int n, const int i = 0 ) const;
 
-    vector Support(const int i) const;
+    vector Support( const int i ) const;
 
-    vector InSpan(const T &u) const;
+    vector InSpan( const T& u ) const;
 
-    inline T DomainStart() const { return _basisKnot[GetDegree()]; }
+    inline T DomainStart() const
+    {
+        return _basisKnot[GetDegree()];
+    }
 
-    inline T DomainEnd() const { return _basisKnot[GetDof()]; }
+    inline T DomainEnd() const
+    {
+        return _basisKnot[GetDof()];
+    }
 
-    int NumActive() const { return GetDegree() + 1; }
+    int NumActive() const
+    {
+        return GetDegree() + 1;
+    }
 
-    inline const KnotVector<T> &Knots() const
+    inline const KnotVector<T>& Knots() const
     {
         return _basisKnot;
     }
 
-    inline bool InDomain(T const &u) const { return ((u >= DomainStart()) && (u <= DomainEnd())); }
-
-    inline void PrintKnots() const { _basisKnot.printKnotVector(); }
-
-    inline void PrintUniKnots() const { _basisKnot.printUnique(); }
-
-    inline int FirstActive(T u) const
+    inline bool InDomain( T const& u ) const
     {
-        return (InDomain(u) ? FindSpan(u) - GetDegree() : 0);
+        return ( ( u >= DomainStart() ) && ( u <= DomainEnd() ) );
+    }
+
+    inline void PrintKnots() const
+    {
+        _basisKnot.printKnotVector();
+    }
+
+    inline void PrintUniKnots() const
+    {
+        _basisKnot.printUnique();
+    }
+
+    inline int FirstActive( T u ) const
+    {
+        return ( InDomain( u ) ? FindSpan( u ) - GetDegree() : 0 );
     }
 
     std::unique_ptr<matrix> BasisWeight() const;
 
     // Assembly matrix A for polynomial completeness dual.
-    std::unique_ptr<Eigen::SparseMatrix<T, Eigen::ColMajor>> BasisAssemblyMatrix() const;
+    std::vector<Eigen::SparseVector<T>> BasisAssemblyVecs() const;
 
-    void CompleteBezierDualInitialize();
+    // lhs and rhs assembler for polynomial completeness dual.
+    std::pair<matrix, matrix> LhsRhsAssembler( int num_of_completeness ) const;
 
-    bool IsActive(const int i, const T u) const;
+    bool IsActive( const int i, const T u ) const;
 
     void BezierDualInitialize();
 
@@ -81,13 +100,15 @@ class BsplineBasis
     void ModifyBoundaryInitialize();
 
     // Return the evaluation of the modified b-spline basis functions.
-    BasisFunValDerAllList_ptr EvalModifiedDerAll(const T &u, int i) const;
+    BasisFunValDerAllList_ptr EvalModifiedDerAll( const T& u, int i ) const;
 
-    BasisFunValDerAllList_ptr BezierDual(const T &u) const;
+    BasisFunValDerAllList_ptr BezierDual( const T& u ) const;
 
-  protected:
+protected:
     KnotVector<T> _basisKnot;
     std::vector<matrix> _reconstruction;
     matrix _basisWeight;
     matrix _gramianInv;
+    std::vector<std::pair<int, Eigen::Ref<matrix>>> _localWeightContainer;
+    bool _complete_dual{true};
 };

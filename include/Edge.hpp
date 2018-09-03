@@ -312,11 +312,12 @@ class Edge : public Element<1, N, T>, public std::enable_shared_from_this<Edge<N
         visitor.Visit(this);
     };
 
-    void
-    PrintOrient() const
-    {
-        std::cout << _position << std::endl;
-    }
+// TODO error.
+    // void
+    // PrintOrient() const
+    // {
+    //     std::cout << _position << std::endl;
+    // }
 
     Orientation
     GetOrient() const

@@ -91,6 +91,8 @@ class KnotVector
 
     void resize(int t) { _multiKnots.resize(t); };
 
+    T MeshSize() const;
+
     KnotVector Difference(const KnotVector &) const;
 
     // leave the knot vector with unique knots, difference within tolerance will not be considered.
@@ -100,9 +102,9 @@ class KnotVector
 
     inline iterator end() { return _multiKnots.end(); }
 
-    inline const_iterator cbegin() { return _multiKnots.cbegin(); }
+    inline const_iterator cbegin() const { return _multiKnots.cbegin(); }
 
-    inline const_iterator cend() { return _multiKnots.cend(); }
+    inline const_iterator cend() const { return _multiKnots.cend(); }
 
     inline iterator erase(iterator pos) { return _multiKnots.erase(pos); }
 
