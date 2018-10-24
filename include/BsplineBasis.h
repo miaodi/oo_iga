@@ -110,5 +110,5 @@ protected:
     matrix _basisWeight;
     matrix _gramianInv;
     std::vector<std::pair<int, Eigen::Ref<matrix>>> _localWeightContainer;
-    bool _complete_dual{true};
+    bool _complete_dual{false};
 };

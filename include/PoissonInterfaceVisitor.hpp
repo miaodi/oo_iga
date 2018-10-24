@@ -76,8 +76,8 @@ void PoissonInterfaceVisitor<N, T>::SolveConstraint( Edge<N, T>* edge )
                            condensed_gramian, gramian_matrix );
     this->MatrixAssembler( multiplier_indices_inverse_map.size(), activated_master_indices_inverse_map.size(),
                            condensed_rhs, rhs_matrix );
-    // Accessory::removeNoise( gramian_matrix, 1e-7 * abs( gramian_matrix( 0, 0 ) ) );
-    // Accessory::removeNoise( rhs_matrix, 1e-14 );
+    Accessory::removeNoise( gramian_matrix, 1e-7 * abs( gramian_matrix( 0, 0 ) ) );
+    Accessory::removeNoise( rhs_matrix, 1e-14 );
     Matrix constraint = this->SolveNonSymmetric( gramian_matrix, rhs_matrix );
     MatrixData<T> constraint_data( constraint, slave_activated_indices, master_activated_indices );
     this->_constraintData = std::move( constraint_data );
@@ -174,15 +174,13 @@ typename std::enable_if<n == 3, void>::type PoissonInterfaceVisitor<N, T>::C0Int
             }
         }
     }
-    // TODO error for large support multiplier
     if ( multiplier_basis_indices.size() == 0 )
     {
-        auto index = multiplier_domain->ActiveIndex( u.first );
-        for ( auto& i : index )
+        for ( auto& i : *multiplier_evals )
         {
             for ( int j = 0; j < 3; j++ )
             {
-                multiplier_basis_indices.push_back( 3 * i + j );
+                multiplier_basis_indices.push_back( 3 * i.first + j );
             }
         }
     }

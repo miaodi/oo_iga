@@ -194,7 +194,7 @@ void BsplineBasis<T>::BezierDualInitialize()
     else
     {
         auto assemble_vecs = BasisAssemblyVecs();
-        int polynomial_completeness = degree - 0;
+        int polynomial_completeness = degree - 2;
         auto lhs_rhs = LhsRhsAssembler( polynomial_completeness );
         auto sp_assemble = Accessory::SpVecToSpMat( assemble_vecs.begin(), assemble_vecs.end() );
         matrix kernel_matrix = lhs_rhs.second - sp_assemble * lhs_rhs.first;

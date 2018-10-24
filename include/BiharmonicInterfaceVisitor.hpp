@@ -98,9 +98,9 @@ void BiharmonicInterfaceVisitor<N, T>::SolveConstraint( Edge<N, T>* edge )
     this->MatrixAssembler( multiplier_indices_inverse_map.size(), master_indices_inverse_map.size(), condensed_rhs, rhs_matrix );
     this->MatrixAssembler( multiplier_indices_inverse_map.size(), c0_slave_indices_inverse_map.size(),
                            condensed_c0_slave, c0_slave_matrix );
-    // Accessory::removeNoise( gramian_matrix, 1e-7 * abs( gramian_matrix( 0, 0 ) ) );
-    // Accessory::removeNoise( rhs_matrix, 1e-14 );
-    // Accessory::removeNoise( c0_slave_matrix, 1e-7 * abs( c0_slave_matrix( 0, 0 ) ) );
+    Accessory::removeNoise( gramian_matrix, 1e-7 * abs( gramian_matrix( 0, 0 ) ) );
+    Accessory::removeNoise( rhs_matrix, 1e-14 );
+    Accessory::removeNoise( c0_slave_matrix, 1e-7 * abs( c0_slave_matrix( 0, 0 ) ) );
     Matrix c1_constraint = this->SolveNonSymmetric( gramian_matrix, rhs_matrix );
     Matrix c0_c1_constraint = this->SolveNonSymmetric( gramian_matrix, -c0_slave_matrix );
     auto c1_slave_indices_copy = c1_slave_indices;
@@ -183,7 +183,7 @@ typename std::enable_if<n == 3, void>::type BiharmonicInterfaceVisitor<N, T>::C1
     Eigen::Matrix<T, 3, 3> rotation_matrix = Accessory::RotationMatrix( m_n, s_n );
 
     Matrix gramian = master_jacobian.transpose() * master_jacobian;
-    Matrix rhs = master_jacobian.transpose() * rotation_matrix * slave_jacobian;
+    Matrix rhs = master_jacobian.transpose() * rotation_matrix.transpose() * slave_jacobian;
 
     Matrix sol = gramian.partialPivLu().solve( rhs );
 
@@ -260,15 +260,13 @@ typename std::enable_if<n == 3, void>::type BiharmonicInterfaceVisitor<N, T>::C1
             }
         }
     }
-    //TODO here is wrong
     if ( multiplier_basis_indices.size() == 0 )
     {
-        auto index = multiplier_domain->ActiveIndex( u.first );
-        for ( auto& i : index )
+        for ( auto& i : *multiplier_evals )
         {
             for ( int j = 0; j < 3; j++ )
             {
-                multiplier_basis_indices.push_back( 3 * i + j );
+                multiplier_basis_indices.push_back( 3 * i.first + j );
             }
         }
     }

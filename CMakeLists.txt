@@ -1,15 +1,17 @@
 cmake_minimum_required(VERSION 3.6)
 project(oo_iga)
 
-
+set(CMAKE_CXX_COMPILER /usr/local/opt/llvm/bin/clang++)
 set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_FLAGS "-Ofast -fopenmp")
+set(CLANG_LINK_DIR /usr/local/opt/llvm/lib)
+set(CMAKE_CXX_FLAGS "-Ofast -Wno-switch -fopenmp -march=native")
 set(CMAKE_EXE_LINKER_FLAGS "-lgmp")
 
+link_directories(${CLANG_LINK_DIR} ${OPENBLAS_LINK_DIR})
+include_directories(${OPENBLAS_INCLUDE})
 include_directories(include)
 file(GLOB SOURCE_FILES "src/*.cpp")
 add_executable(oo_iga ${SOURCE_FILES})
-target_link_libraries(oo_iga gmp )
 
 
 
