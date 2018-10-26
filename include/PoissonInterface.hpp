@@ -91,6 +91,7 @@ void PoissonInterface<N, T>::SolveC0Constraint(Edge<N, T> *edge, const int &codi
     _slaveIndices[edge] = activated_slave_indices;
 
     ASSERT(multiplier_indices.size() > 0, "Lagrange multiplier size is zero, needs more refines.\n");
+
     auto activated_slave_indices_inverse_map = Accessory::IndicesInverseMap(activated_slave_indices);
     auto activated_master_indices_inverse_map = Accessory::IndicesInverseMap(activated_master_indices);
     auto multiplier_indices_inverse_map = Accessory::IndicesInverseMap(multiplier_indices);
@@ -106,49 +107,49 @@ void PoissonInterface<N, T>::SolveC0Constraint(Edge<N, T> *edge, const int &codi
     this->MatrixAssembler(multiplier_indices_inverse_map.size(), activated_master_indices_inverse_map.size(),
                           condensed_rhs, rhs_matrix);
 
-    switch (codimension)
-    {
-    case 1:
-    {
-        gramian_matrix.row(1) = gramian_matrix.row(0) + gramian_matrix.row(1);
-        gramian_matrix.row(gramian_matrix.rows() - 2) = gramian_matrix.row(gramian_matrix.rows() - 2) + gramian_matrix.row(gramian_matrix.rows() - 1);
+    // switch (codimension)
+    // {
+    // case 1:
+    // {
+    //     gramian_matrix.row(1) = gramian_matrix.row(0) + gramian_matrix.row(1);
+    //     gramian_matrix.row(gramian_matrix.rows() - 2) = gramian_matrix.row(gramian_matrix.rows() - 2) + gramian_matrix.row(gramian_matrix.rows() - 1);
 
-        rhs_matrix.row(1) = rhs_matrix.row(0) + rhs_matrix.row(1);
-        rhs_matrix.row(rhs_matrix.rows() - 2) = rhs_matrix.row(rhs_matrix.rows() - 2) + rhs_matrix.row(rhs_matrix.rows() - 1);
+    //     rhs_matrix.row(1) = rhs_matrix.row(0) + rhs_matrix.row(1);
+    //     rhs_matrix.row(rhs_matrix.rows() - 2) = rhs_matrix.row(rhs_matrix.rows() - 2) + rhs_matrix.row(rhs_matrix.rows() - 1);
 
-        Accessory::removeRow<T>(gramian_matrix, 0);
-        Accessory::removeRow<T>(gramian_matrix, gramian_matrix.rows() - 1);
-        Accessory::removeRow<T>(rhs_matrix, 0);
-        Accessory::removeRow<T>(rhs_matrix, rhs_matrix.rows() - 1);
-        break;
-    }
-    case 2:
-    {
+    //     Accessory::removeRow<T>(gramian_matrix, 0);
+    //     Accessory::removeRow<T>(gramian_matrix, gramian_matrix.rows() - 1);
+    //     Accessory::removeRow<T>(rhs_matrix, 0);
+    //     Accessory::removeRow<T>(rhs_matrix, rhs_matrix.rows() - 1);
+    //     break;
+    // }
+    // case 2:
+    // {
 
-        {
-            gramian_matrix.row(2) = gramian_matrix.row(0) + gramian_matrix.row(1) + gramian_matrix.row(2);
-            rhs_matrix.row(2) = rhs_matrix.row(0) + rhs_matrix.row(1) + rhs_matrix.row(2);
-        }
+    //     {
+    //         gramian_matrix.row(2) = gramian_matrix.row(0) + gramian_matrix.row(1) + gramian_matrix.row(2);
+    //         rhs_matrix.row(2) = rhs_matrix.row(0) + rhs_matrix.row(1) + rhs_matrix.row(2);
+    //     }
 
-        {
-            gramian_matrix.row(gramian_matrix.rows() - 3) = gramian_matrix.row(gramian_matrix.rows() - 3) + gramian_matrix.row(gramian_matrix.rows() - 2) + gramian_matrix.row(gramian_matrix.rows() - 1);
-            rhs_matrix.row(rhs_matrix.rows() - 3) = rhs_matrix.row(rhs_matrix.rows() - 3) + rhs_matrix.row(rhs_matrix.rows() - 2) + rhs_matrix.row(rhs_matrix.rows() - 1);
-        }
+    //     {
+    //         gramian_matrix.row(gramian_matrix.rows() - 3) = gramian_matrix.row(gramian_matrix.rows() - 3) + gramian_matrix.row(gramian_matrix.rows() - 2) + gramian_matrix.row(gramian_matrix.rows() - 1);
+    //         rhs_matrix.row(rhs_matrix.rows() - 3) = rhs_matrix.row(rhs_matrix.rows() - 3) + rhs_matrix.row(rhs_matrix.rows() - 2) + rhs_matrix.row(rhs_matrix.rows() - 1);
+    //     }
 
-        Accessory::removeRow<T>(gramian_matrix, 0);
-        Accessory::removeRow<T>(gramian_matrix, 0);
-        Accessory::removeRow<T>(gramian_matrix, gramian_matrix.rows() - 1);
-        Accessory::removeRow<T>(gramian_matrix, gramian_matrix.rows() - 1);
-        Accessory::removeRow<T>(rhs_matrix, 0);
-        Accessory::removeRow<T>(rhs_matrix, 0);
-        Accessory::removeRow<T>(rhs_matrix, rhs_matrix.rows() - 1);
-        Accessory::removeRow<T>(rhs_matrix, rhs_matrix.rows() - 1);
-        break;
-    }
-        std::cerr << "Undefined behavior.\n"
-                  << std::endl;
-    }
-
+    //     Accessory::removeRow<T>(gramian_matrix, 0);
+    //     Accessory::removeRow<T>(gramian_matrix, 0);
+    //     Accessory::removeRow<T>(gramian_matrix, gramian_matrix.rows() - 1);
+    //     Accessory::removeRow<T>(gramian_matrix, gramian_matrix.rows() - 1);
+    //     Accessory::removeRow<T>(rhs_matrix, 0);
+    //     Accessory::removeRow<T>(rhs_matrix, 0);
+    //     Accessory::removeRow<T>(rhs_matrix, rhs_matrix.rows() - 1);
+    //     Accessory::removeRow<T>(rhs_matrix, rhs_matrix.rows() - 1);
+    //     break;
+    // }
+    //     std::cerr << "Undefined behavior.\n"
+    //               << std::endl;
+    // }
+    std::cout<<gramian_matrix.rows()<<" "<<gramian_matrix.cols()<<std::endl;
     Matrix constraint = this->SolveNonSymmetric(gramian_matrix, rhs_matrix);
     MatrixData<T> constraint_data(constraint, activated_slave_indices, activated_master_indices);
     std::vector<Eigen::Triplet<T>> temp;
@@ -214,7 +215,7 @@ void PoissonInterface<N, T>::C0IntegralElementAssembler(Matrix &slave_constraint
 
     auto slave_evals = slave_domain->EvalDerAllTensor(slave_quadrature_abscissa, 0);
     auto master_evals = master_domain->EvalDerAllTensor(master_quadrature_abscissa, 0);
-    auto multiplier_evals = multiplier_domain->EvalDualAllTensor(u.first);
+    auto multiplier_evals = (multiplier_domain->_basis[0]).EvalModifiedDerAll(u.first(0), 0);
 
     slave_constraint_basis.resize(1, slave_evals->size());
     master_constraint_basis.resize(1, master_evals->size());
@@ -245,6 +246,9 @@ void PoissonInterface<N, T>::C0IntegralElementAssembler(Matrix &slave_constraint
     }
     if (multiplier_basis_indices.size() == 0)
     {
-        multiplier_basis_indices = multiplier_domain->ActiveIndex(u.first);
+        // multiplier_basis_indices = multiplier_domain->ActiveIndex(u.first);
+        for(auto i:*multiplier_evals){
+            multiplier_basis_indices.push_back(i.first);
+        }
     }
 }

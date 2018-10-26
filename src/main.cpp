@@ -8,6 +8,7 @@
 #include "BiharmonicMapper.hpp"
 #include "PoissonStiffnessVisitor.hpp"
 #include "BiharmonicStiffnessVisitor.hpp"
+#include "ProjectionStiffnessVisitor.hpp"
 #include "H2DomainNormVisitor.hpp"
 #include "PoissonDirichletBoundaryVisitor.hpp"
 #include "BiharmonicDirichletBoundaryVisitor.hpp"
@@ -32,11 +33,20 @@ int main()
 {
     KnotVector<double> a;
     a.InitClosed(1, 0, 1);
-    Vector2d point1(-sqrt(3), -1), point2(-sqrt(3) / 2, .5), point3(0, 2), point4(0, -1), point5(.2, -.2252211), point6(sqrt(3) / 2, .5), point7(sqrt(3), -1);
+    Vector2d point1(0, 1);
+    Vector2d point2(0, 0);
+    Vector2d point3(.16, .81);
+    Vector2d point4(.18, .18);
+    Vector2d point5(.77, .82);
+    Vector2d point6(.81, .17);
+    Vector2d point7(1, 1);
+    Vector2d point8(1, 0);
 
-    GeometryVector point{point1, point2, point4, point5};
-    GeometryVector pointt{point2, point3, point5, point6};
-    GeometryVector pointtt{point4, point5, point7, point6};
+    GeometryVector points1({point1, point3, point2, point4});
+    GeometryVector points2({point2, point4, point8, point6});
+    GeometryVector points3({point4, point3, point6, point5});
+    GeometryVector points4({point6, point5, point8, point7});
+    GeometryVector points5({point3, point1, point5, point7});
 
     int degree, refine;
     cin >> degree >> refine;
@@ -45,55 +55,92 @@ int main()
         for (int j = 1; j < refine; j++)
         {
 
-            auto domain1 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(a, a, point);
-            auto domain2 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(a, a, pointt);
-            auto domain3 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(a, a, pointtt);
+            auto domain1 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(a, a, points1);
+            auto domain2 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(a, a, points2);
+            auto domain3 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(a, a, points3);
+            auto domain4 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(a, a, points4);
+            auto domain5 = make_shared<PhyTensorBsplineBasis<2, 2, double>>(a, a, points5);
 
             domain1->DegreeElevate(i);
             domain2->DegreeElevate(i);
             domain3->DegreeElevate(i);
+            domain4->DegreeElevate(i);
+            domain5->DegreeElevate(i);
             for (int k = 0; k < 1; k++)
             {
-                domain1->KnotInsertion(0, 1.0 / 3);
-                domain1->KnotInsertion(0, 2.0 / 3);
-                domain1->KnotInsertion(1, 1.0 / 3);
-                domain1->KnotInsertion(1, 2.0 / 3);
+                domain2->KnotInsertion(0, 1.0 / 3);
+                domain2->KnotInsertion(0, 2.0 / 3);
+                domain2->KnotInsertion(1, 1.0 / 3);
+                domain2->KnotInsertion(1, 2.0 / 3);
             }
-
-            domain1->UniformRefine(j, 1);
-            domain2->UniformRefine(j + 1, 1);
-            domain3->UniformRefine(j, 1);
-            array<shared_ptr<Surface<2, double>>, 3> cells;
-            cells[0] = make_shared<Surface<2, double>>(domain1, array<bool, 4>{true, false, false, true});
-            cells[0]->SurfaceInitialize();
-            cells[1] = make_shared<Surface<2, double>>(domain2, array<bool, 4>{false, false, true, true});
-            cells[1]->SurfaceInitialize();
-            cells[2] = make_shared<Surface<2, double>>(domain3, array<bool, 4>{true, true, false, false});
-            cells[2]->SurfaceInitialize();
-
-            for (int i = 0; i < 2; i++)
+            for (int k = 0; k < 1; k++)
             {
-                for (int j = i + 1; j < 3; j++)
+                domain3->KnotInsertion(0, 1.0 / 5);
+                domain3->KnotInsertion(0, 2.0 / 5);
+                domain3->KnotInsertion(0, 3.0 / 5);
+                domain3->KnotInsertion(0, 4.0 / 5);
+                domain3->KnotInsertion(1, 1.0 / 5);
+                domain3->KnotInsertion(1, 2.0 / 5);
+                domain3->KnotInsertion(1, 3.0 / 5);
+                domain3->KnotInsertion(1, 4.0 / 5);
+            }
+            for (int k = 0; k < 1; k++)
+            {
+                domain5->KnotInsertion(0, 1.0 / 3);
+                domain5->KnotInsertion(0, 2.0 / 3);
+                domain5->KnotInsertion(1, 1.0 / 3);
+                domain5->KnotInsertion(1, 2.0 / 3);
+            }
+            domain1->UniformRefine(j + 1, 1);
+            domain2->UniformRefine(j, 1);
+            domain3->UniformRefine(j, 1);
+            domain4->UniformRefine(j + 1, 1);
+            domain5->UniformRefine(j, 1);
+            array<shared_ptr<Surface<2, double>>, 5> cells;
+            cells[0] = make_shared<Surface<2, double>>(domain1, array<bool, 4>{true, false, false, false});
+            cells[0]->SurfaceInitialize();
+            cells[1] = make_shared<Surface<2, double>>(domain2, array<bool, 4>{true, false, false, false});
+            cells[1]->SurfaceInitialize();
+            cells[2] = make_shared<Surface<2, double>>(domain3, array<bool, 4>{false, false, false, false});
+            cells[2]->SurfaceInitialize();
+            cells[3] = make_shared<Surface<2, double>>(domain4, array<bool, 4>{false, true, false, false});
+            cells[3]->SurfaceInitialize();
+            cells[4] = make_shared<Surface<2, double>>(domain5, array<bool, 4>{false, false, true, false});
+            cells[4]->SurfaceInitialize();
+
+            for (int i = 0; i < 4; i++)
+            {
+                for (int j = i + 1; j < 5; j++)
                     cells[i]->Match(cells[j]);
             }
 
-            const double pi = 3.14159265358979323846264338327;
-            function<vector<double>(const VectorXd &)> body_force = [&pi](const VectorXd &u) {
-                return vector<double>{144 * pow(-3 * u(0) + sqrt(3) * (u(1) - 2), 2) + 144 * pow(3 * u(0) + sqrt(3) * (u(1) - 2), 2) + 1728 * pow(u(1) + 1, 2)};
-            };
-
-            function<vector<double>(const VectorXd &)> analytical_solution = [&pi](const VectorXd &u) {
+            const double Pi = 3.14159265358979323846264338327;
+            function<vector<double>(const VectorXd &)> body_force = [&](const VectorXd &u) {
                 double x = u(0);
                 double y = u(1);
-                return vector<double>{pow((u(1) + 1) * (sqrt(3) * (u(1) - 2) - 3 * u(0)) * (sqrt(3) * (u(1) - 2) + 3 * u(0)), 2),
-                                      36 * x * (3 * x - sqrt(3) * (y - 2)) * (3 * x + sqrt(3) * (y - 2)) * pow(1 + y, 2),
-                                      18 * (3 * x - sqrt(3) * (y - 2)) * (3 * x + sqrt(3) * (y - 2)) * (1 + y) * (x * x - (y - 2) * y)};
+                return vector<double>{-64 * pow(Pi, 4) *
+                                      (cos(4 * Pi * x) - 2 * cos(4 * Pi * (x - y)) + cos(4 * Pi * y) -
+                                       2 * cos(4 * Pi * (x + y)))};
+            };
+
+            function<vector<double>(const VectorXd &)> analytical_solution = [&](const VectorXd &u) {
+                double x = u(0);
+                double y = u(1);
+                return vector<double>{
+                    pow(sin(2 * Pi * x), 2) * pow(sin(2 * Pi * y), 2),
+                    4 * Pi * cos(2 * Pi * x) * sin(2 * Pi * x) * pow(sin(2 * Pi * y), 2),
+                    4 * Pi * cos(2 * Pi * y) * pow(sin(2 * Pi * x), 2) * sin(2 * Pi * y),
+                    8 * pow(Pi, 2) * pow(cos(2 * Pi * x), 2) * pow(sin(2 * Pi * y), 2) -
+                        8 * pow(Pi, 2) * pow(sin(2 * Pi * x), 2) * pow(sin(2 * Pi * y), 2),
+                    16 * pow(Pi, 2) * cos(2 * Pi * x) * cos(2 * Pi * y) * sin(2 * Pi * x) * sin(2 * Pi * y),
+                    8 * pow(Pi, 2) * pow(cos(2 * Pi * y), 2) * pow(sin(2 * Pi * x), 2) -
+                        8 * pow(Pi, 2) * pow(sin(2 * Pi * x), 2) * pow(sin(2 * Pi * y), 2)};
             };
 
             DofMapper<2, double> dof_map;
             BiharmonicMapper<2, double> mapper(dof_map);
 
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 5; i++)
             {
                 cells[i]->Accept(mapper);
             }
@@ -104,7 +151,7 @@ int main()
             dof_map.FreeToCondensedIndexMap(condensed_to_free);
 
             BiharmonicStiffnessVisitor<2, double> stiffness(dof_map, body_force);
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 5; i++)
             {
                 cells[i]->Accept(stiffness);
             }
@@ -114,7 +161,7 @@ int main()
             SparseMatrix<double> stiffness_matrix = stiffness_matrix_triangle_view.template selfadjointView<Eigen::Upper>();
 
             BiharmonicDirichletBoundaryVisitor<2, double> boundary(dof_map, analytical_solution);
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 5; i++)
             {
                 cells[i]->EdgeAccept(boundary);
             }
@@ -122,7 +169,7 @@ int main()
             boundary.CondensedDirichletBoundary(boundary_value);
             // BiharmonicInterfaceH1<2, double> interface(dof_map);
             BiharmonicInterface<2, double> interface1(dof_map);
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 5; i++)
             {
                 // cells[i]->EdgeAccept(interface);
                 cells[i]->EdgeAccept(interface1);
@@ -130,7 +177,7 @@ int main()
             // interface.ConstraintMatrix(edge_constraint);
             interface1.ConstraintMatrix(edge_constraint1);
             BiharmonicVertexVisitor<2, double> vertex(dof_map);
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 5; i++)
             {
                 cells[i]->VertexAccept(vertex);
             }
@@ -149,11 +196,11 @@ int main()
             VectorXd solution = constraint * global_to_condensed.transpose() * (condensed_to_free.transpose() * Solution + boundary_value);
 
             PostProcess<2, double> post_process(dof_map, solution, analytical_solution);
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 5; i++)
             {
                 cells[i]->Accept(post_process);
             }
-            cout << post_process.L2Norm() << endl;
+            cout << "L2: " << post_process.L2Norm() << "H2: " << post_process.H2Norm() << endl;
         }
         cout << endl;
     }

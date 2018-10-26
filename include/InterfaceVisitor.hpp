@@ -78,7 +78,7 @@ void
     if (edge->IsMatched() && edge->IsSlave())
     {
         InitializeTripletContainer();
-        edge->GetDomain()->BezierDualInitialize();
+        (edge->GetDomain()->_basis[0]).ModifyBoundaryInitialize();
         DomainVisitor<1, N, T>::Visit(g);
         SolveConstraint(edge);
     }

@@ -169,6 +169,84 @@ void BsplineBasis<T>::BezierDualInitialize()
     _reconstruction = *Accessory::BezierReconstruction<T>(_basisKnot);
 }
 
+// Reduce the order of first two and last two elements by one (Serve as the Lagrange multiplier). The weights for boundary basis are computed.
+template <typename T>
+void BsplineBasis<T>::ModifyBoundaryInitialize()
+{
+    // p >= 1 and num of elements >= 5
+    const int degree = _basisKnot.GetDegree();
+    const int dof = _basisKnot.GetDOF();
+    auto spans = _basisKnot.KnotSpans();
+    const int elements = spans.size();
+    ASSERT(degree >= 1, "The polynomial degree is too low for the modification.");
+    ASSERT(elements >= 5, "There must be at least 5 elements for the modification.");
+
+    const int boundary_degree = degree - 1;
+    KnotVector<T> first_element_knot, second_element_knot, second_last_element_knot, last_element_knot;
+    first_element_knot.InitClosed(boundary_degree, spans[0].first, spans[0].second);
+    second_element_knot.InitClosed(boundary_degree, spans[1].first, spans[1].second);
+    second_last_element_knot.InitClosed(boundary_degree, spans[elements - 2].first, spans[elements - 2].second);
+    last_element_knot.InitClosed(boundary_degree, spans[elements - 1].first, spans[elements - 1].second);
+    BsplineBasis<T> first_element(first_element_knot), second_element(second_element_knot), second_last_element(second_last_element_knot), last_element(last_element_knot);
+
+    auto second_end_eval = second_element.EvalDerAll(spans[1].second, boundary_degree);
+    auto second_begin_eval = second_element.EvalDerAll(spans[1].first, boundary_degree);
+    auto first_end_eval = first_element.EvalDerAll(spans[0].second, boundary_degree);
+
+    auto second_last_begin_eval = second_last_element.EvalDerAll(spans[elements - 2].first, boundary_degree);
+    auto second_last_end_eval = second_last_element.EvalDerAll(spans[elements - 2].second, boundary_degree);
+    auto last_begin_eval = last_element.EvalDerAll(spans[elements - 1].first, boundary_degree);
+    matrix second_end(boundary_degree + 1, boundary_degree + 1), second_begin(boundary_degree + 1, boundary_degree + 1), first_end(boundary_degree + 1, boundary_degree + 1);
+    matrix second_last_begin(boundary_degree + 1, boundary_degree + 1), second_last_end(boundary_degree + 1, boundary_degree + 1), last_begin(boundary_degree + 1, boundary_degree + 1);
+    for (int i = 0; i < boundary_degree + 1; i++)
+    {
+        for (int j = 0; j < boundary_degree + 1; j++)
+        {
+            second_end(i, j) = (*second_end_eval)[j].second[i];
+            second_begin(i, j) = (*second_begin_eval)[j].second[i];
+            first_end(i, j) = (*first_end_eval)[j].second[i];
+
+            second_last_begin(i, j) = (*second_last_begin_eval)[j].second[i];
+            second_last_end(i, j) = (*second_last_end_eval)[j].second[i];
+            last_begin(i, j) = (*last_begin_eval)[j].second[i];
+        }
+    }
+    std::vector<vector> front_basis_eval(boundary_degree + 1);
+    std::vector<vector> back_basis_eval(boundary_degree + 1);
+    for (int i = 0; i < boundary_degree + 1; i++)
+    {
+        front_basis_eval[i].resize(boundary_degree + 1);
+        back_basis_eval[i].resize(boundary_degree + 1);
+        for (int j = 0; j < boundary_degree + 1; j++)
+        {
+            front_basis_eval[i](j) = this->EvalSingle(spans[1].second, 2 + i, j);
+            back_basis_eval[i](j) = this->EvalSingle(spans[elements - 2].first, dof - 3 - boundary_degree + i, j);
+        }
+    }
+    std::vector<vector> weights_in_second_element(boundary_degree + 1);
+    std::vector<vector> weights_in_second_last_element(boundary_degree + 1);
+    for (int i = 0; i < boundary_degree + 1; i++)
+    {
+        weights_in_second_element[i] = second_end.fullPivLu().solve(front_basis_eval[i]);
+        weights_in_second_last_element[i] = second_last_begin.fullPivLu().solve(back_basis_eval[i]);
+    }
+    std::vector<vector> weights_in_first_element(boundary_degree + 1);
+    std::vector<vector> weights_in_last_element(boundary_degree + 1);
+    for (int i = 0; i < boundary_degree + 1; i++)
+    {
+        weights_in_first_element[i] = first_end.fullPivLu().solve(second_begin * weights_in_second_element[i]);
+        weights_in_last_element[i] = last_begin.fullPivLu().solve(second_last_end * weights_in_second_last_element[i]);
+    }
+    _basisWeight.resize(boundary_degree + 1, 4 * (boundary_degree + 1));
+    for (int i = 0; i < boundary_degree + 1; i++)
+    {
+        _basisWeight.col(i) = weights_in_first_element[i];
+        _basisWeight.col(i + boundary_degree + 1) = weights_in_second_element[i];
+        _basisWeight.col(i + 2 * (boundary_degree + 1)) = weights_in_second_last_element[i];
+        _basisWeight.col(i + 3 * (boundary_degree + 1)) = weights_in_last_element[i];
+    }
+}
+
 template <typename T>
 std::unique_ptr<typename BsplineBasis<T>::matrix> BsplineBasis<T>::BasisWeight() const
 {
@@ -207,6 +285,125 @@ std::unique_ptr<typename BsplineBasis<T>::matrix> BsplineBasis<T>::BasisWeight()
         result->col(i) /= sumWeight(i);
     }
     return result;
+}
+
+template <typename T>
+typename BsplineBasis<T>::BasisFunValDerAllList_ptr BsplineBasis<T>::EvalModifiedDerAll(const T &u, int i) const
+{
+    const int degree = _basisKnot.GetDegree();
+    const int dof = _basisKnot.GetDOF();
+    const int element_num = this->FindSpan(u) - degree;
+    const int boundary_degree = degree - 1;
+    auto spans = _basisKnot.KnotSpans();
+    const int elements = spans.size();
+
+    if (element_num == 0)
+    {
+        KnotVector<T> first_element_knot;
+        first_element_knot.InitClosed(boundary_degree, spans[0].first, spans[0].second);
+        BsplineBasis<T> first_element(first_element_knot);
+        auto res = first_element.EvalDerAll(u, i);
+        matrix matrix_form(i + 1, boundary_degree + 1);
+        for (int k = 0; k <= i; k++)
+        {
+            for (int j = 0; j < boundary_degree + 1; j++)
+            {
+                matrix_form(k, j) = (*res)[j].second[k];
+            }
+        }
+        matrix res_matrix_form = matrix_form * _basisWeight.block(0, 0, boundary_degree + 1, boundary_degree + 1);
+        for (int k = 0; k <= i; k++)
+        {
+            for (int j = 0; j < boundary_degree + 1; j++)
+            {
+                (*res)[j].second[k] = res_matrix_form(k, j);
+            }
+        }
+        return res;
+    }
+    else if (element_num == 1)
+    {
+        KnotVector<T> second_element_knot;
+        second_element_knot.InitClosed(boundary_degree, spans[1].first, spans[1].second);
+        BsplineBasis<T> second_element(second_element_knot);
+        auto res = second_element.EvalDerAll(u, i);
+        matrix matrix_form(i + 1, boundary_degree + 1);
+        for (int k = 0; k <= i; k++)
+        {
+            for (int j = 0; j < boundary_degree + 1; j++)
+            {
+                matrix_form(k, j) = (*res)[j].second[k];
+            }
+        }
+        matrix res_matrix_form = matrix_form * _basisWeight.block(0, boundary_degree + 1, boundary_degree + 1, boundary_degree + 1);
+        for (int k = 0; k <= i; k++)
+        {
+            for (int j = 0; j < boundary_degree + 1; j++)
+            {
+                (*res)[j].second[k] = res_matrix_form(k, j);
+            }
+        }
+        return res;
+    }
+    else if (element_num == elements - 2)
+    {
+        KnotVector<T> second_last_element_knot;
+        second_last_element_knot.InitClosed(boundary_degree, spans[elements - 2].first, spans[elements - 2].second);
+        BsplineBasis<T> second_last_element(second_last_element_knot);
+        auto res = second_last_element.EvalDerAll(u, i);
+        matrix matrix_form(boundary_degree + 1, boundary_degree + 1);
+        for (int k = 0; k <= i; k++)
+        {
+            for (int j = 0; j < boundary_degree + 1; j++)
+            {
+                matrix_form(k, j) = (*res)[j].second[k];
+            }
+        }
+        matrix res_matrix_form = matrix_form * _basisWeight.block(0, 2 * (boundary_degree + 1), boundary_degree + 1, boundary_degree + 1);
+        for (int j = 0; j < boundary_degree + 1; j++)
+        {
+            (*res)[j].first = dof - 5 - boundary_degree + j;
+            for (int k = 0; k <= i; k++)
+            {
+                (*res)[j].second[k] = res_matrix_form(k, j);
+            }
+        }
+        return res;
+    }
+    else if (element_num == elements - 1)
+    {
+        KnotVector<T> last_element_knot;
+        last_element_knot.InitClosed(boundary_degree, spans[elements - 1].first, spans[elements - 1].second);
+        BsplineBasis<T> last_element(last_element_knot);
+        auto res = last_element.EvalDerAll(u, i);
+        matrix matrix_form(boundary_degree + 1, boundary_degree + 1);
+        for (int k = 0; k <= i; k++)
+        {
+            for (int j = 0; j < boundary_degree + 1; j++)
+            {
+                matrix_form(k, j) = (*res)[j].second[k];
+            }
+        }
+        matrix res_matrix_form = matrix_form * _basisWeight.block(0, 3 * (boundary_degree + 1), boundary_degree + 1, boundary_degree + 1);
+        for (int j = 0; j < boundary_degree + 1; j++)
+        {
+            (*res)[j].first = dof - 5 - boundary_degree + j;
+            for (int k = 0; k <= i; k++)
+            {
+                (*res)[j].second[k] = res_matrix_form(k, j);
+            }
+        }
+        return res;
+    }
+    else
+    {
+        auto res = this->EvalDerAll(u, i);
+        for (auto &i : *res)
+        {
+            i.first -= 2;
+        }
+        return res;
+    }
 }
 
 template <typename T>

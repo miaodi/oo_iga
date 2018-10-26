@@ -1,0 +1,3 @@
+/Users/dimiao/Desktop/oo_iga/release/CMakeFiles/rebuild_cache.dir
+/Users/dimiao/Desktop/oo_iga/release/CMakeFiles/edit_cache.dir
+/Users/dimiao/Desktop/oo_iga/release/CMakeFiles/oo_iga.dir

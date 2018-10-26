@@ -111,34 +111,34 @@ void BiharmonicInterface<N, T>::SolveC1Constraint(Edge<N, T> *edge)
     this->MatrixAssembler(multiplier_indices_inverse_map.size(), c0_slave_indices_inverse_map.size(),
                           condensed_rhs_c0_slave, rhs_matrix_c0_slave);
 
-    // Codimension 2 Lagrange multiplier
+    // // Codimension 2 Lagrange multiplier
 
-    {
-        gramian_matrix.row(2) = gramian_matrix.row(0) + gramian_matrix.row(1) + gramian_matrix.row(2);
-        rhs_matrix_c1.row(2) = rhs_matrix_c1.row(0) + rhs_matrix_c1.row(1) + rhs_matrix_c1.row(2);
-        rhs_matrix_c0_slave.row(2) = rhs_matrix_c0_slave.row(0) + rhs_matrix_c0_slave.row(1) + rhs_matrix_c0_slave.row(2);
-    }
+    // {
+    //     gramian_matrix.row(2) = gramian_matrix.row(0) + gramian_matrix.row(1) + gramian_matrix.row(2);
+    //     rhs_matrix_c1.row(2) = rhs_matrix_c1.row(0) + rhs_matrix_c1.row(1) + rhs_matrix_c1.row(2);
+    //     rhs_matrix_c0_slave.row(2) = rhs_matrix_c0_slave.row(0) + rhs_matrix_c0_slave.row(1) + rhs_matrix_c0_slave.row(2);
+    // }
 
-    {
-        gramian_matrix.row(gramian_matrix.rows() - 3) = gramian_matrix.row(gramian_matrix.rows() - 3) + gramian_matrix.row(gramian_matrix.rows() - 2) + gramian_matrix.row(gramian_matrix.rows() - 1);
+    // {
+    //     gramian_matrix.row(gramian_matrix.rows() - 3) = gramian_matrix.row(gramian_matrix.rows() - 3) + gramian_matrix.row(gramian_matrix.rows() - 2) + gramian_matrix.row(gramian_matrix.rows() - 1);
 
-        rhs_matrix_c1.row(rhs_matrix_c1.rows() - 3) = rhs_matrix_c1.row(rhs_matrix_c1.rows() - 3) + rhs_matrix_c1.row(rhs_matrix_c1.rows() - 2) + rhs_matrix_c1.row(rhs_matrix_c1.rows() - 1);
+    //     rhs_matrix_c1.row(rhs_matrix_c1.rows() - 3) = rhs_matrix_c1.row(rhs_matrix_c1.rows() - 3) + rhs_matrix_c1.row(rhs_matrix_c1.rows() - 2) + rhs_matrix_c1.row(rhs_matrix_c1.rows() - 1);
 
-        rhs_matrix_c0_slave.row(rhs_matrix_c0_slave.rows() - 3) = rhs_matrix_c0_slave.row(rhs_matrix_c0_slave.rows() - 3) + rhs_matrix_c0_slave.row(rhs_matrix_c0_slave.rows() - 2) + rhs_matrix_c0_slave.row(rhs_matrix_c0_slave.rows() - 1);
-    }
+    //     rhs_matrix_c0_slave.row(rhs_matrix_c0_slave.rows() - 3) = rhs_matrix_c0_slave.row(rhs_matrix_c0_slave.rows() - 3) + rhs_matrix_c0_slave.row(rhs_matrix_c0_slave.rows() - 2) + rhs_matrix_c0_slave.row(rhs_matrix_c0_slave.rows() - 1);
+    // }
 
-    Accessory::removeRow<T>(gramian_matrix, 0);
-    Accessory::removeRow<T>(gramian_matrix, 0);
-    Accessory::removeRow<T>(gramian_matrix, gramian_matrix.rows() - 1);
-    Accessory::removeRow<T>(gramian_matrix, gramian_matrix.rows() - 1);
-    Accessory::removeRow<T>(rhs_matrix_c1, 0);
-    Accessory::removeRow<T>(rhs_matrix_c1, 0);
-    Accessory::removeRow<T>(rhs_matrix_c1, rhs_matrix_c1.rows() - 1);
-    Accessory::removeRow<T>(rhs_matrix_c1, rhs_matrix_c1.rows() - 1);
-    Accessory::removeRow<T>(rhs_matrix_c0_slave, 0);
-    Accessory::removeRow<T>(rhs_matrix_c0_slave, 0);
-    Accessory::removeRow<T>(rhs_matrix_c0_slave, rhs_matrix_c0_slave.rows() - 1);
-    Accessory::removeRow<T>(rhs_matrix_c0_slave, rhs_matrix_c0_slave.rows() - 1);
+    // Accessory::removeRow<T>(gramian_matrix, 0);
+    // Accessory::removeRow<T>(gramian_matrix, 0);
+    // Accessory::removeRow<T>(gramian_matrix, gramian_matrix.rows() - 1);
+    // Accessory::removeRow<T>(gramian_matrix, gramian_matrix.rows() - 1);
+    // Accessory::removeRow<T>(rhs_matrix_c1, 0);
+    // Accessory::removeRow<T>(rhs_matrix_c1, 0);
+    // Accessory::removeRow<T>(rhs_matrix_c1, rhs_matrix_c1.rows() - 1);
+    // Accessory::removeRow<T>(rhs_matrix_c1, rhs_matrix_c1.rows() - 1);
+    // Accessory::removeRow<T>(rhs_matrix_c0_slave, 0);
+    // Accessory::removeRow<T>(rhs_matrix_c0_slave, 0);
+    // Accessory::removeRow<T>(rhs_matrix_c0_slave, rhs_matrix_c0_slave.rows() - 1);
+    // Accessory::removeRow<T>(rhs_matrix_c0_slave, rhs_matrix_c0_slave.rows() - 1);
 
     Matrix c1_constraint = this->SolveNonSymmetric(gramian_matrix, rhs_matrix_c1);
     Matrix c0_c1_constraint = this->SolveNonSymmetric(gramian_matrix, rhs_matrix_c0_slave);
@@ -194,13 +194,12 @@ void BiharmonicInterface<N, T>::C1IntegralElementAssembler(Matrix &slave_constra
     {
         std::cout << "MapParametericPoint failed" << std::endl;
     }
-
     // Evaluate derivative upto 1^st order in slave and master domain
     auto slave_evals = slave_domain->EvalDerAllTensor(slave_quadrature_abscissa, 1);
     auto master_evals = master_domain->EvalDerAllTensor(master_quadrature_abscissa, 1);
 
     //  Evaluate Lagrange multiplier basis
-    auto multiplier_evals = multiplier_domain->EvalDualAllTensor(u.first);
+    auto multiplier_evals = (multiplier_domain->_basis[0]).EvalModifiedDerAll(u.first(0), 0);
 
     // Resize integration matrices
     slave_constraint_basis.resize(1, slave_evals->size());
@@ -339,6 +338,9 @@ void BiharmonicInterface<N, T>::C1IntegralElementAssembler(Matrix &slave_constra
     }
     if (multiplier_basis_indices.size() == 0)
     {
-        multiplier_basis_indices = multiplier_domain->ActiveIndex(u.first);
+        // multiplier_basis_indices = multiplier_domain->ActiveIndex(u.first);
+        for(auto i:*multiplier_evals){
+            multiplier_basis_indices.push_back(i.first);
+        }
     }
 }

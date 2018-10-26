@@ -129,7 +129,7 @@ class TensorBsplineBasis
 
     bool InDomain(const vector &u) const;
 
-  protected:
+  public:
     std::array<BsplineBasis<T>, d> _basis;
 
     TensorBsplineBasis(const TensorBsplineBasis<d, T> &) = delete;
