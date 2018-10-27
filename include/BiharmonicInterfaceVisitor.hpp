@@ -24,8 +24,10 @@ public:
     using ConstraintIntegralElementAssembler = typename InterfaceVisitor<N, T>::ConstraintIntegralElementAssembler;
 
 public:
-    BiharmonicInterfaceVisitor() : InterfaceVisitor<N, T>()
+    BiharmonicInterfaceVisitor( std::unique_ptr<PoissonInterfaceVisitor<N, T>> ptr = std::make_unique<PoissonInterfaceVisitor<N, T>>() )
+        : InterfaceVisitor<N, T>()
     {
+        _poisson = std::move( ptr );
     }
 
     void Visit( Element<1, N, T>* g );
@@ -60,13 +62,13 @@ protected:
 protected:
     std::vector<Eigen::Triplet<T>> _c1Slave;
     std::vector<Eigen::Triplet<T>> _c1Master;
-    PoissonInterfaceVisitor<N, T> _poisson;
+    std::unique_ptr<PoissonInterfaceVisitor<N, T>> _poisson;
 };
 
 template <int N, typename T>
 void BiharmonicInterfaceVisitor<N, T>::Visit( Element<1, N, T>* g )
 {
-    _poisson.Visit( g );
+    _poisson->Visit( g );
     InterfaceVisitor<N, T>::Visit( g );
 }
 
@@ -77,7 +79,7 @@ void BiharmonicInterfaceVisitor<N, T>::SolveConstraint( Edge<N, T>* edge )
     std::vector<int> slave_indices = Accessory::ColIndicesVector( _c1Slave );
     std::vector<int> master_indices = Accessory::ColIndicesVector( _c1Master );
     std::vector<int> multiplier_indices = Accessory::RowIndicesVector( _c1Slave );
-    std::vector<int> c0_slave_indices = *( _poisson.ConstraintData()._rowIndices );
+    std::vector<int> c0_slave_indices = *( _poisson->ConstraintData()._rowIndices );
 
     std::vector<int> c1_slave_indices;
     std::set_difference( slave_indices.begin(), slave_indices.end(), c0_slave_indices.begin(), c0_slave_indices.end(),
@@ -106,8 +108,8 @@ void BiharmonicInterfaceVisitor<N, T>::SolveConstraint( Edge<N, T>* edge )
     auto c1_slave_indices_copy = c1_slave_indices;
     MatrixData<T> c1_constraint_data( c1_constraint, c1_slave_indices, master_indices );
     MatrixData<T> c0_c1constraint_data( c0_c1_constraint, c1_slave_indices_copy, c0_slave_indices );
-    auto c0_slave_c1_constraint_data = c0_c1constraint_data * _poisson.ConstraintData();
-    this->_constraintData = c1_constraint_data + c0_slave_c1_constraint_data + _poisson.ConstraintData();
+    auto c0_slave_c1_constraint_data = c0_c1constraint_data * _poisson->ConstraintData();
+    this->_constraintData = c1_constraint_data + c0_slave_c1_constraint_data + _poisson->ConstraintData();
 }
 
 template <int N, typename T>
@@ -308,7 +310,8 @@ typename std::enable_if<n == 2, void>::type BiharmonicInterfaceVisitor<N, T>::C1
     auto master_evals = master_domain->EvalDerAllTensor( master_quadrature_abscissa, 1 );
 
     //  Evaluate Lagrange multiplier basis
-    auto multiplier_evals = multiplier_domain->EvalDualAllTensor( u.first );
+    // auto multiplier_evals = multiplier_domain->EvalDualAllTensor( u.first );
+    auto multiplier_evals = ( multiplier_domain->BasisGetter( 0 ) ).EvalModifiedDerAll( u.first( 0 ), 0 );
 
     // Resize integration matrices
     slave_constraint_basis.resize( 1, slave_evals->size() );
@@ -389,4 +392,99 @@ typename std::enable_if<n == 2, void>::type BiharmonicInterfaceVisitor<N, T>::C1
             multiplier_basis_indices.push_back( i.first );
         }
     }
+}
+
+template <int N, typename T>
+class BiharmonicCodimensionInterfaceVisitor : public BiharmonicInterfaceVisitor<N, T>
+{
+public:
+    using Knot = typename BiharmonicInterfaceVisitor<N, T>::Knot;
+    using Quadrature = typename BiharmonicInterfaceVisitor<N, T>::Quadrature;
+    using QuadList = typename BiharmonicInterfaceVisitor<N, T>::QuadList;
+    using KnotSpan = typename BiharmonicInterfaceVisitor<N, T>::KnotSpan;
+    using KnotSpanlist = typename BiharmonicInterfaceVisitor<N, T>::KnotSpanlist;
+    using LoadFunctor = typename BiharmonicInterfaceVisitor<N, T>::LoadFunctor;
+    using Matrix = typename BiharmonicInterfaceVisitor<N, T>::Matrix;
+    using Vector = typename BiharmonicInterfaceVisitor<N, T>::Vector;
+    using DomainShared_ptr = typename BiharmonicInterfaceVisitor<N, T>::DomainShared_ptr;
+    using ConstraintIntegralElementAssembler = typename BiharmonicInterfaceVisitor<N, T>::ConstraintIntegralElementAssembler;
+
+public:
+    BiharmonicCodimensionInterfaceVisitor( const int& c )
+        : BiharmonicInterfaceVisitor<N, T>( std::make_unique<PoissonCodimensionInterfaceVisitor<N, T>>( c ) ), _codimension{c}
+    {
+    }
+
+    const MatrixData<T>& VerticesConstraintData() const
+    {
+        return _slaveMasterConstraintData;
+    }
+
+protected:
+    void SolveConstraint( Edge<N, T>* );
+
+protected:
+    MatrixData<T> _slaveMasterConstraintData;
+    int _codimension;
+};
+
+template <int N, typename T>
+void BiharmonicCodimensionInterfaceVisitor<N, T>::SolveConstraint( Edge<N, T>* edge )
+{
+    const int dimension = 1;
+    auto vertices_indices = edge->VerticesIndices( dimension, _codimension - 1 );
+
+    // iterate across the constraint equation container and obtain activated global indices and lagrange multiplier indices
+    std::vector<int> slave_indices = Accessory::ColIndicesVector( this->_c1Slave );
+    std::vector<int> master_indices = Accessory::ColIndicesVector( this->_c1Master );
+    std::vector<int> multiplier_indices = Accessory::RowIndicesVector( this->_c1Slave );
+
+    auto poisson_ptr = dynamic_cast<PoissonCodimensionInterfaceVisitor<N, T>*>( this->_poisson.get() );
+    std::vector<int> c0_slave_indices = *( poisson_ptr->ConstraintData()._rowIndices );
+
+    std::vector<int> c1_slave_complement_indices;
+    std::set_union( vertices_indices.begin(), vertices_indices.end(), c0_slave_indices.begin(), c0_slave_indices.end(),
+                    std::back_inserter( c1_slave_complement_indices ) );
+    std::vector<int> c1_slave_indices;
+    std::set_difference( slave_indices.begin(), slave_indices.end(), c1_slave_complement_indices.begin(),
+                         c1_slave_complement_indices.end(), std::back_inserter( c1_slave_indices ) );
+
+    auto c1_slave_indices_inverse_map = Accessory::IndicesInverseMap( c1_slave_indices );
+    auto c0_slave_indices_inverse_map = Accessory::IndicesInverseMap( c0_slave_indices );
+    auto master_indices_inverse_map = Accessory::IndicesInverseMap( master_indices );
+    auto multiplier_indices_inverse_map = Accessory::IndicesInverseMap( multiplier_indices );
+    auto vertices_indices_inverse_map = Accessory::IndicesInverseMap( vertices_indices );
+
+    std::vector<Eigen::Triplet<T>> condensed_gramian, condensed_rhs, condensed_c0_slave, condensed_vertices_rhs;
+    this->CondensedTripletVia( multiplier_indices_inverse_map, c1_slave_indices_inverse_map, this->_c1Slave, condensed_gramian );
+    this->CondensedTripletVia( multiplier_indices_inverse_map, master_indices_inverse_map, this->_c1Master, condensed_rhs );
+    this->CondensedTripletVia( multiplier_indices_inverse_map, c0_slave_indices_inverse_map, this->_c1Slave, condensed_c0_slave );
+    this->CondensedTripletVia( multiplier_indices_inverse_map, vertices_indices_inverse_map, this->_c1Slave, condensed_vertices_rhs );
+
+    Matrix gramian_matrix, rhs_matrix, c0_slave_matrix, vertices_rhs_matrix;
+    this->MatrixAssembler( multiplier_indices_inverse_map.size(), c1_slave_indices_inverse_map.size(), condensed_gramian, gramian_matrix );
+    this->MatrixAssembler( multiplier_indices_inverse_map.size(), master_indices_inverse_map.size(), condensed_rhs, rhs_matrix );
+    this->MatrixAssembler( multiplier_indices_inverse_map.size(), c0_slave_indices_inverse_map.size(),
+                           condensed_c0_slave, c0_slave_matrix );
+    this->MatrixAssembler( multiplier_indices_inverse_map.size(), vertices_indices_inverse_map.size(),
+                           condensed_vertices_rhs, vertices_rhs_matrix );
+
+    Accessory::removeNoise( gramian_matrix, 1e-7 * abs( vertices_rhs_matrix( 0, 0 ) ) );
+    Accessory::removeNoise( rhs_matrix, 1e-14 );
+    Accessory::removeNoise( c0_slave_matrix, 1e-7 * abs( c0_slave_matrix( 0, 0 ) ) );
+    Accessory::removeNoise( vertices_rhs_matrix, 1e-7 * abs( vertices_rhs_matrix( 0, 0 ) ) );
+
+    Matrix c1_constraint = this->SolveNonSymmetric( gramian_matrix, rhs_matrix );
+    Matrix c0_c1_constraint = this->SolveNonSymmetric( gramian_matrix, -c0_slave_matrix );
+    Matrix vertices_constraint = this->SolveNonSymmetric( gramian_matrix, -vertices_rhs_matrix );
+    auto c1_slave_indices_copy = c1_slave_indices;
+    auto c1_slave_indices_copy_copy = c1_slave_indices;
+    MatrixData<T> c1_constraint_data( c1_constraint, c1_slave_indices, master_indices );
+    MatrixData<T> vertices_constraint_data( vertices_constraint, c1_slave_indices_copy_copy, vertices_indices );
+    MatrixData<T> c0_c1constraint_data( c0_c1_constraint, c1_slave_indices_copy, c0_slave_indices );
+    auto c0_slave_c1_constraint_data = c0_c1constraint_data * poisson_ptr->ConstraintData();
+    auto c0_slave_c1_vertices_constraint_data = c0_c1constraint_data * poisson_ptr->VerticesConstraintData();
+    this->_constraintData = c1_constraint_data + c0_slave_c1_constraint_data + poisson_ptr->ConstraintData();
+    _slaveMasterConstraintData =
+        vertices_constraint_data + c0_slave_c1_vertices_constraint_data + poisson_ptr->VerticesConstraintData();
 }

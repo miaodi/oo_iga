@@ -107,7 +107,7 @@ public:
 protected:
     KnotVector<T> _basisKnot;
     std::vector<matrix> _reconstruction;
-    matrix _basisWeight;
+    mutable matrix _basisWeight;
     matrix _gramianInv;
     std::vector<std::pair<int, Eigen::Ref<matrix>>> _localWeightContainer;
     bool _complete_dual{false};

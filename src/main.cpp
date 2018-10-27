@@ -44,7 +44,7 @@ int main()
     cin >> degree >> refine;
     for ( int d = 1; d < degree; ++d )
     {
-        for ( int r = 0; r < refine; ++r )
+        for ( int r = 1; r < refine; ++r )
         {
             array<shared_ptr<PhyTensorBsplineBasis<2, 2, double>>, 3> domains;
             domains[0] = make_shared<PhyTensorBsplineBasis<2, 2, double>>(
@@ -113,10 +113,10 @@ int main()
             boundary_indices.erase( unique( boundary_indices.begin(), boundary_indices.end() ), boundary_indices.end() );
 
             ConstraintAssembler<2, 2, double> constraint_assemble( dof );
-            constraint_assemble.ConstraintCreator( cells );
+            constraint_assemble.ConstraintCodimensionCreator( cells );
             constraint_assemble.Additional_Constraint( boundary_indices );
-            // SparseMatrix<double, RowMajor> constraint;
-            // constraint_assemble.AssembleConstraint(constraint);
+            SparseMatrix<double, RowMajor> constraint;
+            constraint_assemble.AssembleConstraint( constraint );
 
             // for (auto i : boundary_indices)
             // {
@@ -136,7 +136,10 @@ int main()
             // myfile.close();
 
             SparseMatrix<double> sp1;
-            constraint_assemble.AssembleByModification( sp1 );
+            constraint_assemble.AssembleByCodimension( sp1 );
+            // cout << MatrixXd( sp1 ) << endl;
+            cout << constraint.rows() << " " << constraint.cols() << endl;
+            cout << sp1 << endl;
             // cout << MatrixXd(constraint * sp1).norm() << endl;
             // cout << MatrixXd(constraint * sp).norm() << endl;
             // cout << sp1.cols() << " " << sp.cols() << endl;

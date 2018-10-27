@@ -88,7 +88,8 @@ void InterfaceVisitor<N, T>::Visit(Element<1, N, T> *g)
     auto edge = dynamic_cast<Edge<N, T> *>(g);
     if (edge->IsMatched() && edge->IsSlave())
     {
-        edge->GetDomain()->BezierDualInitialize();
+        // edge->GetDomain()->BezierDualInitialize();
+        edge->GetDomain()->ModifyBoundaryInitialize();
         DomainVisitor<1, N, T>::Visit(g);
         SolveConstraint(edge);
     }

@@ -411,6 +411,15 @@ void TensorBsplineBasis<d, T>::BezierDualInitialize()
     }
 }
 
+template <int d, typename T>
+void TensorBsplineBasis<d, T>::ModifyBoundaryInitialize()
+{
+    for ( int direction = 0; direction < d; ++direction )
+    {
+        _basis[direction].ModifyBoundaryInitialize();
+    }
+}
+
 //! Return the index in each directions.
 template <int d, typename T>
 std::vector<int> TensorBsplineBasis<d, T>::TensorIndex( const int& m ) const

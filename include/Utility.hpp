@@ -727,4 +727,24 @@ std::vector<SparseVector<T, ColMajor>> OrthonormalSpVec( const Sp& sp )
     }
 }
 
+template <class Input1, class Input2, class Output1, class Output2, class Output3>
+void decompose_sets(Input1 first1, Input1 last1,
+                    Input2 first2, Input2 last2,
+                    Output1 result1, Output2 result2,
+                    Output3 result3)
+{
+    while (first1 != last1 && first2 != last2) {
+        if (*first1 < *first2) {
+            *result1++ = *first1++;
+        } else if (*first2 < *first1) {
+            *result2++ = *first2++;
+        } else {
+            *result3++ = *first1++;
+            ++first2; // skip common value in set2
+        }
+    }
+    std::copy(first1, last1, result1);
+    std::copy(first2, last2, result2);
+}
+
 } // namespace Accessory
