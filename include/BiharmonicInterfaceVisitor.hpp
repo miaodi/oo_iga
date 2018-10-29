@@ -409,6 +409,8 @@ public:
     using DomainShared_ptr = typename BiharmonicInterfaceVisitor<N, T>::DomainShared_ptr;
     using ConstraintIntegralElementAssembler = typename BiharmonicInterfaceVisitor<N, T>::ConstraintIntegralElementAssembler;
 
+    using BiharmonicInterfaceVisitor<N, T>::C1IntegralElementAssembler;
+
 public:
     BiharmonicCodimensionInterfaceVisitor( const int& c )
         : BiharmonicInterfaceVisitor<N, T>( std::make_unique<PoissonCodimensionInterfaceVisitor<N, T>>( c ) ), _codimension{c}
@@ -419,12 +421,130 @@ public:
     {
         return _slaveMasterConstraintData;
     }
+    const std::array<std::pair<MatrixData<T>, MatrixData<T>>, 2>& VerticesDistributionConstraintData() const
+    {
+        return _vertices_constraints;
+    }
+
+    void Visit( Element<1, N, T>* g )
+    {
+        BiharmonicInterfaceVisitor<N, T>::Visit( g );
+        auto edge = dynamic_cast<Edge<N, T>*>( g );
+        if ( !edge->IsMatched() || !edge->IsSlave() )
+        {
+            return;
+        }
+
+        // create vertices constraints
+        // eval at starting/ending points
+        auto multiplier_domain = edge->GetDomain();
+        auto slave_domain = edge->Parent( 0 ).lock()->GetDomain();
+        auto master_domain = edge->Counterpart().lock()->Parent( 0 ).lock()->GetDomain();
+
+        Eigen::Matrix<T, Eigen::Dynamic, 1> u( 1 );
+
+        for ( int point = 0; point <= 1; point++ )
+        {
+            u << static_cast<T>( point );
+            // Map abscissa from Lagrange multiplier space to slave and master domain
+            Vector slave_quadrature_abscissa, master_quadrature_abscissa;
+            if ( !Accessory::MapParametricPoint( &*multiplier_domain, u, &*slave_domain, slave_quadrature_abscissa ) )
+            {
+                std::cout << "MapParametericPoint failed" << std::endl;
+            }
+            if ( !Accessory::MapParametricPoint( &*multiplier_domain, u, &*master_domain, master_quadrature_abscissa ) )
+            {
+                std::cout << "MapParametericPoint failed" << std::endl;
+            }
+
+            // Evaluate derivative upto 1^st order in slave and master domain
+            auto slave_evals = slave_domain->EvalDerAllTensor( slave_quadrature_abscissa, 1 );
+            auto master_evals = master_domain->EvalDerAllTensor( master_quadrature_abscissa, 1 );
+
+            // Resize integration matrices
+            Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> slave_constraint_basis( 2, slave_evals->size() );
+            Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> master_constraint_basis( 2, master_evals->size() );
+
+            // Compute the following matrix
+            // +-----------+-----------+
+            // | ∂ξ_m/∂ξ_s | ∂η_m/∂ξ_s |
+            // +-----------+-----------+
+            // | ∂ξ_m/∂η_s | ∂η_m/∂η_s |
+            // +-----------+-----------+
+            // Why transpose?
+            Matrix slave_jacobian = slave_domain->JacobianMatrix( slave_quadrature_abscissa ).transpose();
+            Matrix master_jacobian = master_domain->JacobianMatrix( master_quadrature_abscissa ).transpose();
+
+            // Substitute master coordinate of master basis by slave coordinate
+            for ( auto& i : *master_evals )
+            {
+                Vector tmp = slave_jacobian *
+                             master_jacobian.partialPivLu().solve( ( Vector( 2 ) << i.second[1], i.second[2] ).finished() );
+                i.second[1] = tmp( 0 );
+                i.second[2] = tmp( 1 );
+            }
+
+            // Two strategies for horizontal edge and vertical edge.
+            switch ( edge->GetOrient() )
+            {
+            // For south and north edge derivative w.r.t η_s should be consistent
+            case Orientation::south:
+            case Orientation::north:
+            {
+                for ( int j = 0; j < slave_evals->size(); ++j )
+                {
+                    slave_constraint_basis( 0, j ) = ( *slave_evals )[j].second[0];
+                    slave_constraint_basis( 1, j ) = ( *slave_evals )[j].second[2];
+                }
+                for ( int j = 0; j < master_evals->size(); ++j )
+                {
+                    master_constraint_basis( 0, j ) = ( *master_evals )[j].second[0];
+                    master_constraint_basis( 1, j ) = ( *master_evals )[j].second[2];
+                }
+                break;
+            }
+            // For south and north edge derivative w.r.t ξ_s should be consistent
+            case Orientation::east:
+            case Orientation::west:
+            {
+                for ( int j = 0; j < slave_evals->size(); ++j )
+                {
+                    slave_constraint_basis( 0, j ) = ( *slave_evals )[j].second[0];
+                    slave_constraint_basis( 1, j ) = ( *slave_evals )[j].second[1];
+                }
+                for ( int j = 0; j < master_evals->size(); ++j )
+                {
+                    master_constraint_basis( 0, j ) = ( *master_evals )[j].second[0];
+                    master_constraint_basis( 1, j ) = ( *master_evals )[j].second[1];
+                }
+                break;
+            }
+            }
+            std::vector<int> slave_constraint_basis_indices, master_constraint_basis_indices, lm_indices;
+            for ( int j = 0; j < slave_evals->size(); ++j )
+            {
+                slave_constraint_basis_indices.push_back( ( *slave_evals )[j].first );
+            }
+            for ( int j = 0; j < master_evals->size(); ++j )
+            {
+                master_constraint_basis_indices.push_back( ( *master_evals )[j].first );
+            }
+            lm_indices = {0, 1};
+            *( _vertices_constraints[point].first._rowIndices ) = lm_indices;
+            *( _vertices_constraints[point].first._colIndices ) = slave_constraint_basis_indices;
+            *( _vertices_constraints[point].first._matrix ) = slave_constraint_basis;
+            *( _vertices_constraints[point].second._rowIndices ) = lm_indices;
+            *( _vertices_constraints[point].second._colIndices ) = master_constraint_basis_indices;
+            *( _vertices_constraints[point].second._matrix ) = master_constraint_basis;
+        }
+    }
 
 protected:
     void SolveConstraint( Edge<N, T>* );
 
 protected:
     MatrixData<T> _slaveMasterConstraintData;
+    std::array<std::pair<MatrixData<T>, MatrixData<T>>, 2> _vertices_constraints;
     int _codimension;
 };
 
@@ -469,10 +589,10 @@ void BiharmonicCodimensionInterfaceVisitor<N, T>::SolveConstraint( Edge<N, T>* e
     this->MatrixAssembler( multiplier_indices_inverse_map.size(), vertices_indices_inverse_map.size(),
                            condensed_vertices_rhs, vertices_rhs_matrix );
 
-    Accessory::removeNoise( gramian_matrix, 1e-7 * abs( vertices_rhs_matrix( 0, 0 ) ) );
-    Accessory::removeNoise( rhs_matrix, 1e-14 );
-    Accessory::removeNoise( c0_slave_matrix, 1e-7 * abs( c0_slave_matrix( 0, 0 ) ) );
-    Accessory::removeNoise( vertices_rhs_matrix, 1e-7 * abs( vertices_rhs_matrix( 0, 0 ) ) );
+    // Accessory::removeNoise( gramian_matrix, 1e-7 * abs( vertices_rhs_matrix( 0, 0 ) ) );
+    // Accessory::removeNoise( rhs_matrix, 1e-14 );
+    // Accessory::removeNoise( c0_slave_matrix, 1e-7 * abs( c0_slave_matrix( 0, 0 ) ) );
+    // Accessory::removeNoise( vertices_rhs_matrix, 1e-7 * abs( vertices_rhs_matrix( 0, 0 ) ) );
 
     Matrix c1_constraint = this->SolveNonSymmetric( gramian_matrix, rhs_matrix );
     Matrix c0_c1_constraint = this->SolveNonSymmetric( gramian_matrix, -c0_slave_matrix );

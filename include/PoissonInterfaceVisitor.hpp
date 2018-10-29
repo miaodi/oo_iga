@@ -330,9 +330,9 @@ void PoissonCodimensionInterfaceVisitor<N, T>::SolveConstraint( Edge<N, T>* edge
     this->MatrixAssembler( multiplier_indices_inverse_map.size(), activated_master_indices_inverse_map.size(),
                            condensed_rhs, rhs_matrix );
 
-    Accessory::removeNoise( gramian_matrix, 1e-7 * abs( vertices_rhs_matrix( 0, 0 ) ) );
-    Accessory::removeNoise( rhs_matrix, 1e-14 );
-    Accessory::removeNoise( vertices_rhs_matrix, 1e-7 * abs( vertices_rhs_matrix( 0, 0 ) ) );
+    // Accessory::removeNoise( gramian_matrix, 1e-7 * abs( vertices_rhs_matrix( 0, 0 ) ) );
+    // Accessory::removeNoise( rhs_matrix, 1e-14 );
+    // Accessory::removeNoise( vertices_rhs_matrix, 1e-7 * abs( vertices_rhs_matrix( 0, 0 ) ) );
 
     Matrix constraint = this->SolveNonSymmetric( gramian_matrix, rhs_matrix );
     Matrix vertices_constraint = this->SolveNonSymmetric( -gramian_matrix, vertices_rhs_matrix );
