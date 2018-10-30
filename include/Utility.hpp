@@ -5,9 +5,9 @@
 #pragma once
 
 #include <boost/math/special_functions/binomial.hpp>
-#include <eigen3/Eigen/Dense>
-#include <eigen3/Eigen/Sparse>
-#include <eigen3/Eigen/StdVector>
+#include <Eigen/Dense>
+#include <Eigen/Sparse>
+#include <Eigen/StdVector>
 #include <iostream>
 #include <iterator>
 #include <map>

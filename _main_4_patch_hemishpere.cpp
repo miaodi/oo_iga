@@ -1,5 +1,5 @@
 #include <iostream>
-#include <eigen3/Eigen/Dense>
+#include <Eigen/Dense>
 #include "Surface.hpp"
 #include "Utility.hpp"
 #include "PhyTensorNURBSBasis.h"
@@ -15,7 +15,7 @@
 #include "BiharmonicInterfaceVisitor.hpp"
 #include "StiffnessAssembler.hpp"
 #include "ConstraintAssembler.hpp"
-#include <eigen3/unsupported/Eigen/KroneckerProduct>
+#include <unsupported/Eigen/KroneckerProduct>
 
 using namespace Eigen;
 using namespace std;

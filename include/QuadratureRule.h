@@ -6,7 +6,7 @@
 #define OO_IGA_QUADRATURERULE_H
 
 #include <vector>
-#include <eigen3/Eigen/Dense>
+#include <Eigen/Dense>
 #include <iostream>
 #include <iomanip>
 #include <boost/multiprecision/gmp.hpp>

@@ -9,7 +9,7 @@
 #include <vector>
 #include <map>
 #include <numeric>
-#include <eigen3/Eigen/Dense>
+#include <Eigen/Dense>
 #include "KnotVector.h"
 #include <cmath>
 

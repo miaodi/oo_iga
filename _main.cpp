@@ -1,5 +1,5 @@
 #include <iostream>
-#include <eigen3/Eigen/Dense>
+#include <Eigen/Dense>
 #include "PhyTensorNURBSBasis.h"
 #include "Topology.hpp"
 #include "Surface.hpp"

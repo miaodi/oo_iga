@@ -6,7 +6,7 @@
 
 #include "InterfaceVisitor.hpp"
 #include "PoissonInterfaceVisitor.hpp"
-#include <eigen3/unsupported/Eigen/KroneckerProduct>
+#include <unsupported/Eigen/KroneckerProduct>
 
 template <int N, typename T>
 class BiharmonicInterfaceVisitor : public InterfaceVisitor<N, T>

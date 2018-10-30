@@ -6,8 +6,14 @@ set(CMAKE_CXX_STANDARD 14)
 set(CLANG_LINK_DIR /usr/local/opt/llvm/lib)
 set(CMAKE_CXX_FLAGS "-Ofast -Wno-switch -fopenmp -march=native")
 set(CMAKE_EXE_LINKER_FLAGS "-lgmp")
-
 link_directories(${CLANG_LINK_DIR} ${OPENBLAS_LINK_DIR})
+include_directories(${OPENBLAS_INCLUDE})
+
+set(SPECTRA_INCLUDE_DIR $ENV{HOME}/Spectra/include/Spectra)
+include_directories(${SPECTRA_INCLUDE_DIR})
+find_package(Eigen3 REQUIRED)
+include_directories(${EIGEN3_INCLUDE_DIR})
+
 include_directories(${OPENBLAS_INCLUDE})
 include_directories(include)
 file(GLOB SOURCE_FILES "src/*.cpp")

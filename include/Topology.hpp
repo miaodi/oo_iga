@@ -5,7 +5,7 @@
 #pragma once
 
 #include "PhyTensorBsplineBasis.h"
-#include <eigen3/Eigen/Sparse>
+#include <Eigen/Sparse>
 #include "Visitor.hpp"
 
 template <int d, int N, typename T>

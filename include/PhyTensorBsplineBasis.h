@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include "TensorBsplineBasis.h"
 #include "Utility.hpp"
-#include <eigen3/Eigen/StdVector>
+#include <Eigen/StdVector>
 
 template <int d, int N, typename T>
 struct ComputeJacobian;

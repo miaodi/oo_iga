@@ -13,9 +13,9 @@
 #include "Utility.hpp"
 #include <boost/math/constants/constants.hpp>
 #include <boost/math/special_functions/legendre.hpp>
-#include <eigen3/Eigen/Dense>
-#include <eigen3/Eigen/Geometry>
-#include <eigen3/unsupported/Eigen/KroneckerProduct>
+#include <Eigen/Dense>
+#include <Eigen/Geometry>
+#include <unsupported/Eigen/KroneckerProduct>
 #include <fstream>
 #include <iostream>
 #include <time.h>

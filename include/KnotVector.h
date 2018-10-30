@@ -6,7 +6,7 @@
 
 #include <vector>
 #include <map>
-#include <eigen3/Eigen/Dense>
+#include <Eigen/Dense>
 #include <iostream>
 
 #ifndef NDEBUG
