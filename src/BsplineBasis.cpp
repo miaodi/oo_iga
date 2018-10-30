@@ -180,6 +180,32 @@ typename BsplineBasis<T>::BasisFunValDerAllList_ptr BsplineBasis<T>::BezierDual(
 }
 
 template <typename T>
+typename BsplineBasis<T>::BasisFunValDerAllList_ptr BsplineBasis<T>::EvalCodimensionBezierDual( const T& u ) const
+{
+    auto evals = BezierDual( u );
+    int dof = GetDof();
+    for ( auto& i : *evals )
+    {
+        if ( i.first == 0 )
+        {
+        }
+        else if ( i.first == 1 || i.first == 2 )
+        {
+            i.first = 0;
+        }
+        else if ( i.first == dof - 1 || i.first == dof - 2 )
+        {
+            i.first = dof - 5;
+        }
+        else
+        {
+            i.first = i.first - 2;
+        }
+    }
+    return evals;
+}
+
+template <typename T>
 void BsplineBasis<T>::BezierDualInitialize()
 {
     int degree = _basisKnot.GetDegree();

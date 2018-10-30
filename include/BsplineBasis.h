@@ -104,6 +104,9 @@ public:
 
     BasisFunValDerAllList_ptr BezierDual( const T& u ) const;
 
+    // Return the evaluation of the modified b-spline basis functions.
+    BasisFunValDerAllList_ptr EvalCodimensionBezierDual( const T& u ) const;
+
 protected:
     KnotVector<T> _basisKnot;
     std::vector<matrix> _reconstruction;

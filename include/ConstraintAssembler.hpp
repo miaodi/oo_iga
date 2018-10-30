@@ -76,6 +76,7 @@ public:
                 {
                     BiharmonicCodimensionInterfaceVisitor<N, T> biharmonic_interface( 2 );
                     i->EdgePointerGetter( j )->Accept( biharmonic_interface );
+
                     int slave_id = biharmonic_interface.SlaveID();
                     int master_id = biharmonic_interface.MasterID();
                     int slave_starting_dof = _dof.StartingDof( slave_id );
