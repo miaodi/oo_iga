@@ -4,33 +4,34 @@
 
 #pragma once
 
-#include <boost/math/special_functions/binomial.hpp>
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 #include <Eigen/StdVector>
+#include <KnotVector.h>
+#include <boost/math/special_functions/binomial.hpp>
 #include <iostream>
 #include <iterator>
 #include <map>
 #include <set>
 #include <vector>
 
-#ifndef NDEBUG
-#define ASSERT(condition, message)                                             \
-    do                                                                         \
-    {                                                                          \
-        if (!(condition))                                                      \
-        {                                                                      \
-            std::cerr << "Assertion `" #condition "` failed in " << __FILE__   \
-                      << " line " << __LINE__ << ": " << message << std::endl; \
-            std::terminate();                                                  \
-        }                                                                      \
-    } while (false)
-#else
-#define ASSERT(condition, message) \
-    do                             \
-    {                              \
-    } while (false)
-#endif
+// #ifndef NDEBUG
+// #define ASSERT(condition, message)                                             \
+//     do                                                                         \
+//     {                                                                          \
+//         if (!(condition))                                                      \
+//         {                                                                      \
+//             std::cerr << "Assertion `" #condition "` failed in " << __FILE__   \
+//                       << " line " << __LINE__ << ": " << message << std::endl; \
+//             std::terminate();                                                  \
+//         }                                                                      \
+//     } while (false)
+// #else
+// #define ASSERT(condition, message) \
+//     do                             \
+//     {                              \
+//     } while (false)
+// #endif
 
 template <int d, int N, typename T>
 class PhyTensorBsplineBasis;
@@ -87,11 +88,11 @@ void degreeElevate( int t, KnotVector<T>& U, ContPtsList<T, N>& P )
     int m = n + p + 1;
     int ph = p + t;
     int ph2 = ph / 2;
-    Matrix<T, Dynamic, Dynamic> bezalfs( p + t + 1, p + 1 );                             // coefficients for degree elevating the Bezier segment
-    std::vector<Matrix<T, N, 1>, aligned_allocator<Matrix<T, N, 1>>> bpts( p + 1 );      // pth-degree Bezier control points of the current segment
+    Matrix<T, Dynamic, Dynamic> bezalfs( p + t + 1, p + 1 ); // coefficients for degree elevating the Bezier segment
+    std::vector<Matrix<T, N, 1>, aligned_allocator<Matrix<T, N, 1>>> bpts( p + 1 ); // pth-degree Bezier control points of the current segment
     std::vector<Matrix<T, N, 1>, aligned_allocator<Matrix<T, N, 1>>> ebpts( p + t + 1 ); // (p+t)th-degree Bezier control points of the  current segment
-    std::vector<Matrix<T, N, 1>, aligned_allocator<Matrix<T, N, 1>>> Nextbpts( p - 1 );  // leftmost control points of the next Bezier segment
-    std::vector<T> alphas( p - 1, T( 0 ) );                                              // knot instertion alphas.
+    std::vector<Matrix<T, N, 1>, aligned_allocator<Matrix<T, N, 1>>> Nextbpts( p - 1 ); // leftmost control points of the next Bezier segment
+    std::vector<T> alphas( p - 1, T( 0 ) );                                             // knot instertion alphas.
     // Compute the binomial coefficients
     Matrix<T, Dynamic, Dynamic> Bin( ph + 1, ph2 + 1 );
     bezalfs.setZero();
@@ -476,7 +477,8 @@ Matrix<T, Dynamic, Dynamic> Gramian( int p )
     {
         for ( int j = 0; j <= i; j++ )
         {
-            res( i, j ) = binomial_coefficient<T>( p, i ) * binomial_coefficient<T>( p, j ) / ( 2 * p + 1 ) / binomial_coefficient<T>( 2 * p, i + j );
+            res( i, j ) = binomial_coefficient<T>( p, i ) * binomial_coefficient<T>( p, j ) / ( 2 * p + 1 ) /
+                          binomial_coefficient<T>( 2 * p, i + j );
         }
     }
     res = res.template selfadjointView<Eigen::Lower>();
@@ -602,7 +604,8 @@ void removeRow( Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& matrix, unsign
     unsigned int numCols = matrix.cols();
 
     if ( rowToRemove < numRows )
-        matrix.block( rowToRemove, 0, numRows - rowToRemove, numCols ) = matrix.block( rowToRemove + 1, 0, numRows - rowToRemove, numCols );
+        matrix.block( rowToRemove, 0, numRows - rowToRemove, numCols ) =
+            matrix.block( rowToRemove + 1, 0, numRows - rowToRemove, numCols );
 
     matrix.conservativeResize( numRows, numCols );
 }
@@ -614,15 +617,15 @@ void removeColumn( Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>& matrix, uns
     unsigned int numCols = matrix.cols() - 1;
 
     if ( colToRemove < numCols )
-        matrix.block( 0, colToRemove, numRows, numCols - colToRemove ) = matrix.block( 0, colToRemove + 1, numRows, numCols - colToRemove );
+        matrix.block( 0, colToRemove, numRows, numCols - colToRemove ) =
+            matrix.block( 0, colToRemove + 1, numRows, numCols - colToRemove );
 
     matrix.conservativeResize( numRows, numCols );
 }
 
 template <typename T>
-std::tuple<Eigen::Matrix<T, 3, 1>, Eigen::Matrix<T, 3, 1>, Eigen::Matrix<T, 3, 1>> CovariantToContravariant( const Eigen::Matrix<T, 3, 1>& v1,
-                                                                                                             const Eigen::Matrix<T, 3, 1>& v2,
-                                                                                                             const Eigen::Matrix<T, 3, 1>& v3 )
+std::tuple<Eigen::Matrix<T, 3, 1>, Eigen::Matrix<T, 3, 1>, Eigen::Matrix<T, 3, 1>> CovariantToContravariant(
+    const Eigen::Matrix<T, 3, 1>& v1, const Eigen::Matrix<T, 3, 1>& v2, const Eigen::Matrix<T, 3, 1>& v3 )
 {
     T J = v1.dot( v2.cross( v3 ) );
     return std::make_tuple( 1.0 / J * v2.cross( v3 ), 1.0 / J * v3.cross( v1 ), 1.0 / J * v1.cross( v2 ) );
@@ -699,6 +702,27 @@ SparseMatrix<T, ColMajor> SpVecToSpMat( ForwardIterator begin, ForwardIterator e
     return result;
 }
 
+// find a better way 
+template <typename ForwardIterator, typename T = typename std::iterator_traits<ForwardIterator>::value_type::second_type::Scalar>
+SparseMatrix<T, ColMajor> SpVecPairToSpMat( ForwardIterator begin, ForwardIterator end )
+{
+    SparseMatrix<T, ColMajor> result;
+    int num_of_cols = end - begin;
+    int num_of_rows = begin->second.rows();
+    result.resize( num_of_rows, num_of_cols );
+    for ( auto it = begin; it != end; ++it )
+    {
+        int non_zeros = it->second.nonZeros();
+        const auto inner_IndexPtr = it->second.innerIndexPtr();
+        const auto valuePtr = it->second.valuePtr();
+        for ( int i = 0; i < non_zeros; ++i )
+        {
+            result.coeffRef( *( inner_IndexPtr + i ), it - begin ) = *( valuePtr + i );
+        }
+    }
+    return result;
+}
+
 template <typename Sp, typename T = typename Sp::Scalar>
 std::vector<SparseVector<T, ColMajor>> OrthonormalSpVec( const Sp& sp )
 {
@@ -727,24 +751,135 @@ std::vector<SparseVector<T, ColMajor>> OrthonormalSpVec( const Sp& sp )
     }
 }
 
-template <class Input1, class Input2, class Output1, class Output2, class Output3>
-void decompose_sets(Input1 first1, Input1 last1,
-                    Input2 first2, Input2 last2,
-                    Output1 result1, Output2 result2,
-                    Output3 result3)
+template <typename SpPair, typename T = typename SpPair::second_type::Scalar>
+std::vector<std::pair<int, SparseVector<T, ColMajor>>> OrthonormalSpVec( const SpPair& sp )
 {
-    while (first1 != last1 && first2 != last2) {
-        if (*first1 < *first2) {
+    int size = sp.second.rows();
+    int non_zeros = sp.second.nonZeros();
+    if ( non_zeros == 1 )
+    {
+        return std::vector<std::pair<int, SparseVector<T, ColMajor>>>{};
+    }
+    else
+    {
+        const auto inner_IndexPtr = sp.second.innerIndexPtr();
+        std::vector<std::pair<int, SparseVector<T, ColMajor>>> result;
+        Matrix<T, Dynamic, Dynamic> dense_orthonormal = OrthonormalHelper<T>( non_zeros );
+        for ( int i = 1; i < non_zeros; ++i )
+        {
+            SparseVector<T, ColMajor> temp;
+            temp.resize( size );
+            for ( int j = 0; j < non_zeros; ++j )
+            {
+                temp.coeffRef( *( inner_IndexPtr + j ) ) = dense_orthonormal( j, i );
+            }
+            result.push_back( std::move( std::make_pair( sp.first, temp ) ) );
+        }
+        return result;
+    }
+}
+
+template <class Input1, class Input2, class Output1, class Output2, class Output3>
+void decompose_sets( Input1 first1, Input1 last1, Input2 first2, Input2 last2, Output1 result1, Output2 result2, Output3 result3 )
+{
+    while ( first1 != last1 && first2 != last2 )
+    {
+        if ( *first1 < *first2 )
+        {
             *result1++ = *first1++;
-        } else if (*first2 < *first1) {
+        }
+        else if ( *first2 < *first1 )
+        {
             *result2++ = *first2++;
-        } else {
+        }
+        else
+        {
             *result3++ = *first1++;
             ++first2; // skip common value in set2
         }
     }
-    std::copy(first1, last1, result1);
-    std::copy(first2, last2, result2);
+    std::copy( first1, last1, result1 );
+    std::copy( first2, last2, result2 );
 }
 
+// Assembly matrix A for polynomial completeness dual.
+template <typename T>
+std::vector<std::pair<int, Eigen::SparseVector<T>>> BasisAssemblyVecs( const KnotVector<T>& kv )
+{
+    // basic variables
+    int dof = kv.GetDOF();
+    int elements = kv.NumOfElements();
+    int degree = kv.GetDegree();
+    int dof_in_element = degree + 1;
+    std::vector<std::pair<int, Eigen::SparseVector<T>>> result;
+    for ( int i = 0; i < dof; ++i )
+    {
+        result.push_back( std::make_pair( i, Eigen::SparseVector<T>() ) );
+        result[i].second.resize( elements * dof_in_element );
+    }
+    for ( int i = 0; i < elements; i++ )
+    {
+        auto indices_in_ele = kv.IndicesInElement( i );
+        for ( int j = 0; j < dof_in_element; ++j )
+        {
+            result[indices_in_ele[j]].second.coeffRef( dof_in_element * i + j ) = 1;
+        }
+    }
+    for ( auto& i : result )
+    {
+        i.second /= i.second.nonZeros();
+    }
+    return result;
+}
+
+int Factorial( const int n );
+
+// inner product of Bernstein B^p and polynomials {1, t, ..., t^q}
+template <typename T>
+Matrix<T, Dynamic, Dynamic> BernsteinInnerPolynomial( const int p, const int q )
+{
+    using namespace boost::math;
+    Matrix<T, Dynamic, Dynamic> res( p + 1, q + 1 );
+    for ( int i = 0; i <= p; i++ )
+    {
+        for ( int j = 0; j <= q; j++ )
+        {
+            res( i, j ) = binomial_coefficient<T>( p, i ) * Factorial( i + j ) * Factorial( p - i ) / Factorial( 1 + j + p );
+        }
+    }
+    return res;
+}
+
+// map {1, t,..., t^n} to {1, (t-a)/(b-a),..., (t-a)^n/(b-a)^n}
+template <typename T>
+Matrix<T, Dynamic, Dynamic> AffineMappingOp( const int p, const T a, const T b )
+{
+    using namespace boost::math;
+    Matrix<T, Dynamic, Dynamic> res( p + 1, p + 1 );
+    res.setZero();
+    for ( int j = 0; j <= p; j++ )
+    {
+        for ( int i = 0; i <= j; i++ )
+        {
+            res( i, j ) = binomial_coefficient<T>( j, i ) * pow( 1.0 / ( b - a ), i ) * pow( -a / ( b - a ), j - i );
+        }
+    }
+    return res;
+}
+
+template <typename T>
+Matrix<T, Dynamic, Dynamic> AffineMappingOp( const int p, const std::pair<T, T>& ab )
+{
+    using namespace boost::math;
+    const auto a = ab.first;
+    const auto b = ab.second;
+    return AffineMappingOp<T>( p, a, b );
+}
+
+template <typename T>
+std::pair<T, T> AffineMappingCoef( const std::pair<T, T>& ab0, const std::pair<T, T>& ab1 )
+{
+    return std::make_pair( ( ab1.first - ab0.first ) / ( ab0.second - ab0.first ),
+                      ( ab1.second - ab0.first ) / ( ab0.second - ab0.first ) );
+}
 } // namespace Accessory

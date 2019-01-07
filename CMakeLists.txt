@@ -16,6 +16,11 @@ LINK_DIRECTORIES(${arpack_ng_LIBRARIES})
 include_directories(include)
 file(GLOB SOURCE_FILES "src/*.cpp")
 add_executable(oo_iga ${SOURCE_FILES})
+# add_executable(oo_iga   src/BsplineBasis.cpp
+#                         src/KnotVector.cpp
+#                         src/Utility.cpp
+#                         src/main.cpp
+#                         src/QuadratureRule.cpp)
 target_link_libraries(oo_iga gmp arpack)
 
 

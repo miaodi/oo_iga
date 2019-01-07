@@ -1,6 +1,7 @@
 #include "BendingStiffnessVisitor.hpp"
 #include "BiharmonicInterfaceVisitor.hpp"
 #include "BiharmonicStiffnessVisitor.hpp"
+#include "BsplineBasis.h"
 #include "ConstraintAssembler.hpp"
 #include "DofMapper.hpp"
 #include "L2StiffnessVisitor.hpp"
@@ -10,19 +11,15 @@
 #include "StiffnessAssembler.hpp"
 #include "Surface.hpp"
 #include "Utility.hpp"
-#include <Eigen/Dense>
-#include <Eigen/Geometry>
 #include <boost/math/constants/constants.hpp>
 #include <boost/math/special_functions/legendre.hpp>
+#include <eigen3/Eigen/Dense>
+#include <eigen3/Eigen/Geometry>
+#include <eigen3/unsupported/Eigen/KroneckerProduct>
 #include <fstream>
 #include <iostream>
 #include <time.h>
-#include <unsupported/Eigen/ArpackSupport>
-#include <unsupported/Eigen/KroneckerProduct>
 
-typedef Eigen::SparseMatrix<double> SparseMat;
-typedef Eigen::SimplicialLDLT<SparseMat> SparseChol;
-typedef Eigen::ArpackGeneralizedSelfAdjointEigenSolver<SparseMat, SparseChol> Arpack;
 using namespace Eigen;
 using namespace std;
 using GeometryVector = PhyTensorBsplineBasis<2, 2, double>::GeometryVector;
@@ -153,49 +150,43 @@ int main()
             SparseMatrix<double> sp1;
             constraint_assemble.AssembleByCodimension( sp1 );
 
-            StiffnessAssembler<H2StiffnessVisitor<2, 2, double>> H2stiffness_assemble( dof );
-            StiffnessAssembler<BiharmonicStiffnessVisitor<double>> biharmonic_stiffness_assemble( dof );
-            SparseMatrix<double> biharmonic_stiffness_matrix, load_vector, h2_stiffness_matrix;
+            StiffnessAssembler<BiharmonicStiffnessVisitor<double>> stiffness_assemble( dof );
+            SparseMatrix<double> stiffness_matrix, load_vector;
 
-            h2_stiffness_matrix.resize( dof.TotalDof(), dof.TotalDof() );
-            biharmonic_stiffness_matrix.resize( dof.TotalDof(), dof.TotalDof() );
+            stiffness_matrix.resize( dof.TotalDof(), dof.TotalDof() );
             load_vector.resize( dof.TotalDof(), 1 );
-            biharmonic_stiffness_assemble.Assemble( cells, biharmonic_stiffness_matrix );
-            H2stiffness_assemble.Assemble( cells, h2_stiffness_matrix );
+            stiffness_assemble.Assemble( cells, body_force, stiffness_matrix, load_vector );
 
-            SimplicialLDLT<Eigen::SparseMatrix<double>> cg;
-            cg.compute( sp1.transpose() * h2_stiffness_matrix * sp1 );
-            SparseMatrix<double> Solution = cg.solve( sp1.transpose() * biharmonic_stiffness_matrix * sp1 );
-            Arpack arpack;
-            int nbrEigenvalues = 2;
-            arpack.compute( Solution, nbrEigenvalues, "SM" );
-            cout << "arpack eigenvalues\n" << arpack.eigenvalues().transpose() << endl;
+            SparseMatrix<double> constrained_stiffness_matrix = sp1.transpose() * stiffness_matrix * sp1;
+            SparseMatrix<double> constrained_rhs = sp1.transpose() * ( load_vector );
+            ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower | Eigen::Upper> cg;
+            cg.compute( constrained_stiffness_matrix );
+            VectorXd Solution = sp1 * cg.solve( constrained_rhs );
+            vector<KnotVector<double>> solutionDomain1, solutionDomain2, solutionDomain3, solutionDomain4, solutionDomain5;
+            solutionDomain1.push_back( domains[0]->KnotVectorGetter( 0 ) );
+            solutionDomain1.push_back( domains[0]->KnotVectorGetter( 1 ) );
+            solutionDomain2.push_back( domains[1]->KnotVectorGetter( 0 ) );
+            solutionDomain2.push_back( domains[1]->KnotVectorGetter( 1 ) );
+            solutionDomain3.push_back( domains[2]->KnotVectorGetter( 0 ) );
+            solutionDomain3.push_back( domains[2]->KnotVectorGetter( 1 ) );
+            solutionDomain4.push_back( domains[3]->KnotVectorGetter( 0 ) );
+            solutionDomain4.push_back( domains[3]->KnotVectorGetter( 1 ) );
+            solutionDomain5.push_back( domains[4]->KnotVectorGetter( 0 ) );
+            solutionDomain5.push_back( domains[4]->KnotVectorGetter( 1 ) );
+            VectorXd controlDomain1 = Solution.segment( dof.StartingDof( cells[0]->GetID() ), domains[0]->GetDof() );
+            VectorXd controlDomain2 = Solution.segment( dof.StartingDof( cells[1]->GetID() ), domains[1]->GetDof() );
+            VectorXd controlDomain3 = Solution.segment( dof.StartingDof( cells[2]->GetID() ), domains[2]->GetDof() );
+            VectorXd controlDomain4 = Solution.segment( dof.StartingDof( cells[3]->GetID() ), domains[3]->GetDof() );
+            VectorXd controlDomain5 = Solution.segment( dof.StartingDof( cells[4]->GetID() ), domains[4]->GetDof() );
+            vector<shared_ptr<PhyTensorBsplineBasis<2, 1, double>>> solutions( 5 );
+            solutions[0] = make_shared<PhyTensorBsplineBasis<2, 1, double>>( solutionDomain1, controlDomain1 );
+            solutions[1] = make_shared<PhyTensorBsplineBasis<2, 1, double>>( solutionDomain2, controlDomain2 );
+            solutions[2] = make_shared<PhyTensorBsplineBasis<2, 1, double>>( solutionDomain3, controlDomain3 );
+            solutions[3] = make_shared<PhyTensorBsplineBasis<2, 1, double>>( solutionDomain4, controlDomain4 );
+            solutions[4] = make_shared<PhyTensorBsplineBasis<2, 1, double>>( solutionDomain5, controlDomain5 );
 
-            // vector<KnotVector<double>> solutionDomain1, solutionDomain2, solutionDomain3, solutionDomain4, solutionDomain5;
-            // solutionDomain1.push_back( domains[0]->KnotVectorGetter( 0 ) );
-            // solutionDomain1.push_back( domains[0]->KnotVectorGetter( 1 ) );
-            // solutionDomain2.push_back( domains[1]->KnotVectorGetter( 0 ) );
-            // solutionDomain2.push_back( domains[1]->KnotVectorGetter( 1 ) );
-            // solutionDomain3.push_back( domains[2]->KnotVectorGetter( 0 ) );
-            // solutionDomain3.push_back( domains[2]->KnotVectorGetter( 1 ) );
-            // solutionDomain4.push_back( domains[3]->KnotVectorGetter( 0 ) );
-            // solutionDomain4.push_back( domains[3]->KnotVectorGetter( 1 ) );
-            // solutionDomain5.push_back( domains[4]->KnotVectorGetter( 0 ) );
-            // solutionDomain5.push_back( domains[4]->KnotVectorGetter( 1 ) );
-            // VectorXd controlDomain1 = Solution.segment( dof.StartingDof( cells[0]->GetID() ), domains[0]->GetDof() );
-            // VectorXd controlDomain2 = Solution.segment( dof.StartingDof( cells[1]->GetID() ), domains[1]->GetDof() );
-            // VectorXd controlDomain3 = Solution.segment( dof.StartingDof( cells[2]->GetID() ), domains[2]->GetDof() );
-            // VectorXd controlDomain4 = Solution.segment( dof.StartingDof( cells[3]->GetID() ), domains[3]->GetDof() );
-            // VectorXd controlDomain5 = Solution.segment( dof.StartingDof( cells[4]->GetID() ), domains[4]->GetDof() );
-            // vector<shared_ptr<PhyTensorBsplineBasis<2, 1, double>>> solutions( 5 );
-            // solutions[0] = make_shared<PhyTensorBsplineBasis<2, 1, double>>( solutionDomain1, controlDomain1 );
-            // solutions[1] = make_shared<PhyTensorBsplineBasis<2, 1, double>>( solutionDomain2, controlDomain2 );
-            // solutions[2] = make_shared<PhyTensorBsplineBasis<2, 1, double>>( solutionDomain3, controlDomain3 );
-            // solutions[3] = make_shared<PhyTensorBsplineBasis<2, 1, double>>( solutionDomain4, controlDomain4 );
-            // solutions[4] = make_shared<PhyTensorBsplineBasis<2, 1, double>>( solutionDomain5, controlDomain5 );
-
-            // PostProcess<double> post_process( cells, solutions, analytical_solution );
-            // cout << "L2 error: " << post_process.RelativeL2Error() << "H2 error: " << post_process.RelativeH2Error() << endl;
+            PostProcess<double> post_process( cells, solutions, analytical_solution );
+            cout << "L2 error: " << post_process.RelativeL2Error() << "H2 error: " << post_process.RelativeH2Error() << endl;
         }
         cout << endl;
     }

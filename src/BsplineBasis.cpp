@@ -145,57 +145,69 @@ typename BsplineBasis<T>::BasisFunValDerAllList_ptr BsplineBasis<T>::BezierDual(
     T uPara = ( u - span( 0 ) ) / ( span( 1 ) - span( 0 ) );
     auto bernstein = Accessory::AllBernstein( degree, uPara );
     Eigen::Map<vector> bernsteinVector( bernstein.data(), bernstein.size() );
-    if ( !_complete_dual )
+    // if ( !_complete_dual )
+    // {
+    //     int spanNum = _basisKnot.SpanNum( u );
+    //     int firstIndex = FirstActive( u );
+    //     vector weight = _basisWeight.block( spanNum, firstIndex, 1, degree + 1 ).transpose();
+    //     vector dual = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>( weight.asDiagonal() ) *
+    //                   _reconstruction[spanNum].transpose() * _gramianInv * bernsteinVector / ( span( 1 ) - span( 0 ) );
+    //     BasisFunValDerAll aaa{0, std::vector<T>( 1, 0 )};
+    //     BasisFunValDerAllList_ptr result( new BasisFunValDerAllList( degree + 1, aaa ) );
+    //     for ( int ii = 0; ii != result->size(); ii++ )
+    //         ( *result )[ii].second[0] = dual( ii );
+    //     for ( int ii = 0; ii != result->size(); ++ii )
+    //     {
+    //         ( *result )[ii].first = firstIndex + ii;
+    //     }
+    //     return result;
+    // }
+    // else
+    // {
+    //     int spanNum = _basisKnot.SpanNum( u );
+    //     vector dual = _localWeightContainer[spanNum].second.transpose() * _reconstruction[spanNum].transpose() *
+    //                   _gramianInv * bernsteinVector / ( span( 1 ) - span( 0 ) );
+    //     BasisFunValDerAll aaa{0, std::vector<T>( 1, 0 )};
+    //     BasisFunValDerAllList_ptr result( new BasisFunValDerAllList( _localWeightContainer[spanNum].second.cols(), aaa ) );
+    //     for ( int ii = 0; ii != result->size(); ii++ )
+    //         ( *result )[ii].second[0] = dual( ii );
+    //     for ( int ii = 0; ii != result->size(); ++ii )
+    //     {
+    //         ( *result )[ii].first = _localWeightContainer[spanNum].first + ii;
+    //     }
+    //     return result;
+    // }
+
+    int spanNum = _basisKnot.SpanNum( u );
+    vector dual = _dualBasis._localWeightContainer[spanNum].second.transpose() * _reconstruction[spanNum].transpose() *
+                  _gramianInv * bernsteinVector / ( span( 1 ) - span( 0 ) );
+    BasisFunValDerAll aaa{0, std::vector<T>( 1, 0 )};
+    BasisFunValDerAllList_ptr result( new BasisFunValDerAllList( _dualBasis._localWeightContainer[spanNum].second.cols(), aaa ) );
+    for ( int ii = 0; ii != result->size(); ii++ )
+        ( *result )[ii].second[0] = dual( ii );
+    for ( int ii = 0; ii != result->size(); ++ii )
     {
-        int spanNum = _basisKnot.SpanNum( u );
-        int firstIndex = FirstActive( u );
-        vector weight = _basisWeight.block( spanNum, firstIndex, 1, degree + 1 ).transpose();
-        vector dual = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>( weight.asDiagonal() ) *
-                      _reconstruction[spanNum].transpose() * _gramianInv * bernsteinVector / ( span( 1 ) - span( 0 ) );
-        BasisFunValDerAll aaa{0, std::vector<T>( 1, 0 )};
-        BasisFunValDerAllList_ptr result( new BasisFunValDerAllList( degree + 1, aaa ) );
-        for ( int ii = 0; ii != result->size(); ii++ )
-            ( *result )[ii].second[0] = dual( ii );
-        for ( int ii = 0; ii != result->size(); ++ii )
-        {
-            ( *result )[ii].first = firstIndex + ii;
-        }
-        return result;
+        ( *result )[ii].first = _dualBasis._localWeightContainer[spanNum].first + ii;
     }
-    else
-    {
-        int spanNum = _basisKnot.SpanNum( u );
-        vector dual = _localWeightContainer[spanNum].second.transpose() * _reconstruction[spanNum].transpose() *
-                      _gramianInv * bernsteinVector / ( span( 1 ) - span( 0 ) );
-        BasisFunValDerAll aaa{0, std::vector<T>( 1, 0 )};
-        BasisFunValDerAllList_ptr result( new BasisFunValDerAllList( _localWeightContainer[spanNum].second.cols(), aaa ) );
-        for ( int ii = 0; ii != result->size(); ii++ )
-            ( *result )[ii].second[0] = dual( ii );
-        for ( int ii = 0; ii != result->size(); ++ii )
-        {
-            ( *result )[ii].first = _localWeightContainer[spanNum].first + ii;
-        }
-        return result;
-    }
+    return result;
 }
 
 template <typename T>
 typename BsplineBasis<T>::BasisFunValDerAllList_ptr BsplineBasis<T>::EvalCodimensionBezierDual( const T& u ) const
 {
-    auto evals = BezierDual( u );
+    auto evals = EvalDerAll( u, 0 );
     int dof = GetDof();
     for ( auto& i : *evals )
     {
-        if ( i.first == 0 )
-        {
-        }
-        else if ( i.first == 1 || i.first == 2 )
+        if ( i.first == 0 || i.first == 1 )
         {
             i.first = 0;
+            i.second[0] = 0;
         }
         else if ( i.first == dof - 1 || i.first == dof - 2 )
         {
             i.first = dof - 5;
+            i.second[0] = 0;
         }
         else
         {
@@ -211,80 +223,85 @@ void BsplineBasis<T>::BezierDualInitialize()
     int degree = _basisKnot.GetDegree();
     _reconstruction = *Accessory::BezierReconstruction<T>( _basisKnot );
     _gramianInv = Accessory::GramianInverse<T>( degree );
-    _localWeightContainer.clear();
 
-    if ( !_complete_dual )
-    {
-        _basisWeight = std::move( *BasisWeight() );
-    }
-    else
-    {
-        auto assemble_vecs = BasisAssemblyVecs();
-        int polynomial_completeness = degree - 2;
-        auto lhs_rhs = LhsRhsAssembler( polynomial_completeness );
-        auto sp_assemble = Accessory::SpVecToSpMat( assemble_vecs.begin(), assemble_vecs.end() );
-        matrix kernel_matrix = lhs_rhs.second - sp_assemble * lhs_rhs.first;
-        auto spans = _basisKnot.KnotSpans();
-        std::vector<Eigen::SparseVector<T, Eigen::ColMajor>> kernel_basis_container;
-        std::vector<Eigen::Triplet<T>> kernel_weight_triplets;
-        for ( int i = 0; i < assemble_vecs.size(); ++i )
-        {
-            auto kernel_basis = Accessory::OrthonormalSpVec( assemble_vecs[i] );
-            if ( kernel_basis.size() > 0 )
-            {
-                int non_zeros = assemble_vecs[i].nonZeros();
-                const auto inner_IndexPtr = assemble_vecs[i].innerIndexPtr();
-                int anchor_element = *( inner_IndexPtr + non_zeros / 2 ) / ( degree + 1 );
-                auto eval = EvalDerAll( ( spans[anchor_element].first + spans[anchor_element].second ) / 2, 0 );
-                std::vector<int> indices;
-                for ( const auto& j : *eval )
-                {
-                    indices.push_back( j.first );
-                }
+    // if ( !_complete_dual )
+    // {
+    //     _basisWeight = std::move( *BasisWeight() );
+    // }
+    // else
+    // {
+    //     auto assemble_vecs = BasisAssemblyVecs();
+    //     int polynomial_completeness = degree - 0;
+    //     auto lhs_rhs = LhsRhsAssembler( polynomial_completeness );
+    //     auto sp_assemble = Accessory::SpVecToSpMat( assemble_vecs.begin(), assemble_vecs.end() );
+    //     matrix kernel_matrix = lhs_rhs.second - sp_assemble * lhs_rhs.first;
+    //     auto spans = _basisKnot.KnotSpans();
+    //     std::vector<Eigen::SparseVector<T, Eigen::ColMajor>> kernel_basis_container;
+    //     std::vector<Eigen::Triplet<T>> kernel_weight_triplets;
+    //     for ( int i = 0; i < assemble_vecs.size(); ++i )
+    //     {
+    //         auto kernel_basis = Accessory::OrthonormalSpVec( assemble_vecs[i] );
+    //         if ( kernel_basis.size() > 0 )
+    //         {
+    //             int non_zeros = assemble_vecs[i].nonZeros();
+    //             const auto inner_IndexPtr = assemble_vecs[i].innerIndexPtr();
+    //             int anchor_element = *( inner_IndexPtr + non_zeros / 2 ) / ( degree + 1 );
+    //             auto eval = EvalDerAll( ( spans[anchor_element].first + spans[anchor_element].second ) / 2, 0 );
+    //             std::vector<int> indices;
+    //             for ( const auto& j : *eval )
+    //             {
+    //                 indices.push_back( j.first );
+    //             }
 
-                auto selected_dofs = Accessory::NClosestDof( indices, i, polynomial_completeness + 1 );
-                Eigen::Ref<matrix> selected_basis =
-                    lhs_rhs.first.block( selected_dofs[0], 0, polynomial_completeness + 1, polynomial_completeness + 1 );
-                auto sp_kernel_basis = Accessory::SpVecToSpMat( kernel_basis.begin(), kernel_basis.end() );
-                matrix local_rhs = kernel_matrix.transpose() * sp_kernel_basis;
-                matrix local_kernel_weight = selected_basis.transpose().fullPivLu().solve( local_rhs );
-                for ( int it_x = 0; it_x < local_kernel_weight.rows(); ++it_x )
-                {
-                    for ( int it_y = 0; it_y < local_kernel_weight.cols(); ++it_y )
-                    {
-                        kernel_weight_triplets.emplace_back( Eigen::Triplet<T>(
-                            kernel_basis_container.size() + it_y, selected_dofs[0] + it_x, local_kernel_weight( it_x, it_y ) ) );
-                    }
-                }
-                std::copy( kernel_basis.begin(), kernel_basis.end(), std::back_inserter( kernel_basis_container ) );
-            }
-        }
-        Eigen::SparseMatrix<T> kernel_weight;
-        const int dof = _basisKnot.GetDOF();
-        kernel_weight.resize( kernel_basis_container.size(), dof );
-        kernel_weight.setFromTriplets( kernel_weight_triplets.begin(), kernel_weight_triplets.end() );
-        auto sp_kernel = Accessory::SpVecToSpMat( kernel_basis_container.begin(), kernel_basis_container.end() );
-        _basisWeight = std::move( matrix( sp_kernel * kernel_weight + sp_assemble ) );
-        for ( int i = 0; i < spans.size(); ++i )
-        {
-            int start_dof, end_dof, start_bezier_dof;
-            start_bezier_dof = i * ( degree + 1 );
-            T mid_u = ( spans[i].first + spans[i].second ) / 2;
-            start_dof = FirstActive( mid_u );
-            end_dof = start_dof;
-            while ( start_dof - 1 >= 0 && _basisWeight.block( start_bezier_dof, start_dof - 1, degree + 1, 1 ).norm() > 0 )
-            {
-                start_dof--;
-            }
-            while ( end_dof < dof && _basisWeight.block( start_bezier_dof, end_dof, degree + 1, 1 ).norm() > 0 )
-            {
-                end_dof++;
-            }
-            _localWeightContainer.emplace_back(
-                std::make_pair( start_dof, static_cast<Eigen::Ref<matrix>>( _basisWeight.block(
-                                               start_bezier_dof, start_dof, degree + 1, end_dof - start_dof ) ) ) );
-        }
-    }
+    //             auto selected_dofs = Accessory::NClosestDof( indices, i, polynomial_completeness + 1 );
+    //             Eigen::Ref<matrix> selected_basis =
+    //                 lhs_rhs.first.block( selected_dofs[0], 0, polynomial_completeness + 1, polynomial_completeness + 1 );
+    //             auto sp_kernel_basis = Accessory::SpVecToSpMat( kernel_basis.begin(), kernel_basis.end() );
+    //             matrix local_rhs = kernel_matrix.transpose() * sp_kernel_basis;
+    //             matrix local_kernel_weight = selected_basis.transpose().fullPivLu().solve( local_rhs );
+
+    //             for ( int it_x = 0; it_x < local_kernel_weight.rows(); ++it_x )
+    //             {
+    //                 for ( int it_y = 0; it_y < local_kernel_weight.cols(); ++it_y )
+    //                 {
+    //                     kernel_weight_triplets.emplace_back( Eigen::Triplet<T>(
+    //                         kernel_basis_container.size() + it_y, selected_dofs[0] + it_x, local_kernel_weight( it_x, it_y ) ) );
+    //                 }
+    //             }
+    //             std::copy( kernel_basis.begin(), kernel_basis.end(), std::back_inserter( kernel_basis_container ) );
+    //         }
+    //     }
+    //     Eigen::SparseMatrix<T> kernel_weight;
+    //     const int dof = _basisKnot.GetDOF();
+    //     kernel_weight.resize( kernel_basis_container.size(), dof );
+    //     kernel_weight.setFromTriplets( kernel_weight_triplets.begin(), kernel_weight_triplets.end() );
+    //     auto sp_kernel = Accessory::SpVecToSpMat( kernel_basis_container.begin(), kernel_basis_container.end() );
+    //     _basisWeight = std::move( matrix( sp_kernel * kernel_weight + sp_assemble ) );
+
+    //     for ( int i = 0; i < spans.size(); ++i )
+    //     {
+    //         int start_dof, end_dof, start_bezier_dof;
+    //         start_bezier_dof = i * ( degree + 1 );
+    //         T mid_u = ( spans[i].first + spans[i].second ) / 2;
+    //         start_dof = FirstActive( mid_u );
+    //         end_dof = start_dof;
+    //         while ( start_dof - 1 >= 0 && _basisWeight.block( start_bezier_dof, start_dof - 1, degree + 1, 1 ).norm() > 0 )
+    //         {
+    //             start_dof--;
+    //         }
+    //         while ( end_dof < dof && _basisWeight.block( start_bezier_dof, end_dof, degree + 1, 1 ).norm() > 0 )
+    //         {
+    //             end_dof++;
+    //         }
+    //         _localWeightContainer.emplace_back(
+    //             std::make_pair( start_dof, static_cast<Eigen::Ref<matrix>>( _basisWeight.block(
+    //                                            start_bezier_dof, start_dof, degree + 1, end_dof - start_dof ) ) ) );
+    //     }
+    // }
+
+    _dualBasis._basisKnot = &( this->_basisKnot );
+    _dualBasis._codimension = 2;
+    _dualBasis.Initialization();
 }
 
 // Reduce the order of first two and last two elements by one (Serve as the Lagrange multiplier). The weights for boundary basis are computed.
@@ -478,7 +495,8 @@ std::pair<typename BsplineBasis<T>::matrix, typename BsplineBasis<T>::matrix> Bs
             matrix polynomials( 1, degree_of_completeness + 1 );
             for ( int i = 0; i <= degree_of_completeness; i++ )
             {
-                polynomials( 0, i ) = legendre_p( i, f( u ) );
+                // polynomials( 0, i ) = legendre_p( i, f( u ) );
+                polynomials( 0, i ) = pow( u, i );
             }
             rhs.block( ( degree + 1 ) * i, 0, ( degree + 1 ), degree_of_completeness + 1 ) += j.second * temp.transpose() * polynomials;
             lhs.block( ( *evals )[0].first, 0, ( degree + 1 ), degree_of_completeness + 1 ) +=
@@ -848,6 +866,6 @@ typename BsplineBasis<T>::vector BsplineBasis<T>::Support( const int i ) const
     return res;
 }
 
-template class BsplineBasis<long double>;
+// template class BsplineBasis<long double>;
 template class BsplineBasis<double>;
-template class BsplineBasis<float>;
+// template class BsplineBasis<float>;

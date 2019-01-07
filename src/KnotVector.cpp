@@ -285,7 +285,8 @@ KnotVector<T> KnotVector<T>::Difference( const KnotVector& reference ) const
 {
     knotContainer diff;
     typename knotContainer::iterator it;
-    std::set_difference( _multiKnots.begin(), _multiKnots.end(), reference._multiKnots.begin(), reference._multiKnots.end(), std::back_inserter( diff ) );
+    std::set_difference( _multiKnots.begin(), _multiKnots.end(), reference._multiKnots.begin(),
+                         reference._multiKnots.end(), std::back_inserter( diff ) );
     return KnotVector( diff );
 }
 
@@ -374,6 +375,21 @@ T KnotVector<T>::MeshSize() const
     return size;
 }
 
-template class KnotVector<long double>;
+template <typename T>
+std::vector<int> KnotVector<T>::SpanToElements( std::pair<T, T> span ) const
+{
+    uniContainer uni;
+    UniQue( uni );
+    auto it_begin = uni.find( span.first );
+    auto it_end = uni.find( span.second );
+    ASSERT( it_begin != uni.end() && it_end != uni.end() && it_begin != it_end, "wrong span" );
+    int start_element = std::distance( uni.begin(), it_begin );
+    int end_element = std::distance( uni.begin(), it_end ) - 1;
+    std::vector<int> res( end_element - start_element + 1 );
+    std::iota( std::begin( res ), std::end( res ), start_element );
+    return res;
+}
+
+// template class KnotVector<long double>;
 template class KnotVector<double>;
-template class KnotVector<float>;
+// template class KnotVector<float>;

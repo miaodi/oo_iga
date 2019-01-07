@@ -36,6 +36,9 @@ std::vector<int> Accessory::NClosestDof( const std::vector<int>& dofs, int targe
 {
     ASSERT( n <= dofs.size(), "Requested dofs are larger than provided dofs.\n" );
     ASSERT( n > 0, "Requested dofs are invalid.\n" );
+
+    if(target_dof<dofs[0]) target_dof=dofs[0];
+    if(target_dof>dofs.back()) target_dof = dofs.back();
     auto it = std::find( dofs.begin(), dofs.end(), target_dof );
     ASSERT( it != dofs.end(), "Target dof is not listed in dofs" );
     std::vector<std::pair<int, int>> dist_to_dof;
@@ -51,4 +54,14 @@ std::vector<int> Accessory::NClosestDof( const std::vector<int>& dofs, int targe
     }
     std::sort( result.begin(), result.end() );
     return result;
+}
+
+int Accessory::Factorial( const int n )
+{
+    int fac = 1;
+    for ( int i = 1; i <= n; ++i )
+    {
+        fac *= i;
+    }
+    return fac;
 }

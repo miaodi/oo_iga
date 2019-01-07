@@ -521,16 +521,16 @@ TensorBsplineBasis<0, T>::TensorBsplineBasis()
 {
 }
 
-template class TensorBsplineBasis<0, long double>;
-template class TensorBsplineBasis<1, long double>;
-template class TensorBsplineBasis<2, long double>;
-template class TensorBsplineBasis<3, long double>;
+// template class TensorBsplineBasis<0, long double>;
+// template class TensorBsplineBasis<1, long double>;
+// template class TensorBsplineBasis<2, long double>;
+// template class TensorBsplineBasis<3, long double>;
 
 template class TensorBsplineBasis<0, double>;
 template class TensorBsplineBasis<1, double>;
 template class TensorBsplineBasis<2, double>;
 template class TensorBsplineBasis<3, double>;
 
-template class TensorBsplineBasis<1, float>;
-template class TensorBsplineBasis<2, float>;
-template class TensorBsplineBasis<3, float>;
+// template class TensorBsplineBasis<1, float>;
+// template class TensorBsplineBasis<2, float>;
+// template class TensorBsplineBasis<3, float>;

@@ -183,19 +183,19 @@ PhyTensorBsplineBasis<2, 1, double>::PhyTensorBsplineBasis(const std::vector<Kno
     }
 }
 
-template <>
-PhyTensorBsplineBasis<2, 1, long double>::PhyTensorBsplineBasis(const std::vector<KnotVector<long double>> &base,
-                                                           const Eigen::Matrix<long double, Eigen::Dynamic, 1> &geometry)
-    : TensorBsplineBasis<2, long double>(
-          base)
-{
-    ASSERT(geometry.rows() == (this->TensorBsplineBasis<2, long double>::GetDof()),
-           "Invalid geometrical information input, check size bro.");
-    for (int i = 0; i != geometry.rows(); ++i)
-    {
-        _geometricInfo.push_back(Eigen::Matrix<long double, 1, 1>(geometry(i)));
-    }
-}
+// template <>
+// PhyTensorBsplineBasis<2, 1, long double>::PhyTensorBsplineBasis(const std::vector<KnotVector<long double>> &base,
+//                                                            const Eigen::Matrix<long double, Eigen::Dynamic, 1> &geometry)
+//     : TensorBsplineBasis<2, long double>(
+//           base)
+// {
+//     ASSERT(geometry.rows() == (this->TensorBsplineBasis<2, long double>::GetDof()),
+//            "Invalid geometrical information input, check size bro.");
+//     for (int i = 0; i != geometry.rows(); ++i)
+//     {
+//         _geometricInfo.push_back(Eigen::Matrix<long double, 1, 1>(geometry(i)));
+//     }
+// }
 
 // This is a helper class for completing the function definition.
 template <int N, typename T>
