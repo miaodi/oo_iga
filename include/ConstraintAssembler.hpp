@@ -74,7 +74,7 @@ public:
             {
                 if ( i->EdgePointerGetter( j )->IsMatched() && i->EdgePointerGetter( j )->IsSlave() )
                 {
-                    BiharmonicCodimensionInterfaceVisitor<N, T> biharmonic_interface( 2 );
+                    PoissonCodimensionInterfaceVisitor<N, T> biharmonic_interface;
                     i->EdgePointerGetter( j )->Accept( biharmonic_interface );
 
                     int slave_id = biharmonic_interface.SlaveID();
@@ -106,37 +106,37 @@ public:
                         {
                             vsv1.coeffRef( *it ) = ( *vertices_distri_data[0].first._matrix )(
                                 0, it - vertices_distri_data[0].first._colIndices->begin() );
-                            vsv2.coeffRef( *it ) = ( *vertices_distri_data[0].first._matrix )(
-                                1, it - vertices_distri_data[0].first._colIndices->begin() );
+                            // vsv2.coeffRef( *it ) = ( *vertices_distri_data[0].first._matrix )(
+                            //     1, it - vertices_distri_data[0].first._colIndices->begin() );
                         }
                         for ( auto it = vertices_distri_data[0].second._colIndices->begin();
                               it != vertices_distri_data[0].second._colIndices->end(); ++it )
                         {
                             vsv1.coeffRef( *it ) = -( *vertices_distri_data[0].second._matrix )(
                                 0, it - vertices_distri_data[0].second._colIndices->begin() );
-                            vsv2.coeffRef( *it ) = -( *vertices_distri_data[0].second._matrix )(
-                                1, it - vertices_distri_data[0].second._colIndices->begin() );
+                            // vsv2.coeffRef( *it ) = -( *vertices_distri_data[0].second._matrix )(
+                            //     1, it - vertices_distri_data[0].second._colIndices->begin() );
                         }
                         for ( auto it = vertices_distri_data[1].first._colIndices->begin();
                               it != vertices_distri_data[1].first._colIndices->end(); ++it )
                         {
                             vsv3.coeffRef( *it ) = ( *vertices_distri_data[1].first._matrix )(
                                 0, it - vertices_distri_data[1].first._colIndices->begin() );
-                            vsv4.coeffRef( *it ) = ( *vertices_distri_data[1].first._matrix )(
-                                1, it - vertices_distri_data[1].first._colIndices->begin() );
+                            // vsv4.coeffRef( *it ) = ( *vertices_distri_data[1].first._matrix )(
+                            //     1, it - vertices_distri_data[1].first._colIndices->begin() );
                         }
                         for ( auto it = vertices_distri_data[1].second._colIndices->begin();
                               it != vertices_distri_data[1].second._colIndices->end(); ++it )
                         {
                             vsv3.coeffRef( *it ) = -( *vertices_distri_data[1].second._matrix )(
                                 0, it - vertices_distri_data[1].second._colIndices->begin() );
-                            vsv4.coeffRef( *it ) = -( *vertices_distri_data[1].second._matrix )(
-                                1, it - vertices_distri_data[1].second._colIndices->begin() );
+                            // vsv4.coeffRef( *it ) = -( *vertices_distri_data[1].second._matrix )(
+                            //     1, it - vertices_distri_data[1].second._colIndices->begin() );
                         }
                         _vertices_constraints.push_back( vsv1 );
-                        _vertices_constraints.push_back( vsv2 );
+                        // _vertices_constraints.push_back( vsv2 );
                         _vertices_constraints.push_back( vsv3 );
-                        _vertices_constraints.push_back( vsv4 );
+                        // _vertices_constraints.push_back( vsv4 );
                     }
 
                     std::for_each( constraint_data._rowIndices->begin(), constraint_data._rowIndices->end(),
@@ -413,7 +413,7 @@ public:
         {
             sparse_vertices_constraints.row( i ) = _vertices_constraints[i].transpose();
         }
-        sparse_vertices_constraints.prune( 1e-10 );
+        sparse_vertices_constraints.prune( 1e-12 );
 
         auto pre_kernel_it = std::partition( basis_container.begin(), basis_container.end(),
                                              [&sparse_vertices_constraints]( const Eigen::SparseVector<T>& ii ) {

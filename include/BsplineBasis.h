@@ -121,8 +121,8 @@ protected:
     mutable matrix _basisWeight;
     matrix _gramianInv;
     DualBasis<T> _dualBasis;
-    // std::vector<std::pair<int, Eigen::Ref<matrix>>> _localWeightContainer;
-    // bool _complete_dual{true};
+    std::vector<std::pair<int, Eigen::Ref<matrix>>> _localWeightContainer;
+    bool _complete_dual{true};
 };
 
 template <typename T>
@@ -161,8 +161,8 @@ public:
         std::vector<std::pair<int, Eigen::SparseVector<T>>> assembly_null_vectors;
 
         // completeness of constructed dual basis functions
-        const int polynomial_completeness = _basisKnot->GetDegree() - 1;
-
+        // const int polynomial_completeness = _basisKnot->GetDegree() - 1;
+        const int polynomial_completeness = 0;
         // move some assembly vectors to null space due to the codimension
         std::move( assembly_vectors.begin(), assembly_vectors.begin() + _codimension, std::back_inserter( assembly_null_vectors ) );
         std::move( assembly_vectors.rbegin(), assembly_vectors.rbegin() + _codimension, std::back_inserter( assembly_null_vectors ) );
@@ -280,6 +280,7 @@ public:
             _localWeightContainer.emplace_back( std::make_pair(
                 start_dof, _spAssemble.block( ( deg + 1 ) * i, start_dof, deg + 1, end_dof - start_dof ) ) );
         }
+        // std::cout << _spAssemble << std::endl;
     }
 
 public:

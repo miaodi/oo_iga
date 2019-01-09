@@ -412,7 +412,7 @@ public:
     using BiharmonicInterfaceVisitor<N, T>::C1IntegralElementAssembler;
 
 public:
-    BiharmonicCodimensionInterfaceVisitor( const int& c )
+    BiharmonicCodimensionInterfaceVisitor( const int c = 2 )
         : BiharmonicInterfaceVisitor<N, T>( std::make_unique<PoissonCodimensionInterfaceVisitor<N, T>>( c ) ), _codimension{c}
     {
     }

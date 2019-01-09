@@ -195,23 +195,23 @@ typename BsplineBasis<T>::BasisFunValDerAllList_ptr BsplineBasis<T>::BezierDual(
 template <typename T>
 typename BsplineBasis<T>::BasisFunValDerAllList_ptr BsplineBasis<T>::EvalCodimensionBezierDual( const T& u ) const
 {
-    auto evals = EvalDerAll( u, 0 );
+    auto evals = BezierDual( u );
     int dof = GetDof();
     for ( auto& i : *evals )
     {
-        if ( i.first == 0 || i.first == 1 )
+        if ( i.first == 0 )
         {
             i.first = 0;
-            i.second[0] = 0;
+            // i.second[0] = 0;
         }
-        else if ( i.first == dof - 1 || i.first == dof - 2 )
+        else if ( i.first == dof - 1 )
         {
-            i.first = dof - 5;
-            i.second[0] = 0;
+            i.first = dof - 3;
+            // i.second[0] = 0;
         }
         else
         {
-            i.first = i.first - 2;
+            i.first = i.first - 1;
         }
     }
     return evals;
@@ -231,7 +231,7 @@ void BsplineBasis<T>::BezierDualInitialize()
     // else
     // {
     //     auto assemble_vecs = BasisAssemblyVecs();
-    //     int polynomial_completeness = degree - 0;
+    //     int polynomial_completeness = degree - 1;
     //     auto lhs_rhs = LhsRhsAssembler( polynomial_completeness );
     //     auto sp_assemble = Accessory::SpVecToSpMat( assemble_vecs.begin(), assemble_vecs.end() );
     //     matrix kernel_matrix = lhs_rhs.second - sp_assemble * lhs_rhs.first;
@@ -277,7 +277,7 @@ void BsplineBasis<T>::BezierDualInitialize()
     //     kernel_weight.setFromTriplets( kernel_weight_triplets.begin(), kernel_weight_triplets.end() );
     //     auto sp_kernel = Accessory::SpVecToSpMat( kernel_basis_container.begin(), kernel_basis_container.end() );
     //     _basisWeight = std::move( matrix( sp_kernel * kernel_weight + sp_assemble ) );
-
+    //     std::cout << _basisWeight << std::endl;
     //     for ( int i = 0; i < spans.size(); ++i )
     //     {
     //         int start_dof, end_dof, start_bezier_dof;
@@ -300,7 +300,7 @@ void BsplineBasis<T>::BezierDualInitialize()
     // }
 
     _dualBasis._basisKnot = &( this->_basisKnot );
-    _dualBasis._codimension = 2;
+    _dualBasis._codimension = 0;
     _dualBasis.Initialization();
 }
 

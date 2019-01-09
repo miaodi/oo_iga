@@ -1,9 +1,13 @@
+//
+// Created by di miao on 10/18/17.
+//
+
 #pragma once
 
 #include "StiffnessVisitor.hpp"
 
 template <typename T>
-class BiharmonicStiffnessVisitor : public StiffnessVisitor<2, 1, T>
+class PoissonStiffnessVisitor : public StiffnessVisitor<2, 1, T>
 {
 public:
     using Knot = typename StiffnessVisitor<2, 1, T>::Knot;
@@ -18,7 +22,7 @@ public:
     using DataType = T;
 
 public:
-    BiharmonicStiffnessVisitor( const LoadFunctor& body_force ) : StiffnessVisitor<2, 1, T>( body_force )
+    PoissonStiffnessVisitor( const LoadFunctor& body_force ) : StiffnessVisitor<2, 1, T>( body_force )
     {
     }
 
@@ -32,22 +36,23 @@ protected:
 };
 
 template <typename T>
-void BiharmonicStiffnessVisitor<T>::IntegralElementAssembler( BiharmonicStiffnessVisitor<T>::Matrix& bilinear_form_trail,
-                                                              BiharmonicStiffnessVisitor<T>::Matrix& bilinear_form_test,
-                                                              BiharmonicStiffnessVisitor<T>::Matrix& linear_form_value,
-                                                              BiharmonicStiffnessVisitor<T>::Matrix& linear_form_test,
-                                                              const BiharmonicStiffnessVisitor<T>::DomainShared_ptr domain,
-                                                              const BiharmonicStiffnessVisitor<T>::Knot& u ) const
+void PoissonStiffnessVisitor<T>::IntegralElementAssembler( PoissonStiffnessVisitor<T>::Matrix& bilinear_form_trail,
+                                                           PoissonStiffnessVisitor<T>::Matrix& bilinear_form_test,
+                                                           PoissonStiffnessVisitor<T>::Matrix& linear_form_value,
+                                                           PoissonStiffnessVisitor<T>::Matrix& linear_form_test,
+                                                           const PoissonStiffnessVisitor<T>::DomainShared_ptr domain,
+                                                           const PoissonStiffnessVisitor<T>::Knot& u ) const
 {
-    auto evals = domain->Eval2PhyDerAllTensor( u );
+    auto evals = domain->Eval1PhyDerAllTensor( u );
     linear_form_value.resize( 1, 1 );
     linear_form_value( 0, 0 ) = this->_bodyForceFunctor( domain->AffineMap( u ) )[0];
     linear_form_test.resize( 1, evals->size() );
-    bilinear_form_trail.resize( 1, evals->size() );
+    bilinear_form_trail.resize( 2, evals->size() );
     for ( int j = 0; j < evals->size(); ++j )
     {
         linear_form_test( 0, j ) = ( *evals )[j].second[0];
-        bilinear_form_trail( 0, j ) = ( *evals )[j].second[3] + ( *evals )[j].second[5];
+        bilinear_form_trail( 0, j ) = ( *evals )[j].second[1];
+        bilinear_form_trail( 1, j ) = ( *evals )[j].second[2];
     }
     bilinear_form_test = bilinear_form_trail;
 }

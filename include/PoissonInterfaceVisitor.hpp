@@ -217,8 +217,8 @@ typename std::enable_if<n == 2, void>::type PoissonInterfaceVisitor<N, T>::C0Int
     }
     auto slave_evals = slave_domain->EvalDerAllTensor( slave_quadrature_abscissa, 0 );
     auto master_evals = master_domain->EvalDerAllTensor( master_quadrature_abscissa, 0 );
-    auto multiplier_evals = multiplier_domain->EvalDualAllTensor( u.first );
-    // auto multiplier_evals = ( multiplier_domain->BasisGetter( 0 ) ).EvalCodimensionBezierDual( u.first( 0 ) );
+    // auto multiplier_evals = multiplier_domain->EvalDualAllTensor( u.first );
+    auto multiplier_evals = ( multiplier_domain->BasisGetter( 0 ) ).EvalCodimensionBezierDual( u.first( 0 ) );
 
     slave_constraint_basis.resize( 1, slave_evals->size() );
     master_constraint_basis.resize( 1, master_evals->size() );
@@ -279,7 +279,7 @@ public:
     using ConstraintIntegralElementAssembler = typename PoissonInterfaceVisitor<N, T>::ConstraintIntegralElementAssembler;
 
 public:
-    PoissonCodimensionInterfaceVisitor( const int& c ) : PoissonInterfaceVisitor<N, T>(), codimension{c}
+    PoissonCodimensionInterfaceVisitor( const int c = 1 ) : PoissonInterfaceVisitor<N, T>(), codimension{c}
     {
     }
 
@@ -288,12 +288,84 @@ public:
         return _slaveMasterConstraintData;
     }
 
+    void Visit( Element<1, N, T>* g )
+    {
+        PoissonInterfaceVisitor<N, T>::Visit( g );
+        auto edge = dynamic_cast<Edge<N, T>*>( g );
+        if ( !edge->IsMatched() || !edge->IsSlave() )
+        {
+            return;
+        }
+
+        // create vertices constraints
+        // eval at starting/ending points
+        auto multiplier_domain = edge->GetDomain();
+        auto slave_domain = edge->Parent( 0 ).lock()->GetDomain();
+        auto master_domain = edge->Counterpart().lock()->Parent( 0 ).lock()->GetDomain();
+
+        Eigen::Matrix<T, Eigen::Dynamic, 1> u( 1 );
+
+        for ( int point = 0; point <= 1; point++ )
+        {
+            u << static_cast<T>( point );
+            // Map abscissa from Lagrange multiplier space to slave and master domain
+            Vector slave_quadrature_abscissa, master_quadrature_abscissa;
+            if ( !Accessory::MapParametricPoint( &*multiplier_domain, u, &*slave_domain, slave_quadrature_abscissa ) )
+            {
+                std::cout << "MapParametericPoint failed" << std::endl;
+            }
+            if ( !Accessory::MapParametricPoint( &*multiplier_domain, u, &*master_domain, master_quadrature_abscissa ) )
+            {
+                std::cout << "MapParametericPoint failed" << std::endl;
+            }
+
+            // Evaluate derivative upto zero order in slave and master domain
+            auto slave_evals = slave_domain->EvalDerAllTensor( slave_quadrature_abscissa, 0 );
+            auto master_evals = master_domain->EvalDerAllTensor( master_quadrature_abscissa, 0 );
+
+            // Resize integration matrices
+            Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> slave_constraint_basis( 1, slave_evals->size() );
+            Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> master_constraint_basis( 1, master_evals->size() );
+
+            for ( int j = 0; j < slave_evals->size(); ++j )
+            {
+                slave_constraint_basis( 0, j ) = ( *slave_evals )[j].second[0];
+            }
+            for ( int j = 0; j < master_evals->size(); ++j )
+            {
+                master_constraint_basis( 0, j ) = ( *master_evals )[j].second[0];
+            }
+
+            std::vector<int> slave_constraint_basis_indices, master_constraint_basis_indices, lm_indices;
+            for ( int j = 0; j < slave_evals->size(); ++j )
+            {
+                slave_constraint_basis_indices.push_back( ( *slave_evals )[j].first );
+            }
+            for ( int j = 0; j < master_evals->size(); ++j )
+            {
+                master_constraint_basis_indices.push_back( ( *master_evals )[j].first );
+            }
+            lm_indices = {0};
+            *( _vertices_constraints[point].first._rowIndices ) = lm_indices;
+            *( _vertices_constraints[point].first._colIndices ) = slave_constraint_basis_indices;
+            *( _vertices_constraints[point].first._matrix ) = slave_constraint_basis;
+            *( _vertices_constraints[point].second._rowIndices ) = lm_indices;
+            *( _vertices_constraints[point].second._colIndices ) = master_constraint_basis_indices;
+            *( _vertices_constraints[point].second._matrix ) = master_constraint_basis;
+        }
+    }
+    const std::array<std::pair<MatrixData<T>, MatrixData<T>>, 2>& VerticesDistributionConstraintData() const
+    {
+        return _vertices_constraints;
+    }
+
 protected:
     void SolveConstraint( Edge<N, T>* );
 
 protected:
     int codimension;
     MatrixData<T> _slaveMasterConstraintData;
+    std::array<std::pair<MatrixData<T>, MatrixData<T>>, 2> _vertices_constraints;
 };
 
 template <int N, typename T>

@@ -540,13 +540,13 @@ protected:
         return gramian.partialPivLu().solve( rhs );
     }
 
-    inline void ThreadSetter( const u_int& threads )
+    inline void ThreadSetter( const unsigned int& threads )
     {
         _num_of_threads = threads;
     }
 
 protected:
     std::mutex _mutex;
-    u_int _num_of_threads{std::thread::hardware_concurrency()};
+    unsigned int _num_of_threads{std::thread::hardware_concurrency()};
     // u_int _num_of_threads{1};
 };
