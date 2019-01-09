@@ -217,8 +217,8 @@ typename std::enable_if<n == 2, void>::type PoissonInterfaceVisitor<N, T>::C0Int
     }
     auto slave_evals = slave_domain->EvalDerAllTensor( slave_quadrature_abscissa, 0 );
     auto master_evals = master_domain->EvalDerAllTensor( master_quadrature_abscissa, 0 );
-    // auto multiplier_evals = multiplier_domain->EvalDualAllTensor( u.first );
-    auto multiplier_evals = ( multiplier_domain->BasisGetter( 0 ) ).EvalCodimensionBezierDual( u.first( 0 ) );
+    auto multiplier_evals = multiplier_domain->EvalDualAllTensor( u.first );
+    // auto multiplier_evals = ( multiplier_domain->BasisGetter( 0 ) ).EvalCodimensionBezierDual( u.first( 0 ) );
 
     slave_constraint_basis.resize( 1, slave_evals->size() );
     master_constraint_basis.resize( 1, master_evals->size() );

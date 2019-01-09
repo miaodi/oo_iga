@@ -172,6 +172,7 @@ int main()
 
             PostProcess<double> post_process( cells, solutions, analytical_solution );
             cout << "L2 error: " << post_process.RelativeL2Error() << " H1 error: " << post_process.RelativeH1Error() << endl;
+            post_process.Plot(100);
         }
         cout << endl;
     }

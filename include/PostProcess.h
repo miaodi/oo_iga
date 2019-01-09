@@ -8,6 +8,7 @@
 #include "PhyTensorBsplineBasis.h"
 #include "QuadratureRule.h"
 #include "Topology.hpp"
+#include <fstream>
 
 template <typename T>
 class PostProcess
@@ -214,6 +215,29 @@ public:
             val_norm += val_norm_per_patch;
         }
         return sqrt( err_norm / val_norm );
+    }
+
+    void Plot( const int size )
+    {
+        for ( int i = 0; i < _results.size(); i++ )
+        {
+            std::ofstream file;
+            std::string name;
+            name = "domain_" + std::to_string( i ) + ".txt";
+            file.open( name );
+            for ( int x = 0; x <= size; x++ )
+            {
+                for ( int y = 0; y <= size; y++ )
+                {
+                    Coordinate u;
+                    u << 1.0 * x / size, 1.0 * y / size;
+                    Coordinate pos = _results[i].first->GetDomain()->AffineMap( u );
+                    file << pos( 0 ) << " " << pos( 1 ) << " "
+                         << _targetFunction( pos )[0] - _results[i].second->AffineMap( u )( 0 ) << std::endl;
+                }
+            }
+            file.close();
+        }
     }
 
 private:
