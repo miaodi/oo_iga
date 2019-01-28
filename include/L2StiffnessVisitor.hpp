@@ -2,23 +2,24 @@
 
 #include "StiffnessVisitor.hpp"
 
-template <int d, int N, typename T>
-class L2StiffnessVisitor : public StiffnessVisitor<N, 1, T, d>
+template <typename T>
+class L2StiffnessVisitor : public StiffnessVisitor<2, 1, T>
 {
 public:
-    using Knot = typename StiffnessVisitor<N, 1, T, d>::Knot;
-    using Quadrature = typename StiffnessVisitor<N, 1, T, d>::Quadrature;
-    using QuadList = typename StiffnessVisitor<N, 1, T, d>::QuadList;
-    using KnotSpan = typename StiffnessVisitor<N, 1, T, d>::KnotSpan;
-    using KnotSpanlist = typename StiffnessVisitor<N, 1, T, d>::KnotSpanlist;
-    using LoadFunctor = typename StiffnessVisitor<N, 1, T, d>::LoadFunctor;
-    using Matrix = typename StiffnessVisitor<N, 1, T, d>::Matrix;
-    using Vector = typename StiffnessVisitor<N, 1, T, d>::Vector;
-    using DomainShared_ptr = typename StiffnessVisitor<N, 1, T, d>::DomainShared_ptr;
+    using Knot = typename StiffnessVisitor<2, 1, T>::Knot;
+    using Quadrature = typename StiffnessVisitor<2, 1, T>::Quadrature;
+    using QuadList = typename StiffnessVisitor<2, 1, T>::QuadList;
+    using KnotSpan = typename StiffnessVisitor<2, 1, T>::KnotSpan;
+    using KnotSpanlist = typename StiffnessVisitor<2, 1, T>::KnotSpanlist;
+    using LoadFunctor = typename StiffnessVisitor<2, 1, T>::LoadFunctor;
+    using Matrix = typename StiffnessVisitor<2, 1, T>::Matrix;
+    using Vector = typename StiffnessVisitor<2, 1, T>::Vector;
+    using DomainShared_ptr = typename StiffnessVisitor<2, 1, T>::DomainShared_ptr;
     using DataType = T;
+    static const int Dim = StiffnessVisitor<2, 1, T>::Dim;
 
 public:
-    L2StiffnessVisitor( const LoadFunctor& body_force ) : StiffnessVisitor<N, 1, T, d>( body_force )
+    L2StiffnessVisitor( const LoadFunctor& body_force ) : StiffnessVisitor<2, 1, T>( body_force )
     {
     }
 

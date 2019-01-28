@@ -11,7 +11,7 @@
 template <int d, int N, typename T = double>
 class PhyTensorNURBSBasis : public PhyTensorBsplineBasis<d, N, T>
 {
-  public:
+public:
     using Pts = typename PhyTensorBsplineBasis<d, N, T>::Pts;
     using PhyPts = typename PhyTensorBsplineBasis<d, N, T>::PhyPts;
     using GeometryVector = typename PhyTensorBsplineBasis<d, N, T>::GeometryVector;
@@ -33,172 +33,173 @@ class PhyTensorNURBSBasis : public PhyTensorBsplineBasis<d, N, T>
     using HyperPlane = typename PhyTensorBsplineBasis<d, N, T>::HyperPlane;
     using HyperPlaneSharedPts = typename PhyTensorBsplineBasis<d, N, T>::HyperPlaneSharedPts;
 
-    PhyTensorNURBSBasis(const std::vector<KnotVector<T>> &,
-                        const GeometryVector &,
-                        const WeightVector &);
+    PhyTensorNURBSBasis( const std::vector<KnotVector<T>>&, const GeometryVector&, const WeightVector& );
 
-    PhyTensorNURBSBasis(const std::vector<KnotVector<T>> &,
-                        const WeightedGeometryVector &);
+    PhyTensorNURBSBasis( const std::vector<KnotVector<T>>&, const Eigen::Matrix<T, Eigen::Dynamic, 1>&, const WeightVector& );
 
-    BasisFunValPac_ptr
-    EvalTensor(const vector &u,
-               const DiffPattern &i = DiffPattern(d, 0)) const;
+    PhyTensorNURBSBasis( const std::vector<KnotVector<T>>&, const WeightedGeometryVector& );
 
-    BasisFunValDerAllList_ptr
-    EvalDerAllTensor(const vector &u,
-                     const int i = 0) const;
+    BasisFunValPac_ptr EvalTensor( const vector& u, const DiffPattern& i = DiffPattern( d, 0 ) ) const;
 
-    void
-    DegreeElevate(int,
-                  int);
+    BasisFunValDerAllList_ptr EvalDerAllTensor( const vector& u, const int i = 0 ) const;
 
-    void
-    KnotInsertion(int,
-                  T,
-                  int = 1);
+    void DegreeElevate( int, int );
 
-    void
-    UniformRefine(int,
-                  int,
-                  int m = 1);
+    void KnotInsertion( int, T, int = 1 );
 
-    WtPts
-    WtPtsGetter(const int &i) const
+    void UniformRefine( int, int, int m = 1 );
+
+    WtPts WtPtsGetter( const int& i ) const
     {
-        return _weightFunction.CtrPtsGetter(i);
+        return _weightFunction.CtrPtsGetter( i );
     }
 
-    const WeightVector &WeightVectorGetter() const
+    WeightedPhyPts WeightedPtsGetter( const int& index ) const
+    {
+        ASSERT( index < GetDof(), " index wrong.\n" );
+        WeightedPhyPts temp;
+        for ( int i = 0; i < N; i++ )
+        {
+            temp( i ) = this->CtrPtsGetter( index )( i ) * WtPtsGetter( index )( 0 );
+        }
+        temp( N ) = WtPtsGetter( index )( 0 );
+        return temp;
+    }
+
+    const WeightVector& WeightVectorGetter() const
     {
         return _weightFunction.CtrPtsVecGetter();
     }
-    void
-    PrintWtCtrPts() const
+    void PrintWtCtrPts() const
     {
         _weightFunction.PrintCtrPts();
     }
 
-    virtual HyperPlaneSharedPts MakeHyperPlane(const int &orientation,
-                                               const int &layer) const;
+    virtual HyperPlaneSharedPts MakeHyperPlane( const int& orientation, const int& layer ) const;
 
-    virtual BasisFunValDerAllList_ptr EvalDualAllTensor(const vector &u) const;
+    virtual BasisFunValDerAllList_ptr EvalDualAllTensor( const vector& u ) const;
 
-  protected:
+protected:
     PhyTensorBsplineBasis<d, 1, T> _weightFunction;
 };
 
 template <int d, int N, typename T>
-PhyTensorNURBSBasis<d, N, T>::PhyTensorNURBSBasis(const std::vector<KnotVector<T>> &base,
-                                                  const PhyTensorNURBSBasis::GeometryVector &geometry,
-                                                  const PhyTensorNURBSBasis::WeightVector &weight)
-    : PhyTensorBsplineBasis<d, N, T>(base, geometry), _weightFunction(base, weight)
+PhyTensorNURBSBasis<d, N, T>::PhyTensorNURBSBasis( const std::vector<KnotVector<T>>& base,
+                                                   const PhyTensorNURBSBasis::GeometryVector& geometry,
+                                                   const PhyTensorNURBSBasis::WeightVector& weight )
+    : PhyTensorBsplineBasis<d, N, T>( base, geometry ), _weightFunction( base, weight )
 {
 }
 
 template <int d, int N, typename T>
-PhyTensorNURBSBasis<d, N, T>::PhyTensorNURBSBasis(const std::vector<KnotVector<T>> &base,
-                                                  const PhyTensorNURBSBasis::WeightedGeometryVector &weighted_geometry)
+PhyTensorNURBSBasis<d, N, T>::PhyTensorNURBSBasis( const std::vector<KnotVector<T>>& base,
+                                                   const PhyTensorNURBSBasis::WeightedGeometryVector& weighted_geometry )
 {
-    for (int i = 0; i < d; i++)
+    for ( int i = 0; i < d; i++ )
     {
-        this->KnotVectorSetter(base[i], i);
+        this->KnotVectorSetter( base[i], i );
     }
     GeometryVector geometry;
     WeightVector weights;
-    for (const auto &i : weighted_geometry)
+    for ( const auto& i : weighted_geometry )
     {
         WtPts weight;
-        weight << i(N);
+        weight << i( N );
 
         PhyPts ctrlpt;
-        for (int j = 0; j < N; j++)
+        for ( int j = 0; j < N; j++ )
         {
-            ctrlpt(j) = i(j) / i(N);
+            ctrlpt( j ) = i( j ) / i( N );
         }
-        weights.push_back(weight);
-        geometry.push_back(ctrlpt);
+        weights.push_back( weight );
+        geometry.push_back( ctrlpt );
     }
     this->_geometricInfo = geometry;
-    _weightFunction = PhyTensorBsplineBasis<d, 1, T>(base, weights);
+    _weightFunction = PhyTensorBsplineBasis<d, 1, T>( base, weights );
+}
+
+template <>
+PhyTensorNURBSBasis<2, 2, double>::PhyTensorNURBSBasis( const std::vector<KnotVector<double>>& base,
+                                                        const Eigen::Matrix<double, Eigen::Dynamic, 1>& geometry,
+                                                        const PhyTensorNURBSBasis::WeightVector& weight )
+    : PhyTensorBsplineBasis<2, 2, double>( base, geometry ), _weightFunction( base, weight )
+{
 }
 
 template <int d, int N, typename T>
-typename PhyTensorNURBSBasis<d, N, T>::BasisFunValDerAllList_ptr
-PhyTensorNURBSBasis<d, N, T>::EvalDualAllTensor(const vector &u) const
+typename PhyTensorNURBSBasis<d, N, T>::BasisFunValDerAllList_ptr PhyTensorNURBSBasis<d, N, T>::EvalDualAllTensor( const vector& u ) const
 {
-    auto eval = TensorBsplineBasis<d, T>::EvalDualAllTensor(u);
-    T weight = _weightFunction.AffineMap(u)(0);
-    for (auto &i : *eval)
+    auto eval = TensorBsplineBasis<d, T>::EvalDualAllTensor( u );
+    T weight = _weightFunction.AffineMap( u )( 0 );
+    for ( auto& i : *eval )
     {
-        i.second[0] *= weight / WtPtsGetter(i.first)(0);
+        i.second[0] *= weight / WtPtsGetter( i.first + 1 )( 0 );
     }
     return eval;
 }
 
 //! not finished yet.
 template <int d, int N, typename T>
-typename PhyTensorNURBSBasis<d, N, T>::BasisFunValPac_ptr
-PhyTensorNURBSBasis<d, N, T>::EvalTensor(const PhyTensorNURBSBasis<d, N, T>::vector &u,
-                                         const PhyTensorNURBSBasis<d, N, T>::DiffPattern &dff_pattern) const
+typename PhyTensorNURBSBasis<d, N, T>::BasisFunValPac_ptr PhyTensorNURBSBasis<d, N, T>::EvalTensor(
+    const PhyTensorNURBSBasis<d, N, T>::vector& u, const PhyTensorNURBSBasis<d, N, T>::DiffPattern& dff_pattern ) const
 {
     int diff = 0;
-    for (const auto &i : dff_pattern)
+    for ( const auto& i : dff_pattern )
     {
         diff += i;
     }
-    auto all_ders = EvalDerAllTensor(u, diff);
-    BasisFunValPac_ptr res(new BasisFunValPac);
+    auto all_ders = EvalDerAllTensor( u, diff );
+    BasisFunValPac_ptr res( new BasisFunValPac );
     Accessory::DifferentialPatternList differentialPatternList;
-    for (int order = 0; order <= diff; ++order)
+    for ( int order = 0; order <= diff; ++order )
     {
-        auto temp = Accessory::PartialDerPattern<d>(order);
-        differentialPatternList.insert(differentialPatternList.end(), temp->begin(), temp->end());
+        auto temp = Accessory::PartialDerPattern<d>( order );
+        differentialPatternList.insert( differentialPatternList.end(), temp->begin(), temp->end() );
     }
     int i;
-    for (i = 0; i < differentialPatternList.size(); i++)
+    for ( i = 0; i < differentialPatternList.size(); i++ )
     {
-        if (differentialPatternList[i] == dff_pattern)
+        if ( differentialPatternList[i] == dff_pattern )
             break;
     }
-    for (const auto &j : *all_ders)
+    for ( const auto& j : *all_ders )
     {
-        res->push_back(std::make_pair(j.first, j.second[i]));
+        res->push_back( std::make_pair( j.first, j.second[i] ) );
     }
     return res;
 }
 
 template <int d, int N, typename T>
-typename PhyTensorNURBSBasis<d, N, T>::BasisFunValDerAllList_ptr
-PhyTensorNURBSBasis<d, N, T>::EvalDerAllTensor(const PhyTensorNURBSBasis<d, N, T>::vector &u,
-                                               const int i) const
+typename PhyTensorNURBSBasis<d, N, T>::BasisFunValDerAllList_ptr PhyTensorNURBSBasis<d, N, T>::EvalDerAllTensor(
+    const PhyTensorNURBSBasis<d, N, T>::vector& u, const int i ) const
 {
     using namespace boost::math;
-    auto bspline_result = TensorBsplineBasis<d, T>::EvalDerAllTensor(u, i);
-    for (auto &it : *bspline_result)
+    auto bspline_result = TensorBsplineBasis<d, T>::EvalDerAllTensor( u, i );
+    for ( auto& it : *bspline_result )
     {
-        for (auto &j : it.second)
+        for ( auto& j : it.second )
         {
-            j *= _weightFunction.CtrPtsGetter(it.first)(0);
+            j *= _weightFunction.CtrPtsGetter( it.first )( 0 );
         }
     }
-    switch (d)
+    switch ( d )
     {
     case 1:
     {
-        std::vector<T> weight_ders(i + 1);
-        for (int j = 0; j < i + 1; j++)
+        std::vector<T> weight_ders( i + 1 );
+        for ( int j = 0; j < i + 1; j++ )
         {
-            weight_ders[j] = _weightFunction.AffineMap(u, std::vector<int>{j})(0);
+            weight_ders[j] = _weightFunction.AffineMap( u, std::vector<int>{j} )( 0 );
         }
-        for (auto &it : *bspline_result)
+        for ( auto& it : *bspline_result )
         {
             auto temp = it.second;
-            for (int k = 0; k <= i; k++)
+            for ( int k = 0; k <= i; k++ )
             {
                 auto v = temp[k];
-                for (int j = 1; j <= k; j++)
+                for ( int j = 1; j <= k; j++ )
                 {
-                    v -= binomial_coefficient<T>(k, j) * weight_ders[j] * it.second[k - j];
+                    v -= binomial_coefficient<T>( k, j ) * weight_ders[j] * it.second[k - j];
                 }
                 it.second[k] = v / weight_ders[0];
             }
@@ -209,50 +210,50 @@ PhyTensorNURBSBasis<d, N, T>::EvalDerAllTensor(const PhyTensorNURBSBasis<d, N, T
     case 2:
     {
         Accessory::DifferentialPatternList differentialPatternList;
-        for (int order = 0; order <= i; ++order)
+        for ( int order = 0; order <= i; ++order )
         {
-            auto temp = Accessory::PartialDerPattern<d>(order);
-            differentialPatternList.insert(differentialPatternList.end(), temp->begin(), temp->end());
+            auto temp = Accessory::PartialDerPattern<d>( order );
+            differentialPatternList.insert( differentialPatternList.end(), temp->begin(), temp->end() );
         }
         int derivativeAmount = differentialPatternList.size();
-        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> weight_ders(i + 1, i + 1);
-        for (const auto &j : differentialPatternList)
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> weight_ders( i + 1, i + 1 );
+        for ( const auto& j : differentialPatternList )
         {
-            weight_ders(j[0], j[1]) = _weightFunction.AffineMap(u, j)(0);
+            weight_ders( j[0], j[1] ) = _weightFunction.AffineMap( u, j )( 0 );
         }
-        for (auto &it : *bspline_result)
+        for ( auto& it : *bspline_result )
         {
-            Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> temp(i + 1, i + 1);
-            Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> SKL(i + 1, i + 1);
-            for (int j = 0; j < derivativeAmount; j++)
+            Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> temp( i + 1, i + 1 );
+            Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> SKL( i + 1, i + 1 );
+            for ( int j = 0; j < derivativeAmount; j++ )
             {
-                temp(differentialPatternList[j][0], differentialPatternList[j][1]) = it.second[j];
+                temp( differentialPatternList[j][0], differentialPatternList[j][1] ) = it.second[j];
             }
-            for (int k = 0; k <= i; k++)
+            for ( int k = 0; k <= i; k++ )
             {
-                for (int l = 0; l <= i - k; l++)
+                for ( int l = 0; l <= i - k; l++ )
                 {
-                    auto v = temp(k, l);
-                    for (int n = 1; n <= l; n++)
+                    auto v = temp( k, l );
+                    for ( int n = 1; n <= l; n++ )
                     {
-                        v -= binomial_coefficient<T>(l, n) * weight_ders(0, n) * SKL(k, l - n);
+                        v -= binomial_coefficient<T>( l, n ) * weight_ders( 0, n ) * SKL( k, l - n );
                     }
-                    for (int m = 1; m <= k; m++)
+                    for ( int m = 1; m <= k; m++ )
                     {
-                        v -= binomial_coefficient<T>(k, m) * weight_ders(m, 0) * SKL(k - m, l);
+                        v -= binomial_coefficient<T>( k, m ) * weight_ders( m, 0 ) * SKL( k - m, l );
                         T v2 = 0.0;
-                        for (int n = 1; n <= l; n++)
+                        for ( int n = 1; n <= l; n++ )
                         {
-                            v2 += binomial_coefficient<T>(l, n) * weight_ders(m, n) * SKL(k - m, l - n);
+                            v2 += binomial_coefficient<T>( l, n ) * weight_ders( m, n ) * SKL( k - m, l - n );
                         }
-                        v -= binomial_coefficient<T>(k, m) * v2;
+                        v -= binomial_coefficient<T>( k, m ) * v2;
                     }
-                    SKL(k, l) = v / weight_ders(0, 0);
+                    SKL( k, l ) = v / weight_ders( 0, 0 );
                 }
             }
-            for (int j = 0; j < derivativeAmount; j++)
+            for ( int j = 0; j < derivativeAmount; j++ )
             {
-                it.second[j] = SKL(differentialPatternList[j][0], differentialPatternList[j][1]);
+                it.second[j] = SKL( differentialPatternList[j][0], differentialPatternList[j][1] );
             }
         }
         break;
@@ -262,106 +263,103 @@ PhyTensorNURBSBasis<d, N, T>::EvalDerAllTensor(const PhyTensorNURBSBasis<d, N, T
 }
 
 template <int d, int N, typename T>
-void PhyTensorNURBSBasis<d, N, T>::DegreeElevate(int orientation,
-                                                 int r)
+void PhyTensorNURBSBasis<d, N, T>::DegreeElevate( int orientation, int r )
 {
     auto dof = this->GetDof();
-    for (int i = 0; i < dof; i++)
+    for ( int i = 0; i < dof; i++ )
     {
-        this->_geometricInfo[i] *= _weightFunction.CtrPtsGetter(i)(0);
+        this->_geometricInfo[i] *= _weightFunction.CtrPtsGetter( i )( 0 );
     }
-    PhyTensorBsplineBasis<d, N, T>::DegreeElevate(orientation, r);
-    _weightFunction.DegreeElevate(orientation, r);
+    PhyTensorBsplineBasis<d, N, T>::DegreeElevate( orientation, r );
+    _weightFunction.DegreeElevate( orientation, r );
     dof = this->GetDof();
-    for (int i = 0; i < dof; i++)
+    for ( int i = 0; i < dof; i++ )
     {
-        this->_geometricInfo[i] /= _weightFunction.CtrPtsGetter(i)(0);
+        this->_geometricInfo[i] /= _weightFunction.CtrPtsGetter( i )( 0 );
     }
 }
 
 template <int d, int N, typename T>
-void PhyTensorNURBSBasis<d, N, T>::KnotInsertion(int orientation,
-                                                 T knot,
-                                                 int m)
+void PhyTensorNURBSBasis<d, N, T>::KnotInsertion( int orientation, T knot, int m )
 {
     auto dof = this->GetDof();
-    for (int i = 0; i < dof; i++)
+    for ( int i = 0; i < dof; i++ )
     {
-        this->_geometricInfo[i] *= _weightFunction.CtrPtsGetter(i)(0);
+        this->_geometricInfo[i] *= _weightFunction.CtrPtsGetter( i )( 0 );
     }
-    PhyTensorBsplineBasis<d, N, T>::KnotInsertion(orientation, knot, m);
+    PhyTensorBsplineBasis<d, N, T>::KnotInsertion( orientation, knot, m );
     dof = this->GetDof();
-    _weightFunction.KnotInsertion(orientation, knot, m);
-    for (int i = 0; i < dof; i++)
+    _weightFunction.KnotInsertion( orientation, knot, m );
+    for ( int i = 0; i < dof; i++ )
     {
-        this->_geometricInfo[i] /= _weightFunction.CtrPtsGetter(i)(0);
+        this->_geometricInfo[i] /= _weightFunction.CtrPtsGetter( i )( 0 );
     }
 }
 
 template <int d, int N, typename T>
-void PhyTensorNURBSBasis<d, N, T>::UniformRefine(int orientation,
-                                                 int r,
-                                                 int m)
+void PhyTensorNURBSBasis<d, N, T>::UniformRefine( int orientation, int r, int m )
 {
     auto dof = this->GetDof();
-    for (int i = 0; i < dof; i++)
+    for ( int i = 0; i < dof; i++ )
     {
-        this->_geometricInfo[i] *= _weightFunction.CtrPtsGetter(i)(0);
+        this->_geometricInfo[i] *= _weightFunction.CtrPtsGetter( i )( 0 );
     }
-    PhyTensorBsplineBasis<d, N, T>::UniformRefine(orientation, r, m);
+    PhyTensorBsplineBasis<d, N, T>::UniformRefine( orientation, r, m );
     dof = this->GetDof();
-    _weightFunction.UniformRefine(orientation, r, m);
-    for (int i = 0; i < dof; i++)
+    _weightFunction.UniformRefine( orientation, r, m );
+    for ( int i = 0; i < dof; i++ )
     {
-        this->_geometricInfo[i] /= _weightFunction.CtrPtsGetter(i)(0);
+        this->_geometricInfo[i] /= _weightFunction.CtrPtsGetter( i )( 0 );
     }
 }
 
 template <int d, int N, typename T>
-typename PhyTensorNURBSBasis<d, N, T>::HyperPlaneSharedPts
-PhyTensorNURBSBasis<d, N, T>::MakeHyperPlane(const int &orientation,
-                                             const int &layer) const
+typename PhyTensorNURBSBasis<d, N, T>::HyperPlaneSharedPts PhyTensorNURBSBasis<d, N, T>::MakeHyperPlane( const int& orientation,
+                                                                                                         const int& layer ) const
 {
-    ASSERT(orientation < d, "Invalid input vector size.");
+    ASSERT( orientation < d, "Invalid input vector size." );
     std::vector<KnotVector<T>> hpknotvector;
-    for (int i = 0; i != d; ++i)
+    for ( int i = 0; i != d; ++i )
     {
-        if (i != orientation)
-            hpknotvector.push_back(this->KnotVectorGetter(i));
+        if ( i != orientation )
+            hpknotvector.push_back( this->KnotVectorGetter( i ) );
     }
-    auto indexList = this->HyperPlaneIndices(orientation, layer);
+    auto indexList = this->HyperPlaneIndices( orientation, layer );
     GeometryVector tempGeometry;
-    for (const auto &i : *indexList)
+    for ( const auto& i : *indexList )
     {
-        tempGeometry.push_back(this->_geometricInfo[i]);
+        tempGeometry.push_back( this->_geometricInfo[i] );
     }
     WeightVector tempWeight;
-    for (const auto &i : *indexList)
+    for ( const auto& i : *indexList )
     {
-        tempWeight.push_back(this->WtPtsGetter(i));
+        tempWeight.push_back( this->WtPtsGetter( i ) );
     }
-    return std::make_shared<PhyTensorNURBSBasis<d - 1, N, T>>(hpknotvector, tempGeometry, tempWeight);
+    return std::make_shared<PhyTensorNURBSBasis<d - 1, N, T>>( hpknotvector, tempGeometry, tempWeight );
 }
 
 template <int N, typename T>
 class PhyTensorNURBSBasis<0, N, T> : public PhyTensorBsplineBasis<0, N, T>
 {
-  public:
+public:
     using HyperPlane = PhyTensorBsplineBasis<-1, N, T>;
     using HyperPlaneSharedPts = std::shared_ptr<PhyTensorBsplineBasis<-1, N, T>>;
     using GeometryVector = Accessory::ContPtsList<T, N>;
     using WeightVector = typename PhyTensorBsplineBasis<0, 1, T>::GeometryVector;
-    PhyTensorNURBSBasis() {}
+    PhyTensorNURBSBasis()
+    {
+    }
 
-    PhyTensorNURBSBasis(const std::vector<KnotVector<T>> &,
-                        const GeometryVector &,
-                        const WeightVector &) {}
+    PhyTensorNURBSBasis( const std::vector<KnotVector<T>>&, const GeometryVector&, const WeightVector& )
+    {
+    }
 
     //  There should be no hyper plane for point
-    HyperPlane MakeHyperPlane(const int &orientation,
-                              const int &layer) const {}
+    HyperPlane MakeHyperPlane( const int& orientation, const int& layer ) const
+    {
+    }
 
     ~PhyTensorNURBSBasis(){};
 };
 
-#endif //OO_IGA_PHYTENSORNURBSBASIS_H
+#endif // OO_IGA_PHYTENSORNURBSBASIS_H

@@ -4,16 +4,18 @@
 #include "BsplineBasis.h"
 #include "ConstraintAssembler.hpp"
 #include "DofMapper.hpp"
+#include "Elasticity2DStiffnessVisitor.hpp"
 #include "L2StiffnessVisitor.hpp"
 #include "MembraneStiffnessVisitor.hpp"
+#include "NeumannBoundaryVisitor.hpp"
 #include "PhyTensorNURBSBasis.h"
 #include "PoissonStiffnessVisitor.hpp"
 #include "PostProcess.h"
 #include "StiffnessAssembler.hpp"
 #include "Surface.hpp"
 #include "Utility.hpp"
-#include <boost/math/constants/constants.hpp>
-#include <boost/math/special_functions/legendre.hpp>
+#include <Spectra/GenEigsSolver.h>
+#include <Spectra/MatOp/SparseGenMatProd.h>
 #include <eigen3/Eigen/Dense>
 #include <eigen3/Eigen/Geometry>
 #include <eigen3/unsupported/Eigen/KroneckerProduct>
@@ -21,6 +23,7 @@
 #include <iostream>
 #include <time.h>
 
+using namespace Spectra;
 using namespace Eigen;
 using namespace std;
 using GeometryVector = PhyTensorBsplineBasis<2, 2, double>::GeometryVector;
@@ -33,149 +36,193 @@ const double Pi = 3.14159265358979323846264338327;
 int main()
 {
     KnotVector<double> knot_vector;
-    knot_vector.InitClosed( 2, 0, 1 );
+    knot_vector.InitClosed( 1, 0, 1 );
     Vector2d point1( 0, 0 );
-    Vector2d point2( 0, .3 );
-    Vector2d point3( 0, .5 );
-    Vector2d point4( .22, 0 );
-    Vector2d point5( .25, .25 );
-    Vector2d point6( .28, .5 );
-    Vector2d point7( .5, 0 );
-    Vector2d point8( .5, .23 );
-    Vector2d point9( .5, .5 );
-    Vector2d xMove( .5, 0 );
-    Vector2d yMove( 0, .5 );
+    Vector2d point2( 0, 1.0 / 3 );
+    Vector2d point3( 1.0 / 3, 0 );
+    Vector2d point4( 1.0 / 3, 1.0 / 3 );
+    Vector2d xMove( 1.0 / 3, 0 );
+    Vector2d yMove( 0, 1.0 / 3 );
 
-    GeometryVector points1( {point1, point2, point3, point4, point5, point6, point7, point8, point9} );
-    GeometryVector points2( {point1 + xMove, point2 + xMove, point3 + xMove, point4 + xMove, point5 + xMove,
-                             point6 + xMove, point7 + xMove, point8 + xMove, point9 + xMove} );
-    GeometryVector points3( {point1 + yMove, point2 + yMove, point3 + yMove, point4 + yMove, point5 + yMove,
-                             point6 + yMove, point7 + yMove, point8 + yMove, point9 + yMove} );
-    GeometryVector points4( {point1 + xMove + yMove, point2 + xMove + yMove, point3 + xMove + yMove,
-                             point4 + xMove + yMove, point5 + xMove + yMove, point6 + xMove + yMove,
-                             point7 + xMove + yMove, point8 + xMove + yMove, point9 + xMove + yMove} );
+    GeometryVector points1( {point1, point2, point3, point4} );
+    GeometryVector points2( {point1 + 0 * xMove + 1 * yMove, point2 + 0 * xMove + 1 * yMove,
+                             point3 + 0 * xMove + 1 * yMove, point4 + 0 * xMove + 1 * yMove} );
+    GeometryVector points3( {point1 + 0 * xMove + 2 * yMove, point2 + 0 * xMove + 2 * yMove,
+                             point3 + 0 * xMove + 2 * yMove, point4 + 0 * xMove + 2 * yMove} );
+
+    GeometryVector points4( {point1 + 1 * xMove + 0 * yMove, point2 + 1 * xMove + 0 * yMove,
+                             point3 + 1 * xMove + 0 * yMove, point4 + 1 * xMove + 0 * yMove} );
+    GeometryVector points5( {point1 + 1 * xMove + 1 * yMove, point2 + 1 * xMove + 1 * yMove,
+                             point3 + 1 * xMove + 1 * yMove, point4 + 1 * xMove + 1 * yMove} );
+    GeometryVector points6( {point1 + 1 * xMove + 2 * yMove, point2 + 1 * xMove + 2 * yMove,
+                             point3 + 1 * xMove + 2 * yMove, point4 + 1 * xMove + 2 * yMove} );
+
+    GeometryVector points7( {point1 + 2 * xMove + 0 * yMove, point2 + 2 * xMove + 0 * yMove,
+                             point3 + 2 * xMove + 0 * yMove, point4 + 2 * xMove + 0 * yMove} );
+    GeometryVector points8( {point1 + 2 * xMove + 1 * yMove, point2 + 2 * xMove + 1 * yMove,
+                             point3 + 2 * xMove + 1 * yMove, point4 + 2 * xMove + 1 * yMove} );
+    GeometryVector points9( {point1 + 2 * xMove + 2 * yMove, point2 + 2 * xMove + 2 * yMove,
+                             point3 + 2 * xMove + 2 * yMove, point4 + 2 * xMove + 2 * yMove} );
 
     int degree, refine;
     cin >> degree >> refine;
-    for ( int d = 0; d < degree; ++d )
+    array<shared_ptr<PhyTensorBsplineBasis<2, 2, double>>, 9> domains;
+    domains[0] =
+        make_shared<PhyTensorBsplineBasis<2, 2, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points1 );
+    domains[1] =
+        make_shared<PhyTensorBsplineBasis<2, 2, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points2 );
+    domains[2] =
+        make_shared<PhyTensorBsplineBasis<2, 2, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points3 );
+    domains[3] =
+        make_shared<PhyTensorBsplineBasis<2, 2, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points4 );
+    domains[4] =
+        make_shared<PhyTensorBsplineBasis<2, 2, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points5 );
+    domains[5] =
+        make_shared<PhyTensorBsplineBasis<2, 2, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points6 );
+    domains[6] =
+        make_shared<PhyTensorBsplineBasis<2, 2, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points7 );
+    domains[7] =
+        make_shared<PhyTensorBsplineBasis<2, 2, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points8 );
+    domains[8] =
+        make_shared<PhyTensorBsplineBasis<2, 2, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points9 );
+
+    for ( auto& i : domains )
     {
-        for ( int r = 1; r < refine; ++r )
-        {
-            array<shared_ptr<PhyTensorBsplineBasis<2, 2, double>>, 4> domains;
-            domains[0] = make_shared<PhyTensorBsplineBasis<2, 2, double>>(
-                std::vector<KnotVector<double>>{knot_vector, knot_vector}, points1 );
-            domains[1] = make_shared<PhyTensorBsplineBasis<2, 2, double>>(
-                std::vector<KnotVector<double>>{knot_vector, knot_vector}, points2 );
-            domains[2] = make_shared<PhyTensorBsplineBasis<2, 2, double>>(
-                std::vector<KnotVector<double>>{knot_vector, knot_vector}, points3 );
-            domains[3] = make_shared<PhyTensorBsplineBasis<2, 2, double>>(
-                std::vector<KnotVector<double>>{knot_vector, knot_vector}, points4 );
-
-            for ( auto& i : domains )
-            {
-                i->DegreeElevate( d );
-            }
-            for ( auto& i : domains )
-            {
-                i->UniformRefine( r );
-            }
-            vector<shared_ptr<Surface<2, double>>> cells;
-            for ( int i = 0; i < 4; i++ )
-            {
-                cells.push_back( make_shared<Surface<2, double>>( domains[i] ) );
-                cells[i]->SurfaceInitialize();
-            }
-
-            for ( int i = 0; i < 3; i++ )
-            {
-                for ( int j = i + 1; j < 4; j++ )
-                {
-                    cells[i]->Match( cells[j] );
-                }
-            }
-            DofMapper dof;
-            for ( auto& i : cells )
-            {
-                dof.Insert( i->GetID(), i->GetDomain()->GetDof() );
-            }
-
-            vector<int> boundary_indices;
-
-            for ( auto& i : cells )
-            {
-                int id = i->GetID();
-                int starting_dof = dof.StartingDof( id );
-                for ( int j = 0; j < 4; j++ )
-                {
-                    if ( !i->EdgePointerGetter( j )->IsMatched() )
-                    {
-                        auto local_boundary_indices = i->EdgePointerGetter( j )->Indices( 1, 0 );
-                        std::for_each( local_boundary_indices.begin(), local_boundary_indices.end(),
-                                       [&]( int& index ) { index += starting_dof; } );
-                        boundary_indices.insert( boundary_indices.end(), local_boundary_indices.begin(),
-                                                 local_boundary_indices.end() );
-                    }
-                }
-            }
-            sort( boundary_indices.begin(), boundary_indices.end() );
-            boundary_indices.erase( unique( boundary_indices.begin(), boundary_indices.end() ), boundary_indices.end() );
-
-            function<vector<double>( const VectorXd& )> body_force = []( const VectorXd& u ) {
-                double x = u( 0 );
-                double y = u( 1 );
-                return vector<double>{8 * pow( Pi, 2 ) * sin( 2 * Pi * x ) * sin( 2 * Pi * y )};
-            };
-
-            function<vector<double>( const VectorXd& )> analytical_solution = []( const VectorXd& u ) {
-                double x = u( 0 );
-                double y = u( 1 );
-                return vector<double>{sin( 2 * Pi * x ) * sin( 2 * Pi * y ), 2 * Pi * cos( 2 * Pi * x ) * sin( 2 * Pi * y ),
-                                      2 * Pi * sin( 2 * Pi * x ) * cos( 2 * Pi * y )};
-            };
-
-            ConstraintAssembler<2, 2, double> constraint_assemble( dof );
-            constraint_assemble.ConstraintCodimensionCreator( cells );
-            constraint_assemble.Additional_Constraint( boundary_indices );
-            SparseMatrix<double> sp1;
-            constraint_assemble.AssembleByCodimension( sp1 );
-
-            StiffnessAssembler<PoissonStiffnessVisitor<double>> stiffness_assemble( dof );
-            SparseMatrix<double> stiffness_matrix, load_vector;
-
-            stiffness_matrix.resize( dof.TotalDof(), dof.TotalDof() );
-            load_vector.resize( dof.TotalDof(), 1 );
-            stiffness_assemble.Assemble( cells, body_force, stiffness_matrix, load_vector );
-
-            SparseMatrix<double> constrained_stiffness_matrix = sp1.transpose() * stiffness_matrix * sp1;
-            SparseMatrix<double> constrained_rhs = sp1.transpose() * ( load_vector );
-            ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower | Eigen::Upper> cg;
-            cg.compute( constrained_stiffness_matrix );
-            VectorXd Solution = sp1 * cg.solve( constrained_rhs );
-            vector<KnotVector<double>> solutionDomain1, solutionDomain2, solutionDomain3, solutionDomain4;
-            solutionDomain1.push_back( domains[0]->KnotVectorGetter( 0 ) );
-            solutionDomain1.push_back( domains[0]->KnotVectorGetter( 1 ) );
-            solutionDomain2.push_back( domains[1]->KnotVectorGetter( 0 ) );
-            solutionDomain2.push_back( domains[1]->KnotVectorGetter( 1 ) );
-            solutionDomain3.push_back( domains[2]->KnotVectorGetter( 0 ) );
-            solutionDomain3.push_back( domains[2]->KnotVectorGetter( 1 ) );
-            solutionDomain4.push_back( domains[3]->KnotVectorGetter( 0 ) );
-            solutionDomain4.push_back( domains[3]->KnotVectorGetter( 1 ) );
-            VectorXd controlDomain1 = Solution.segment( dof.StartingDof( cells[0]->GetID() ), domains[0]->GetDof() );
-            VectorXd controlDomain2 = Solution.segment( dof.StartingDof( cells[1]->GetID() ), domains[1]->GetDof() );
-            VectorXd controlDomain3 = Solution.segment( dof.StartingDof( cells[2]->GetID() ), domains[2]->GetDof() );
-            VectorXd controlDomain4 = Solution.segment( dof.StartingDof( cells[3]->GetID() ), domains[3]->GetDof() );
-            vector<shared_ptr<PhyTensorBsplineBasis<2, 1, double>>> solutions( 4 );
-            solutions[0] = make_shared<PhyTensorBsplineBasis<2, 1, double>>( solutionDomain1, controlDomain1 );
-            solutions[1] = make_shared<PhyTensorBsplineBasis<2, 1, double>>( solutionDomain2, controlDomain2 );
-            solutions[2] = make_shared<PhyTensorBsplineBasis<2, 1, double>>( solutionDomain3, controlDomain3 );
-            solutions[3] = make_shared<PhyTensorBsplineBasis<2, 1, double>>( solutionDomain4, controlDomain4 );
-
-            PostProcess<double> post_process( cells, solutions, analytical_solution );
-            cout << "L2 error: " << post_process.RelativeL2Error() << " H1 error: " << post_process.RelativeH1Error() << endl;
-            post_process.Plot(100);
-        }
-        cout << endl;
+        i->DegreeElevate( degree );
     }
+    for ( auto& i : domains )
+    {
+        i->UniformRefine( refine );
+    }
+
+    domains[0]->KnotsInsertion( 0, {1.0 / 3, 2.0 / 3} );
+    domains[0]->KnotsInsertion( 1, {1.0 / 3, 2.0 / 3} );
+    domains[1]->KnotsInsertion( 0, {1.0 / 2} );
+    domains[1]->KnotsInsertion( 1, {1.0 / 2} );
+    domains[2]->KnotsInsertion( 0, {1.0 / 3, 2.0 / 3} );
+    domains[2]->KnotsInsertion( 1, {1.0 / 3, 2.0 / 3} );
+
+    domains[3]->KnotsInsertion( 0, {1.0 / 2} );
+    domains[3]->KnotsInsertion( 1, {1.0 / 2} );
+    domains[4]->KnotsInsertion( 0, {1.0 / 3, 2.0 / 3} );
+    domains[4]->KnotsInsertion( 1, {1.0 / 3, 2.0 / 3} );
+    domains[5]->KnotsInsertion( 0, {1.0 / 2} );
+    domains[5]->KnotsInsertion( 1, {1.0 / 2} );
+
+    domains[6]->KnotsInsertion( 0, {1.0 / 3, 2.0 / 3} );
+    domains[6]->KnotsInsertion( 1, {1.0 / 3, 2.0 / 3} );
+    domains[7]->KnotsInsertion( 0, {1.0 / 2} );
+    domains[7]->KnotsInsertion( 1, {1.0 / 2} );
+    domains[8]->KnotsInsertion( 0, {1.0 / 3, 2.0 / 3} );
+    domains[8]->KnotsInsertion( 1, {1.0 / 3, 2.0 / 3} );
+
+    // domains[3]->KnotsInsertion( 0, {1.0 / 3, 2.0 / 3} );
+    // domains[3]->KnotsInsertion( 1, {1.0 / 3, 2.0 / 3} );
+    // domains[2]->KnotsInsertion( 0, {1.0 / 5, 2.0 / 5, 3.0 / 5, 4.0 / 5} );
+    // domains[2]->KnotsInsertion( 1, {1.0 / 5, 2.0 / 5, 3.0 / 5, 4.0 / 5} );
+
+    vector<shared_ptr<Surface<2, double>>> cells;
+    for ( int i = 0; i < 9; i++ )
+    {
+        cells.push_back( make_shared<Surface<2, double>>( domains[i] ) );
+        cells[i]->SurfaceInitialize();
+    }
+
+    for ( int i = 0; i < 8; i++ )
+    {
+        for ( int j = i + 1; j < 9; j++ )
+        {
+            cells[i]->Match( cells[j] );
+        }
+    }
+    DofMapper dof;
+    for ( auto& i : cells )
+    {
+        dof.Insert( i->GetID(), i->GetDomain()->GetDof() );
+    }
+
+    vector<int> boundary_indices;
+
+    for ( auto& i : cells )
+    {
+        int id = i->GetID();
+        int starting_dof = dof.StartingDof( id );
+        for ( int j = 0; j < 4; j++ )
+        {
+            if ( !i->EdgePointerGetter( j )->IsMatched() )
+            {
+                auto local_boundary_indices = i->EdgePointerGetter( j )->Indices( 1, 0 );
+                std::for_each( local_boundary_indices.begin(), local_boundary_indices.end(),
+                               [&]( int& index ) { index += starting_dof; } );
+                boundary_indices.insert( boundary_indices.end(), local_boundary_indices.begin(), local_boundary_indices.end() );
+            }
+        }
+    }
+    sort( boundary_indices.begin(), boundary_indices.end() );
+    boundary_indices.erase( unique( boundary_indices.begin(), boundary_indices.end() ), boundary_indices.end() );
+
+    ConstraintAssembler<2, 2, double> constraint_assemble( dof );
+    constraint_assemble.ConstraintCreator( cells );
+    constraint_assemble.Additional_Constraint( boundary_indices );
+    SparseMatrix<double> sp1;
+    constraint_assemble.AssembleByReducedKernel( sp1 );
+
+    StiffnessAssembler<PoissonStiffnessVisitor<double>> stiffness_assemble( dof );
+    StiffnessAssembler<L2StiffnessVisitor<double>> mass_assemble( dof );
+    SparseMatrix<double> stiffness_matrix, mass_matrix;
+
+    stiffness_matrix.resize( dof.TotalDof(), dof.TotalDof() );
+    mass_matrix.resize( dof.TotalDof(), dof.TotalDof() );
+    stiffness_assemble.Assemble( cells, stiffness_matrix );
+    mass_assemble.Assemble( cells, mass_matrix );
+
+    SparseMatrix<double> constrained_stiffness_matrix = sp1.transpose() * stiffness_matrix * sp1;
+    SparseMatrix<double> constrained_mass_matrix = sp1.transpose() * mass_matrix * sp1;
+    cout << "working on matrix\n";
+    Eigen::SparseQR<Eigen::SparseMatrix<double>, Eigen::COLAMDOrdering<int>> solver;
+    solver.compute( constrained_mass_matrix );
+    MatrixXd Solution = solver.solve( constrained_stiffness_matrix );
+    VectorXcd eigen = Solution.eigenvalues();
+    std::sort( eigen.data(), eigen.data() + eigen.size(),
+               []( std::complex<double> lhs, std::complex<double> rhs ) { return norm( rhs ) > norm( lhs ); } );
+    VectorXd res = eigen.cwiseAbs().cwiseSqrt() / 3;
+    cout << res.transpose() << endl;
+    VectorXd exact( eigen.size() * eigen.size() );
+    for ( int m = 0; m < eigen.size(); m++ )
+    {
+        for ( int n = 0; n < eigen.size(); n++ )
+        {
+            exact( eigen.size() * m + n ) = Pi * sqrt( pow( m + 1.0, 2 ) + pow( n + 1.0, 2 ) );
+        }
+    }
+    std::sort( exact.data(), exact.data() + exact.size() );
+    for ( int i = 0; i < eigen.size(); i++ )
+    {
+        res( i ) = res( i ) / exact( i );
+    }
+    std::ofstream file;
+    file.open( "spectrum.txt" );
+    for ( int i = 0; i < res.size(); i++ )
+    {
+        file << 1.0 * i / eigen.size() << " " << res( i ) << endl;
+    }
+
+    // // Construct matrix operation object using the wrapper class SparseGenMatProd
+    // SparseGenMatProd<double> op( Solution );
+    // cout << "working on eigenvalue\n";
+    // // Construct eigen solver object, requesting the largest three eigenvalues
+    // GenEigsSolver<double, LARGEST_MAGN, SparseGenMatProd<double>> eigs( &op, 2, 30 );
+
+    // // Initialize and compute
+    // eigs.init();
+    // int nconv = eigs.compute();
+
+    // // Retrieve results
+    // Eigen::VectorXcd evalues;
+    // if ( eigs.info() == SUCCESSFUL )
+    //     evalues = eigs.eigenvalues();
+
+    // std::cout << "Eigenvalues found:\n" << evalues.cwiseAbs().cwiseSqrt() << std::endl;
 
     return 0;
 }

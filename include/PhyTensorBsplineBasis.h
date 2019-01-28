@@ -3,10 +3,10 @@
 //
 #pragma once
 
-#include <unordered_map>
 #include "TensorBsplineBasis.h"
 #include "Utility.hpp"
 #include <Eigen/StdVector>
+#include <unordered_map>
 
 template <int d, int N, typename T>
 struct ComputeJacobian;
@@ -14,8 +14,7 @@ struct ComputeJacobian;
 template <int d, int N, typename T = double>
 class PhyTensorBsplineBasis : public TensorBsplineBasis<d, T>
 {
-
-  public:
+public:
     using Pts = Eigen::Matrix<T, d, 1>;
     using PhyPts = Eigen::Matrix<T, N, 1>;
 
@@ -29,157 +28,140 @@ class PhyTensorBsplineBasis : public TensorBsplineBasis<d, T>
     using HyperPlane = PhyTensorBsplineBasis<d - 1, N, T>;
     using HyperPlaneSharedPts = std::shared_ptr<PhyTensorBsplineBasis<d - 1, N, T>>;
 
-  public:
+public:
     PhyTensorBsplineBasis();
 
-    PhyTensorBsplineBasis(const BsplineBasis<T> &,
-                          const GeometryVector &);
+    PhyTensorBsplineBasis( const BsplineBasis<T>&, const GeometryVector& );
 
-    PhyTensorBsplineBasis(const BsplineBasis<T> &,
-                          const BsplineBasis<T> &,
-                          const GeometryVector &);
+    PhyTensorBsplineBasis( const BsplineBasis<T>&, const BsplineBasis<T>&, const GeometryVector& );
 
-    PhyTensorBsplineBasis(const BsplineBasis<T> &,
-                          const BsplineBasis<T> &,
-                          const BsplineBasis<T> &,
-                          const GeometryVector &);
+    PhyTensorBsplineBasis( const BsplineBasis<T>&, const BsplineBasis<T>&, const BsplineBasis<T>&, const GeometryVector& );
 
-    PhyTensorBsplineBasis(const std::vector<KnotVector<T>> &,
-                          const GeometryVector &);
+    PhyTensorBsplineBasis( const std::vector<KnotVector<T>>&, const GeometryVector& );
 
-    PhyTensorBsplineBasis(const KnotVector<T> &,
-                          const GeometryVector &);
+    PhyTensorBsplineBasis( const KnotVector<T>&, const GeometryVector& );
 
-    PhyTensorBsplineBasis(const KnotVector<T> &,
-                          const KnotVector<T> &,
-                          const GeometryVector &);
+    PhyTensorBsplineBasis( const KnotVector<T>&, const KnotVector<T>&, const GeometryVector& );
 
-    PhyTensorBsplineBasis(const KnotVector<T> &,
-                          const KnotVector<T> &,
-                          const KnotVector<T> &,
-                          const GeometryVector &);
+    PhyTensorBsplineBasis( const KnotVector<T>&, const KnotVector<T>&, const KnotVector<T>&, const GeometryVector& );
 
-    PhyTensorBsplineBasis(const std::vector<KnotVector<T>> &,
-                          const Eigen::Matrix<T, Eigen::Dynamic, 1> &);
+    PhyTensorBsplineBasis( const std::vector<KnotVector<T>>&, const Eigen::Matrix<T, Eigen::Dynamic, 1>& );
 
     virtual ~PhyTensorBsplineBasis()
     {
     }
 
-    virtual PhyPts AffineMap(const Pts &,
-                             const DiffPattern &i = DiffPattern(d, 0)) const;
+    virtual PhyPts AffineMap( const Pts&, const DiffPattern& i = DiffPattern( d, 0 ) ) const;
 
-    virtual T Jacobian(const Pts &) const;
+    virtual T Jacobian( const Pts& ) const;
 
-    Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> JacobianMatrix(const Pts &) const;
+    Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> JacobianMatrix( const Pts& ) const;
 
     inline Pts Middle() const
     {
         Pts u;
-        for (int i = 0; i != d; i++)
-            u(i) = (this->_basis[i].DomainStart() + this->_basis[i].DomainEnd()) * .5;
+        for ( int i = 0; i != d; i++ )
+            u( i ) = ( this->_basis[i].DomainStart() + this->_basis[i].DomainEnd() ) * .5;
         return u;
     }
 
     //! Return physical middle of the patch
     inline PhyPts PhyMiddle() const
     {
-        return AffineMap(Middle());
+        return AffineMap( Middle() );
     }
 
-    bool InversePts(const PhyPts &,
-                    Pts &,
-                    int = 1e8,
-                    T = std::numeric_limits<T>::epsilon() * 1e2) const;
+    bool InversePts( const PhyPts&, Pts&, int = 1e8, T = std::numeric_limits<T>::epsilon() * 1e2 ) const;
 
-    bool InversePts(const vector &,
-                    vector &,
-                    int = 1e8,
-                    T = std::numeric_limits<T>::epsilon() * 1e2) const;
+    bool InversePts( const vector&, vector&, int = 1e8, T = std::numeric_limits<T>::epsilon() * 1e2 ) const;
 
-    virtual void DegreeElevate(int,
-                               int);
+    virtual void DegreeElevate( int, int );
 
-    virtual void UniformRefine(int,
-                               int,
-                               int);
+    virtual void UniformRefine( int, int, int );
 
-    void UniformRefineDof(int,
-                          int);
+    void UniformRefineDof( int, int );
 
-    void KnotRefine(int,
-                    const KnotVector<T> &);
+    void KnotRefine( int, const KnotVector<T>& );
 
-    virtual void KnotInsertion(int,
-                               T,
-                               int = 1);
+    virtual void KnotInsertion( int, T, int = 1 );
 
-    void KnotsInsertion(int, const std::vector<T> &);
+    void KnotsInsertion( int, const std::vector<T>& );
 
-    inline virtual void DegreeElevate(int p)
+    inline virtual void DegreeElevate( int p )
     {
-        if (p == 0)
+        if ( p == 0 )
             return;
-        for (int i = 0; i != d; ++i)
-            DegreeElevate(i, p);
+        for ( int i = 0; i != d; ++i )
+            DegreeElevate( i, p );
     }
 
-    inline virtual void UniformRefine(int r, int m = 1)
+    inline virtual void UniformRefine( int r, int m = 1 )
     {
-        if (r == 0)
+        if ( r == 0 )
             return;
-        for (int i = 0; i != d; ++i)
-            UniformRefine(i, r, m);
+        for ( int i = 0; i != d; ++i )
+            UniformRefine( i, r, m );
     }
 
-    virtual void UniformRefineDof(int dof);
+    virtual void UniformRefineDof( int dof );
 
     void PrintCtrPts() const;
 
-    inline PhyPts CtrPtsGetter(const int &i) const
+    inline PhyPts CtrPtsGetter( const int& i ) const
     {
         return _geometricInfo[i];
     }
 
-    const inline GeometryVector &CtrPtsVecGetter() const
+    const inline GeometryVector& CtrPtsVecGetter() const
     {
         return _geometricInfo;
     }
 
-    inline void CtrPtsSetter(const int &i, const PhyPts &pt)
+    inline void CtrPtsSetter( const int& i, const PhyPts& pt )
     {
-        ASSERT(i < _geometricInfo.size(), "The control point index is out of range.\n");
+        ASSERT( i < _geometricInfo.size(), "The control point index is out of range.\n" );
         _geometricInfo[i] = pt;
     }
 
-    virtual HyperPlaneSharedPts MakeHyperPlane(const int &orientation,
-                                               const int &layer) const;
+    virtual HyperPlaneSharedPts MakeHyperPlane( const int& orientation, const int& layer ) const;
 
     // Only defined for 2D domain represented by 2D parametric domain
     template <int D = d, int n = N>
-    typename std::enable_if<D == 2 && n == 2, BasisFunValDerAllList_ptr>::type Eval1PhyDerAllTensor(const vector &u) const;
+    typename std::enable_if<D == 2 && n == 2, BasisFunValDerAllList_ptr>::type Eval1PhyDerAllTensor( const vector& u ) const;
 
     template <int D = d, int n = N>
-    typename std::enable_if<D == 2 && n == 2, BasisFunValDerAllList_ptr>::type Eval2PhyDerAllTensor(const vector &u) const;
+    typename std::enable_if<D == 2 && n == 2, BasisFunValDerAllList_ptr>::type Eval2PhyDerAllTensor( const vector& u ) const;
 
     template <int D = d, int n = N>
-    typename std::enable_if<D == 2 && n == 2, BasisFunValDerAllList_ptr>::type Eval3PhyDerAllTensor(const vector &u) const;
+    typename std::enable_if<D == 2 && n == 2, BasisFunValDerAllList_ptr>::type Eval3PhyDerAllTensor( const vector& u ) const;
 
-  protected:
+protected:
     GeometryVector _geometricInfo;
 };
 
 template <>
-PhyTensorBsplineBasis<2, 1, double>::PhyTensorBsplineBasis(const std::vector<KnotVector<double>> &base,
-                                                           const Eigen::Matrix<double, Eigen::Dynamic, 1> &geometry)
-    : TensorBsplineBasis<2, double>(
-          base)
+PhyTensorBsplineBasis<2, 1, double>::PhyTensorBsplineBasis( const std::vector<KnotVector<double>>& base,
+                                                            const Eigen::Matrix<double, Eigen::Dynamic, 1>& geometry )
+    : TensorBsplineBasis<2, double>( base )
 {
-    ASSERT(geometry.rows() == (this->TensorBsplineBasis<2, double>::GetDof()),
-           "Invalid geometrical information input, check size bro.");
-    for (int i = 0; i != geometry.rows(); ++i)
+    ASSERT( geometry.rows() == ( this->TensorBsplineBasis<2, double>::GetDof() ),
+            "Invalid geometrical information input, check size bro." );
+    for ( int i = 0; i != geometry.rows(); ++i )
     {
-        _geometricInfo.push_back(Eigen::Matrix<double, 1, 1>(geometry(i)));
+        _geometricInfo.push_back( Eigen::Matrix<double, 1, 1>( geometry( i ) ) );
+    }
+}
+
+template <>
+PhyTensorBsplineBasis<2, 2, double>::PhyTensorBsplineBasis( const std::vector<KnotVector<double>>& base,
+                                                            const Eigen::Matrix<double, Eigen::Dynamic, 1>& geometry )
+    : TensorBsplineBasis<2, double>( base )
+{
+    ASSERT( geometry.rows() == ( 2 * this->TensorBsplineBasis<2, double>::GetDof() ),
+            "Invalid geometrical information input, check size bro." );
+    for ( int i = 0; i != this->TensorBsplineBasis<2, double>::GetDof(); ++i )
+    {
+        _geometricInfo.push_back( Eigen::Matrix<double, 2, 1>( geometry( 2 * i ), geometry( 2 * i + 1 ) ) );
     }
 }
 
@@ -201,17 +183,21 @@ PhyTensorBsplineBasis<2, 1, double>::PhyTensorBsplineBasis(const std::vector<Kno
 template <int N, typename T>
 class PhyTensorBsplineBasis<0, N, T> : public TensorBsplineBasis<0, T>
 {
-  public:
+public:
     using HyperPlane = PhyTensorBsplineBasis<-1, N, T>;
     using HyperPlaneSharedPts = std::shared_ptr<PhyTensorBsplineBasis<-1, N, T>>;
     using GeometryVector = Accessory::ContPtsList<T, N>;
-    PhyTensorBsplineBasis() {}
+    PhyTensorBsplineBasis()
+    {
+    }
 
-    PhyTensorBsplineBasis(const std::vector<KnotVector<T>> &,
-                          const GeometryVector &) {}
+    PhyTensorBsplineBasis( const std::vector<KnotVector<T>>&, const GeometryVector& )
+    {
+    }
 
-    HyperPlane MakeHyperPlane(const int &orientation,
-                              const int &layer) const {}
+    HyperPlane MakeHyperPlane( const int& orientation, const int& layer ) const
+    {
+    }
 
     ~PhyTensorBsplineBasis(){};
 };

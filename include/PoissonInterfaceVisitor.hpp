@@ -76,8 +76,8 @@ void PoissonInterfaceVisitor<N, T>::SolveConstraint( Edge<N, T>* edge )
                            condensed_gramian, gramian_matrix );
     this->MatrixAssembler( multiplier_indices_inverse_map.size(), activated_master_indices_inverse_map.size(),
                            condensed_rhs, rhs_matrix );
-    Accessory::removeNoise( gramian_matrix, 1e-7 * abs( gramian_matrix( 0, 0 ) ) );
-    Accessory::removeNoise( rhs_matrix, 1e-14 );
+    // Accessory::removeNoise( gramian_matrix, 1e-7 * abs( gramian_matrix( 0, 0 ) ) );
+    // Accessory::removeNoise( rhs_matrix, 1e-14 );
     Matrix constraint = this->SolveNonSymmetric( gramian_matrix, rhs_matrix );
     MatrixData<T> constraint_data( constraint, slave_activated_indices, master_activated_indices );
     this->_constraintData = std::move( constraint_data );
@@ -219,6 +219,26 @@ typename std::enable_if<n == 2, void>::type PoissonInterfaceVisitor<N, T>::C0Int
     auto master_evals = master_domain->EvalDerAllTensor( master_quadrature_abscissa, 0 );
     auto multiplier_evals = multiplier_domain->EvalDualAllTensor( u.first );
     // auto multiplier_evals = ( multiplier_domain->BasisGetter( 0 ) ).EvalCodimensionBezierDual( u.first( 0 ) );
+
+    // auto knot_vector = ( multiplier_domain->BasisGetter( 0 ) ).Knots();
+    // for ( auto it = knot_vector.begin(); it != knot_vector.end(); ++it )
+    // {
+    //     if ( *it != 0 )
+    //     {
+    //         knot_vector.erase( it );
+    //         break;
+    //     }
+    // }
+    // for ( auto it = knot_vector.end() - 1; it != knot_vector.begin(); --it )
+    // {
+    //     if ( *it != 1 )
+    //     {
+    //         knot_vector.erase( it );
+    //         break;
+    //     }
+    // }
+    // BsplineBasis<T> tmp( knot_vector );
+    // auto multiplier_evals = tmp.EvalDerAll( u.first( 0 ), 0 );
 
     slave_constraint_basis.resize( 1, slave_evals->size() );
     master_constraint_basis.resize( 1, master_evals->size() );

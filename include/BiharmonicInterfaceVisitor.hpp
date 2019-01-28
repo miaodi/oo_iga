@@ -313,6 +313,42 @@ typename std::enable_if<n == 2, void>::type BiharmonicInterfaceVisitor<N, T>::C1
     auto multiplier_evals = multiplier_domain->EvalDualAllTensor( u.first );
     // auto multiplier_evals = ( multiplier_domain->BasisGetter( 0 ) ).EvalCodimensionBezierDual( u.first( 0 ) );
 
+    // auto knot_vector = ( multiplier_domain->BasisGetter( 0 ) ).Knots();
+    // for ( auto it = knot_vector.begin(); it != knot_vector.end(); ++it )
+    // {
+    //     if ( *it != 0 )
+    //     {
+    //         knot_vector.erase( it );
+    //         break;
+    //     }
+    // }
+    // for ( auto it = knot_vector.begin(); it != knot_vector.end(); ++it )
+    // {
+    //     if ( *it != 0 )
+    //     {
+    //         knot_vector.erase( it );
+    //         break;
+    //     }
+    // }
+    // for ( auto it = knot_vector.end() - 1; it != knot_vector.begin(); --it )
+    // {
+    //     if ( *it != 1 )
+    //     {
+    //         knot_vector.erase( it );
+    //         break;
+    //     }
+    // }
+    // for ( auto it = knot_vector.end() - 1; it != knot_vector.begin(); --it )
+    // {
+    //     if ( *it != 1 )
+    //     {
+    //         knot_vector.erase( it );
+    //         break;
+    //     }
+    // }
+    // BsplineBasis<T> tmp( knot_vector );
+    // auto multiplier_evals = tmp.EvalDerAll( u.first( 0 ), 0 );
+
     // Resize integration matrices
     slave_constraint_basis.resize( 1, slave_evals->size() );
     master_constraint_basis.resize( 1, master_evals->size() );

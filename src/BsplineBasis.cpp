@@ -199,12 +199,12 @@ typename BsplineBasis<T>::BasisFunValDerAllList_ptr BsplineBasis<T>::EvalCodimen
     int dof = GetDof();
     for ( auto& i : *evals )
     {
-        if ( i.first == 0 )
+        if ( i.first == 0 || i.first == 1 )
         {
             i.first = 0;
             // i.second[0] = 0;
         }
-        else if ( i.first == dof - 1 )
+        else if ( i.first == dof - 1 || i.first == dof - 2 )
         {
             i.first = dof - 3;
             // i.second[0] = 0;
@@ -300,7 +300,7 @@ void BsplineBasis<T>::BezierDualInitialize()
     // }
 
     _dualBasis._basisKnot = &( this->_basisKnot );
-    _dualBasis._codimension = 1;
+    _dualBasis._codimension = 0;
     _dualBasis.Initialization();
 }
 

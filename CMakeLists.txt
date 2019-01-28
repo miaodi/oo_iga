@@ -5,7 +5,8 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_FLAGS "-Ofast -Wno-switch -fopenmp -march=native")
 set(CMAKE_EXE_LINKER_FLAGS "-lgmp")
 
-set(SPECTRA_INCLUDE_DIR $ENV{HOME}/Spectra/include/Spectra)
+
+set(SPECTRA_INCLUDE_DIR $ENV{HOME}/spectra/include)
 include_directories(${SPECTRA_INCLUDE_DIR})
 find_package(Eigen3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})

@@ -20,6 +20,7 @@ public:
     using Vector = typename StiffnessVisitor<2, 1, T>::Vector;
     using DomainShared_ptr = typename StiffnessVisitor<2, 1, T>::DomainShared_ptr;
     using DataType = T;
+    static const int Dim = StiffnessVisitor<2, 1, T>::Dim;
 
 public:
     PoissonStiffnessVisitor( const LoadFunctor& body_force ) : StiffnessVisitor<2, 1, T>( body_force )
