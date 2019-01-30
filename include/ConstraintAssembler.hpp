@@ -25,16 +25,16 @@ public:
             {
                 if ( i->EdgePointerGetter( j )->IsMatched() && i->EdgePointerGetter( j )->IsSlave() )
                 {
-                    PoissonInterfaceVisitor<N, T> biharmonic_interface;
+                    BiharmonicInterfaceVisitor<N, T> biharmonic_interface;
                     i->EdgePointerGetter( j )->Accept( biharmonic_interface );
                     int slave_id = biharmonic_interface.SlaveID();
                     int master_id = biharmonic_interface.MasterID();
-                    int slave_starting_dof = _dof.StartingDof( slave_id );
-                    int master_starting_dof = _dof.StartingDof( master_id );
+                    int slave_starting_dof = 0;
+                    int master_starting_dof = 0;
                     for ( int k = 0; k <= 1; k++ )
                     {
                         auto vertex = i->EdgePointerGetter( j )->VertexPointerGetter( k );
-                        auto slave_vert_ind = i->EdgePointerGetter( j )->VertexPointerGetter( k )->Indices( 1, 0 );
+                        auto slave_vert_ind = i->EdgePointerGetter( j )->VertexPointerGetter( k )->Indices( 1, 1 );
                         std::for_each( slave_vert_ind.begin(), slave_vert_ind.end(),
                                        [&]( int& index ) { index += slave_starting_dof; } );
                         _vertex_indices.insert( _vertex_indices.end(), slave_vert_ind.begin(), slave_vert_ind.end() );
