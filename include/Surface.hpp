@@ -210,6 +210,8 @@ class Surface : public Element<2, N, T>, public std::enable_shared_from_this<Sur
         {
             return this->_domain->MakeHyperPlane(1, this->_domain->GetDof(1) - 1);
         }
+        default:
+        ;
         }
     }
 
@@ -233,6 +235,8 @@ class Surface : public Element<2, N, T>, public std::enable_shared_from_this<Sur
         {
             return this->_domain->AffineMap(Coordinate(this->_domain->DomainStart(0), this->_domain->DomainEnd(1)));
         }
+        default:
+        ;
         }
     }
 };

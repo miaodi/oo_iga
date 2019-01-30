@@ -104,7 +104,7 @@ void StiffnessVisitor<N, TrialFunctionDimension, T, d>::LocalAssemble( Element<d
     auto load = this->LocalRhs( linear_form_test, linear_form_test_indices, linear_form_value, weights );
     std::lock_guard<std::mutex> lock( this->_mutex );
     this->Triplet( load, _rhs );
-    this->SymmetricTriplet( stiff, _stiffnees );
+    this->Triplet( stiff, _stiffnees );
 }
 
 template <int N, int TrialFunctionDimension, typename T, int d>

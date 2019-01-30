@@ -11,8 +11,8 @@ include_directories(${SPECTRA_INCLUDE_DIR})
 find_package(Eigen3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
 
-include_directories(${arpack_ng_INCLUDE_DIRS})
-LINK_DIRECTORIES(${arpack_ng_LIBRARIES})
+# include_directories(${arpack_ng_INCLUDE_DIRS})
+# LINK_DIRECTORIES(${arpack_ng_LIBRARIES})
 
 include_directories(include)
 file(GLOB SOURCE_FILES "src/*.cpp")
