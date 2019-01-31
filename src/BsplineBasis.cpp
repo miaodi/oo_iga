@@ -3,8 +3,8 @@
 //
 
 #include "BsplineBasis.h"
-#include <boost/math/special_functions/legendre.hpp>
-#include <boost/multiprecision/gmp.hpp>
+// #include <boost/math/special_functions/legendre.hpp>
+// #include <boost/multiprecision/gmp.hpp>
 
 template <typename T>
 BsplineBasis<T>::BsplineBasis()
