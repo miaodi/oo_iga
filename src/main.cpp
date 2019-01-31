@@ -17,10 +17,10 @@
 #include "Utility.hpp"
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
-#include <unsupported/Eigen/KroneckerProduct>
 #include <fstream>
 #include <iostream>
 #include <time.h>
+#include <unsupported/Eigen/KroneckerProduct>
 
 using namespace Eigen;
 using namespace std;
@@ -113,7 +113,7 @@ int main()
     double t_current = .0;
     double dt = 2.5e-8;
     shared_ptr<Surface<2, double>> cell = make_shared<Surface<2, double>>( domain );
-    auto load = []( const Vector2d& u ) { return std::vector<double>{0, 0}; };
+    auto load = []( const VectorXd& u ) { return std::vector<double>{0, 0}; };
 
     cell->SurfaceInitialize();
 

@@ -33,7 +33,7 @@ protected:
     {
         auto evals = domain->EvalDerAllTensor( u );
         linear_form_value.resize( 1, 1 );
-        linear_form_value( 0, 0 ) = this->_bodyForceFunctor( domain->AffineMap( u ) )[0];
+        linear_form_value( 0, 0 ) = 0;
         linear_form_test.resize( 1, evals->size() );
         bilinear_form_trail.resize( 1, evals->size() );
         for ( int j = 0; j < evals->size(); ++j )
