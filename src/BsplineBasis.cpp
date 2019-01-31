@@ -463,7 +463,7 @@ std::vector<Eigen::SparseVector<T>> BsplineBasis<T>::BasisAssemblyVecs() const
 template <typename T>
 std::pair<typename BsplineBasis<T>::matrix, typename BsplineBasis<T>::matrix> BsplineBasis<T>::LhsRhsAssembler( int degree_of_completeness ) const
 {
-    using namespace boost::math;
+    // using namespace boost::math;
     using QuadList = typename QuadratureRule<T>::QuadList;
 
     int degree = _basisKnot.GetDegree();
