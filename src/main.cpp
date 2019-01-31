@@ -69,7 +69,7 @@ int main()
             std::vector<KnotVector<double>>{knot_vector, knot_vector}, points3 );
         for ( auto& i : domains )
         {
-            i->DegreeElevate( 2 );
+            i->DegreeElevate( 1 );
         }
         for ( auto& i : domains )
         {
@@ -100,7 +100,7 @@ int main()
         // cout << constraint.rows() << " " << constraint.cols() << endl;
     }
 
-    domain->DegreeElevate( 2 );
+    domain->DegreeElevate( 1 );
     domain->UniformRefine( 5 );
     int dof = domain->GetDof();
     VectorXd c = VectorXd::Random( dof ) * .05 + VectorXd::Constant( dof, .63 );
@@ -161,12 +161,12 @@ int main()
     // }
 
     auto g_alpha = [&c, &ct, cell, &load, dof, &dt, &constraint]( double alpha_m, double alpha_f, double gamma,
-                                                                  VectorXd& c_next, VectorXd& ct_next ) -> bool {
+                                                                  VectorXd& c_next, VectorXd& ct_next, double steps ) -> bool {
         // predictor stage
         VectorXd c_pred = c;
         VectorXd ct_pred = ( gamma - 1 ) / gamma * ct;
         double relative_residual = 0;
-        for ( int i = 0; i < 20; i++ )
+        for ( int i = 0; i < steps; i++ )
         {
             // alpha-levels
             VectorXd c_alpha = c + alpha_f * ( c_pred - c );
@@ -220,10 +220,10 @@ int main()
             VectorXd load_vector = constraint.transpose() * ( -load_vector_chm - load_vector_ch2nd - load_vector_ch4th );
 
             if ( i == 0 )
-                relative_residual = load_vector.norm();
-            double err = load_vector.norm() / relative_residual;
+                relative_residual = load_vector.template lpNorm<Infinity>();
+            double err = load_vector.template lpNorm<Infinity>() / relative_residual;
             cout << "Norm of residual: " << err << endl;
-            if ( err < 1e-5 )
+            if ( err < 1e-4 )
             {
                 c_next = c_pred;
                 ct_next = ct_pred;
@@ -232,7 +232,7 @@ int main()
 
             BiCGSTAB<SparseMatrix<double>> solver;
             solver.compute( stiffness_matrx );
-            solver.setTolerance( 1e-15 );
+            solver.setTolerance( 1e-16 );
 
             VectorXd dct = constraint * solver.solve( load_vector );
 
@@ -249,31 +249,31 @@ int main()
         cout << " current time: " << t_current << ", current time step size: " << dt << endl;
         VectorXd c_next_alpha, ct_next_alpha, c_next_be, ct_next_be;
 
-        if ( !g_alpha( alpha_m, alpha_f, gamma, c_next_alpha, ct_next_alpha ) )
+        if ( !g_alpha( alpha_m, alpha_f, gamma, c_next_alpha, ct_next_alpha, 20 ) )
         {
             cout << " generalized alpha does not converge\n";
             return 1;
         }
-        if ( !g_alpha( 1, 1, 1, c_next_be, ct_next_be ) )
+        if ( !g_alpha( 1, 1, 1, c_next_be, ct_next_be, 40 ) )
         {
             cout << " backward-euler does not converge\n";
             return 2;
         }
-        double err = ( c_next_alpha - c_next_be ).norm() / c_next_alpha.norm();
+        double err = ( c_next_alpha - c_next_be ).template lpNorm<Infinity>() / c_next_alpha.template lpNorm<Infinity>();
         cout << "difference between generalized alpha and backward euler: " << err << endl;
         if ( err > 1e-3 )
         {
-            dt *= .9 * sqrt( 1e-3 / err );
+            dt *= sqrt( .85 * 1e-3 / err );
         }
         else
         {
             t_current += dt;
             c = c_next_alpha;
             ct = ct_next_alpha;
-            dt *= .9 * sqrt( 1e-3 / err );
+            dt *= sqrt( .85 * 1e-3 / err );
         }
         num_of_steps++;
-        if ( num_of_steps % 25 == 0 )
+        if ( num_of_steps % 20 == 0 || num_of_steps == 0 )
         {
             std::ofstream file;
             std::string name;

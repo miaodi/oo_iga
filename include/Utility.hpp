@@ -8,10 +8,11 @@
 #include <Eigen/Sparse>
 #include <Eigen/StdVector>
 #include <KnotVector.h>
-#include <boost/math/special_functions/binomial.hpp>
+// #include <boost/math/special_functions/binomial.hpp>
 #include <iostream>
 #include <iterator>
 #include <map>
+#include <memory>
 #include <set>
 #include <vector>
 
@@ -466,10 +467,11 @@ std::unique_ptr<ExtractionOperatorContainer<T>> BezierReconstruction( const Knot
     return res;
 }
 
+int Binomial( const int n, const int k );
+
 template <typename T>
 Matrix<T, Dynamic, Dynamic> Gramian( int p )
 {
-    using namespace boost::math;
     int n = p + 1;
     Matrix<T, Dynamic, Dynamic> res( n, n );
     res.setZero();
@@ -477,8 +479,7 @@ Matrix<T, Dynamic, Dynamic> Gramian( int p )
     {
         for ( int j = 0; j <= i; j++ )
         {
-            res( i, j ) = binomial_coefficient<T>( p, i ) * binomial_coefficient<T>( p, j ) / ( 2 * p + 1 ) /
-                          binomial_coefficient<T>( 2 * p, i + j );
+            res( i, j ) = Binomial( p, i ) * Binomial( p, j ) / ( 2 * p + 1 ) / Binomial( 2 * p, i + j );
         }
     }
     res = res.template selfadjointView<Eigen::Lower>();
@@ -488,7 +489,6 @@ Matrix<T, Dynamic, Dynamic> Gramian( int p )
 template <typename T>
 Matrix<T, Dynamic, Dynamic> GramianInverse( int p )
 {
-    using namespace boost::math;
     int n = p + 1;
     Matrix<T, Dynamic, Dynamic> res( n, n );
     res.setZero();
@@ -499,10 +499,10 @@ Matrix<T, Dynamic, Dynamic> GramianInverse( int p )
             T sum = 0;
             for ( int k = 0; k <= std::min( i, j ); k++ )
             {
-                sum += ( 2 * k + 1 ) * binomial_coefficient<T>( p + k + 1, p - i ) * binomial_coefficient<T>( p - k, p - i ) *
-                       binomial_coefficient<T>( p + k + 1, p - j ) * binomial_coefficient<T>( p - k, p - j );
+                sum += ( 2 * k + 1 ) * Binomial( p + k + 1, p - i ) * Binomial( p - k, p - i ) *
+                       Binomial( p + k + 1, p - j ) * Binomial( p - k, p - j );
             }
-            res( i, j ) = sum * pow( -1, i + j ) / binomial_coefficient<T>( p, i ) / binomial_coefficient<T>( p, j );
+            res( i, j ) = sum * pow( -1, i + j ) / Binomial( p, i ) / Binomial( p, j );
         }
     }
     res = res.template selfadjointView<Eigen::Lower>();
@@ -702,7 +702,7 @@ SparseMatrix<T, ColMajor> SpVecToSpMat( ForwardIterator begin, ForwardIterator e
     return result;
 }
 
-// find a better way 
+// find a better way
 template <typename ForwardIterator, typename T = typename std::iterator_traits<ForwardIterator>::value_type::second_type::Scalar>
 SparseMatrix<T, ColMajor> SpVecPairToSpMat( ForwardIterator begin, ForwardIterator end )
 {
@@ -838,13 +838,12 @@ int Factorial( const int n );
 template <typename T>
 Matrix<T, Dynamic, Dynamic> BernsteinInnerPolynomial( const int p, const int q )
 {
-    using namespace boost::math;
     Matrix<T, Dynamic, Dynamic> res( p + 1, q + 1 );
     for ( int i = 0; i <= p; i++ )
     {
         for ( int j = 0; j <= q; j++ )
         {
-            res( i, j ) = binomial_coefficient<T>( p, i ) * Factorial( i + j ) * Factorial( p - i ) / Factorial( 1 + j + p );
+            res( i, j ) = Binomial( p, i ) * Factorial( i + j ) * Factorial( p - i ) / Factorial( 1 + j + p );
         }
     }
     return res;
@@ -854,14 +853,13 @@ Matrix<T, Dynamic, Dynamic> BernsteinInnerPolynomial( const int p, const int q )
 template <typename T>
 Matrix<T, Dynamic, Dynamic> AffineMappingOp( const int p, const T a, const T b )
 {
-    using namespace boost::math;
     Matrix<T, Dynamic, Dynamic> res( p + 1, p + 1 );
     res.setZero();
     for ( int j = 0; j <= p; j++ )
     {
         for ( int i = 0; i <= j; i++ )
         {
-            res( i, j ) = binomial_coefficient<T>( j, i ) * pow( 1.0 / ( b - a ), i ) * pow( -a / ( b - a ), j - i );
+            res( i, j ) = Binomial( j, i ) * pow( 1.0 / ( b - a ), i ) * pow( -a / ( b - a ), j - i );
         }
     }
     return res;
@@ -870,7 +868,6 @@ Matrix<T, Dynamic, Dynamic> AffineMappingOp( const int p, const T a, const T b )
 template <typename T>
 Matrix<T, Dynamic, Dynamic> AffineMappingOp( const int p, const std::pair<T, T>& ab )
 {
-    using namespace boost::math;
     const auto a = ab.first;
     const auto b = ab.second;
     return AffineMappingOp<T>( p, a, b );
@@ -880,6 +877,6 @@ template <typename T>
 std::pair<T, T> AffineMappingCoef( const std::pair<T, T>& ab0, const std::pair<T, T>& ab1 )
 {
     return std::make_pair( ( ab1.first - ab0.first ) / ( ab0.second - ab0.first ),
-                      ( ab1.second - ab0.first ) / ( ab0.second - ab0.first ) );
+                           ( ab1.second - ab0.first ) / ( ab0.second - ab0.first ) );
 }
 } // namespace Accessory

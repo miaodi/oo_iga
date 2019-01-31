@@ -5,7 +5,8 @@ std::map<int, int> Accessory::IndicesInverseMap( const std::vector<int>& forward
     std::map<int, int> inverse_map;
     for ( int i = 0; i < forward_map.size(); ++i )
     {
-        ASSERT( inverse_map.find( forward_map[i] ) == inverse_map.end(), "Given forward map is not available for inverse.\n" );
+        ASSERT( inverse_map.find( forward_map[i] ) == inverse_map.end(),
+                "Given forward map is not available for inverse.\n" );
         inverse_map[forward_map[i]] = i;
     }
     return inverse_map;
@@ -37,8 +38,10 @@ std::vector<int> Accessory::NClosestDof( const std::vector<int>& dofs, int targe
     ASSERT( n <= dofs.size(), "Requested dofs are larger than provided dofs.\n" );
     ASSERT( n > 0, "Requested dofs are invalid.\n" );
 
-    if(target_dof<dofs[0]) target_dof=dofs[0];
-    if(target_dof>dofs.back()) target_dof = dofs.back();
+    if ( target_dof < dofs[0] )
+        target_dof = dofs[0];
+    if ( target_dof > dofs.back() )
+        target_dof = dofs.back();
     auto it = std::find( dofs.begin(), dofs.end(), target_dof );
     ASSERT( it != dofs.end(), "Target dof is not listed in dofs" );
     std::vector<std::pair<int, int>> dist_to_dof;
@@ -64,4 +67,16 @@ int Accessory::Factorial( const int n )
         fac *= i;
     }
     return fac;
+}
+
+int Accessory::Binomial( const int n, const int k )
+{
+    auto diff = std::min( n - k, k );
+    int res = 1;
+    for ( int i = 0; i < diff; )
+    {
+        res *= ( n - i );
+        res /= ++i;
+    }
+    return res;
 }

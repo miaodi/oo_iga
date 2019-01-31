@@ -21,7 +21,7 @@ void QuadratureRule<T>::SetUpQuadrature(int num)
     }
     else
     {
-        ComputeReference(_size, _quadrature);
+        // ComputeReference(_size, _quadrature);
     }
 }
 
@@ -190,106 +190,106 @@ void QuadratureRule<T>::LookupReference(int num, QuadratureRule::QuadList &quadr
     }
 }
 
-template <typename T>
-void QuadratureRule<T>::ComputeReference(int n, QuadratureRule::QuadList &quadrature, unsigned digits)
-{
-    quadrature.resize(n);
-    for (auto &i : quadrature)
-    {
-        i.first.resize(1);
-    }
+// template <typename T>
+// void QuadratureRule<T>::ComputeReference(int n, QuadratureRule::QuadList &quadrature, unsigned digits)
+// {
+//     quadrature.resize(n);
+//     for (auto &i : quadrature)
+//     {
+//         i.first.resize(1);
+//     }
 
-    std::vector<T> x(n, 0), w(n, 0);
+//     std::vector<T> x(n, 0), w(n, 0);
 
-    const unsigned int max_its = digits;
-    const T tolerance = pow(T(0.1), static_cast<int>(digits));
+//     const unsigned int max_its = digits;
+//     const T tolerance = pow(T(0.1), static_cast<int>(digits));
 
-    // Find only half the roots because of symmetry
-    const unsigned int m = n / 2;
+//     // Find only half the roots because of symmetry
+//     const unsigned int m = n / 2;
 
-    // Three recurrence relation values and one derivative value.
-    T pn(0.0),     // P_{n}
-        pnm1(0.0), // P_{n-1}
-        pnm2(0.0), // P_{n-2}
-        dpn(0.0);  // P'_{n}
+//     // Three recurrence relation values and one derivative value.
+//     T pn(0.0),     // P_{n}
+//         pnm1(0.0), // P_{n-1}
+//         pnm2(0.0), // P_{n-2}
+//         dpn(0.0);  // P'_{n}
 
-    // If n is odd, the rule always contains the point x==0.
-    if (n % 2)
-    {
-        x[m] = T(0.0);
-        pn = 1.0;
-        pnm1 = 0.0;
-        // Compute P'_n(0)
-        for (int j = 0; j < n - 1; ++j)
-        {
-            pnm2 = pnm1;
-            pnm1 = pn;
-            pn = -j * pnm2 / static_cast<T>(j + 1);
-        }
-        dpn = n * pn;
-        w[m] = T(2.0) / (dpn * dpn);
-    }
+//     // If n is odd, the rule always contains the point x==0.
+//     if (n % 2)
+//     {
+//         x[m] = T(0.0);
+//         pn = 1.0;
+//         pnm1 = 0.0;
+//         // Compute P'_n(0)
+//         for (int j = 0; j < n - 1; ++j)
+//         {
+//             pnm2 = pnm1;
+//             pnm1 = pn;
+//             pn = -j * pnm2 / static_cast<T>(j + 1);
+//         }
+//         dpn = n * pn;
+//         w[m] = T(2.0) / (dpn * dpn);
+//     }
 
-    for (unsigned int i = 0; i < m; ++i)
-    {
-        // Remarkably, this simple relation provides a very
-        // good initial guess for x_i.  See, for example,
-        // F. G. Lether and P. R. Wenston
-        // Journal of Computational and Applied Mathematics
-        // Minimax approximations to the zeros of Pn(x) and
-        // Gauss-Legendre quadrature, Volume 59,
-        // Issue 2  (May 1995), p. 245-252, 1995
-        const T pi = static_cast<T>(mpf_float_100("3.141592653589793238462643383279502884197169399375105820974944592307816406286208998628034825342117067982148"));
-        x[i] = cos(pi * (i + 0.75) / (n + 0.5));
+//     for (unsigned int i = 0; i < m; ++i)
+//     {
+//         // Remarkably, this simple relation provides a very
+//         // good initial guess for x_i.  See, for example,
+//         // F. G. Lether and P. R. Wenston
+//         // Journal of Computational and Applied Mathematics
+//         // Minimax approximations to the zeros of Pn(x) and
+//         // Gauss-Legendre quadrature, Volume 59,
+//         // Issue 2  (May 1995), p. 245-252, 1995
+//         const T pi = static_cast<T>(mpf_float_100("3.141592653589793238462643383279502884197169399375105820974944592307816406286208998628034825342117067982148"));
+//         x[i] = cos(pi * (i + 0.75) / (n + 0.5));
 
-        // Newton loop iteration counter
-        unsigned int n_its = 0;
+//         // Newton loop iteration counter
+//         unsigned int n_its = 0;
 
-        // Begin Newton iterations
-        do
-        {
-            // Initialize recurrence relation
-            pn = 1.0;
-            pnm1 = 0.0;
+//         // Begin Newton iterations
+//         do
+//         {
+//             // Initialize recurrence relation
+//             pn = 1.0;
+//             pnm1 = 0.0;
 
-            // Use recurrence relation to compute P_n(x[i])
-            for (int j = 0; j < n; ++j)
-            {
-                pnm2 = pnm1;
-                pnm1 = pn;
-                pn = ((2.0 * j + 1.0) * x[i] * pnm1 - j * pnm2) / static_cast<T>(j + 1);
-            }
+//             // Use recurrence relation to compute P_n(x[i])
+//             for (int j = 0; j < n; ++j)
+//             {
+//                 pnm2 = pnm1;
+//                 pnm1 = pn;
+//                 pn = ((2.0 * j + 1.0) * x[i] * pnm1 - j * pnm2) / static_cast<T>(j + 1);
+//             }
 
-            // A recurrence relation also gives the derivative.
-            dpn = n * (x[i] * pn - pnm1) / (x[i] * x[i] - 1.0);
+//             // A recurrence relation also gives the derivative.
+//             dpn = n * (x[i] * pn - pnm1) / (x[i] * x[i] - 1.0);
 
-            // Compute Newton update
-            x[i] -= pn / dpn;
+//             // Compute Newton update
+//             x[i] -= pn / dpn;
 
-            // Increment iteration counter
-            n_its++;
-        } while ((abs(pn) > tolerance) && (n_its < max_its));
+//             // Increment iteration counter
+//             n_its++;
+//         } while ((abs(pn) > tolerance) && (n_its < max_its));
 
-        // if (n_its>=max_its)
-        //     gsWarn << "Max ("<<n_its<<") Newton iterations reached, error="
-        //            <<math::abs(pn)<<" for node "<<i<<"(tolerance="<<tolerance<<").\n";
-        //     gsDebug << "Newton converged in " << n_its << " iterations, ";
-        //     gsDebug << "with tolerance=" << math::abs(pn) << std::endl;
+//         // if (n_its>=max_its)
+//         //     gsWarn << "Max ("<<n_its<<") Newton iterations reached, error="
+//         //            <<math::abs(pn)<<" for node "<<i<<"(tolerance="<<tolerance<<").\n";
+//         //     gsDebug << "Newton converged in " << n_its << " iterations, ";
+//         //     gsDebug << "with tolerance=" << math::abs(pn) << std::endl;
 
-        // Set x[i] and its mirror image.  We set these in increasing order.
-        x[n - 1 - i] = x[i];
-        x[i] = -x[i];
+//         // Set x[i] and its mirror image.  We set these in increasing order.
+//         x[n - 1 - i] = x[i];
+//         x[i] = -x[i];
 
-        // Compute the weight w[i], its mirror is the same value
-        w[i] =
-            w[n - 1 - i] = T(2.0) / ((1.0 - x[i] * x[i]) * dpn * dpn);
-    } // end for
-    for (int i = 0; i < n; ++i)
-    {
-        quadrature[i].first(0) = x[i];
-        quadrature[i].second = w[i];
-    }
-}
+//         // Compute the weight w[i], its mirror is the same value
+//         w[i] =
+//             w[n - 1 - i] = T(2.0) / ((1.0 - x[i] * x[i]) * dpn * dpn);
+//     } // end for
+//     for (int i = 0; i < n; ++i)
+//     {
+//         quadrature[i].first(0) = x[i];
+//         quadrature[i].second = w[i];
+//     }
+// }
 
 template <typename T>
 int QuadratureRule<T>::NumOfQuadrature() const
