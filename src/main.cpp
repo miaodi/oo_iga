@@ -15,16 +15,13 @@
 #include "StiffnessAssembler.hpp"
 #include "Surface.hpp"
 #include "Utility.hpp"
-#include <Spectra/GenEigsSolver.h>
-#include <Spectra/MatOp/SparseGenMatProd.h>
-#include <eigen3/Eigen/Dense>
-#include <eigen3/Eigen/Geometry>
-#include <eigen3/unsupported/Eigen/KroneckerProduct>
+#include <Eigen/Dense>
+#include <Eigen/Geometry>
+#include <unsupported/Eigen/KroneckerProduct>
 #include <fstream>
 #include <iostream>
 #include <time.h>
 
-using namespace Spectra;
 using namespace Eigen;
 using namespace std;
 using GeometryVector = PhyTensorBsplineBasis<2, 2, double>::GeometryVector;
