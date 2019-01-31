@@ -547,6 +547,6 @@ protected:
 
 protected:
     std::mutex _mutex;
-    unsigned int _num_of_threads{std::min( std::thread::hardware_concurrency(), 12 )};
+    unsigned int _num_of_threads{12};
     // u_int _num_of_threads{1};
 };

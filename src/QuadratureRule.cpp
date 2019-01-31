@@ -3,7 +3,7 @@
 //
 
 #include "QuadratureRule.h"
-#include <boost/multiprecision/gmp.hpp>
+// #include <boost/multiprecision/gmp.hpp>
 
 template <typename T>
 QuadratureRule<T>::QuadratureRule(const int &num)

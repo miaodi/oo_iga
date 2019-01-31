@@ -3,7 +3,7 @@
 //
 
 #include "KnotVector.h"
-#include <boost/multiprecision/gmp.hpp>
+// #include <boost/multiprecision/gmp.hpp>
 #include <iomanip>
 
 template <typename T>

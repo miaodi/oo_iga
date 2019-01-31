@@ -3,7 +3,7 @@
 //
 
 #include "PhyTensorBsplineBasis.h"
-#include <boost/multiprecision/gmp.hpp>
+// #include <boost/multiprecision/gmp.hpp>
 
 template <int d, int N, typename T>
 PhyTensorBsplineBasis<d, N, T>::PhyTensorBsplineBasis()
