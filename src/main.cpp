@@ -70,7 +70,7 @@ int main()
         }
         for ( auto& i : domains )
         {
-            i->UniformRefine( 5 );
+            i->UniformRefine( 6 );
         }
         vector<shared_ptr<Surface<2, double>>> cells;
         for ( int i = 0; i < 3; i++ )
@@ -98,7 +98,7 @@ int main()
     }
 
     domain->DegreeElevate( 1 );
-    domain->UniformRefine( 5 );
+    domain->UniformRefine( 6 );
     int dof = domain->GetDof();
     VectorXd c = VectorXd::Random( dof ) * .05 + VectorXd::Constant( dof, .63 );
 
