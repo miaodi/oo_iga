@@ -111,20 +111,15 @@ protected:
             lc( 0, j ) = ( *evals )[j].second[3] + ( *evals )[j].second[5];
             laplacian_c += lc( 0, j ) * *( _disp + ( *evals )[j].first );
         }
-        T coeff0 = 3 * alpha * ( 1 - 4 * theta * c + 4 * theta * c * c ) * .5 / theta;
-        T coeff1 = ( 1 - 2 * c );
-        linear_form_value( 0, 0 ) = ( coeff0 + coeff1 * laplacian_c ) * grad( 0, 0 );
-        linear_form_value( 1, 0 ) = ( coeff0 + coeff1 * laplacian_c ) * grad( 1, 0 );
+        linear_form_value = ( 3000 * ( 1 - 6 * c + 6 * c * c ) + laplacian_c * ( 1 - 2 * c ) ) * grad;
         linear_form_test = bilinear_form_test;
-        T coeff2 = 6 * alpha * ( 2 * c - 1 );
-        bilinear_form_trail = ( coeff0 + coeff1 * laplacian_c ) * bilinear_form_test +
-                              ( coeff2 - 2 * laplacian_c ) * grad * dc + coeff1 * grad * lc;
+        bilinear_form_trail = 18000 * ( 2 * c - 1 ) * grad * dc +
+                              3000 * ( 1 - 6 * c + 6 * c * c ) * bilinear_form_test + ( 1 - 2 * c ) * grad * lc -
+                              2 * laplacian_c * grad * dc + laplacian_c * ( 1 - 2 * c ) * bilinear_form_test;
     }
 
 protected:
     T* _disp{nullptr};
-    T alpha = 3000;
-    T theta = 1.5;
 };
 
 template <typename T>

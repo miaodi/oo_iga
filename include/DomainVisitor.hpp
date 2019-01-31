@@ -259,6 +259,11 @@ public:
         }
     }
 
+    inline void ThreadSetter( const unsigned int& threads )
+    {
+        _num_of_threads = threads;
+    }
+
 protected:
     virtual void Initialize( Element<d, N, T>* g ){};
 
@@ -540,13 +545,8 @@ protected:
         return gramian.partialPivLu().solve( rhs );
     }
 
-    inline void ThreadSetter( const unsigned int& threads )
-    {
-        _num_of_threads = threads;
-    }
-
 protected:
     std::mutex _mutex;
-    unsigned int _num_of_threads{12};
+    unsigned int _num_of_threads{std::thread::hardware_concurrency()};
     // u_int _num_of_threads{1};
 };

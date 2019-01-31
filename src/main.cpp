@@ -66,11 +66,11 @@ int main()
             std::vector<KnotVector<double>>{knot_vector, knot_vector}, points3 );
         for ( auto& i : domains )
         {
-            i->DegreeElevate( 1 );
+            i->DegreeElevate( 2 );
         }
         for ( auto& i : domains )
         {
-            i->UniformRefine( 6 );
+            i->UniformRefine( 5 );
         }
         vector<shared_ptr<Surface<2, double>>> cells;
         for ( int i = 0; i < 3; i++ )
@@ -97,10 +97,10 @@ int main()
         // cout << constraint.rows() << " " << constraint.cols() << endl;
     }
 
-    domain->DegreeElevate( 1 );
-    domain->UniformRefine( 6 );
+    domain->DegreeElevate( 2 );
+    domain->UniformRefine( 5 );
     int dof = domain->GetDof();
-    VectorXd c = VectorXd::Random( dof ) * .05 + VectorXd::Constant( dof, .63 );
+    VectorXd c = VectorXd::Random( dof ) * .005 + VectorXd::Constant( dof, .63 );
 
     VectorXd ct = VectorXd::Zero( dof );
 
@@ -113,10 +113,9 @@ int main()
     double t_current = .0;
     double dt = 2.5e-8;
     shared_ptr<Surface<2, double>> cell = make_shared<Surface<2, double>>( domain );
-    auto load = []( const VectorXd& u ) { return std::vector<double>{0, 0}; };
 
     cell->SurfaceInitialize();
-
+    auto load = []( const VectorXd& u ) -> std::vector<double> { return std::vector<double>{0, 0}; };
     {
         L2StiffnessVisitor<double> l2( load );
         cell->Accept( l2 );
@@ -156,9 +155,10 @@ int main()
     //         }
     //     }
     // }
-
-    auto g_alpha = [&c, &ct, cell, &load, dof, &dt, &constraint]( double alpha_m, double alpha_f, double gamma,
-                                                                  VectorXd& c_next, VectorXd& ct_next, double steps ) -> bool {
+    int thd;
+    cin >> thd;
+    auto g_alpha = [&c, &ct, cell, &load, dof, &dt, &constraint, thd](
+                       double alpha_m, double alpha_f, double gamma, VectorXd& c_next, VectorXd& ct_next, double steps ) -> bool {
         // predictor stage
         VectorXd c_pred = c;
         VectorXd ct_pred = ( gamma - 1 ) / gamma * ct;
@@ -172,6 +172,9 @@ int main()
             CH4thStiffnessVisitor<double> CH4thsv( load );
             CH2ndStiffnessVisitor<double> CH2ndsv( load );
             CHMassVisitor<double> CHmv( load );
+            CH4thsv.ThreadSetter( thd );
+            CH2ndsv.ThreadSetter( thd );
+            CHmv.ThreadSetter( thd );
             CH4thsv.SetStateData( c_alpha.data() );
             CH2ndsv.SetStateData( c_alpha.data() );
             CHmv.SetStateData( ct_alpha.data() );
@@ -246,12 +249,12 @@ int main()
         cout << " current time: " << t_current << ", current time step size: " << dt << endl;
         VectorXd c_next_alpha, ct_next_alpha, c_next_be, ct_next_be;
 
-        if ( !g_alpha( alpha_m, alpha_f, gamma, c_next_alpha, ct_next_alpha, 20 ) )
+        if ( !g_alpha( alpha_m, alpha_f, gamma, c_next_alpha, ct_next_alpha, 30 ) )
         {
             cout << " generalized alpha does not converge\n";
             return 1;
         }
-        if ( !g_alpha( 1, 1, 1, c_next_be, ct_next_be, 40 ) )
+        if ( !g_alpha( 1, 1, 1, c_next_be, ct_next_be, 60 ) )
         {
             cout << " backward-euler does not converge\n";
             return 2;

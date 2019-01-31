@@ -65,7 +65,7 @@ protected:
     std::vector<Eigen::Triplet<T>> _stiffnees;
     std::vector<Eigen::Triplet<T>> _rhs;
     int _ID;
-    const LoadFunctor& _bodyForceFunctor;
+    LoadFunctor _bodyForceFunctor;
 };
 
 template <int N, int TrialFunctionDimension, typename T, int d>
