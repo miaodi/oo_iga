@@ -56,7 +56,7 @@ public:
 
     WeightedPhyPts WeightedPtsGetter( const int& index ) const
     {
-        ASSERT( index < GetDof(), " index wrong.\n" );
+        ASSERT( index < this->GetDof(), " index wrong.\n" );
         WeightedPhyPts temp;
         for ( int i = 0; i < N; i++ )
         {
