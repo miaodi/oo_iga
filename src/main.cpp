@@ -44,7 +44,8 @@ int main()
 
     shared_ptr<PhyTensorBsplineBasis<2, 2, double>> domain =
         make_shared<PhyTensorBsplineBasis<2, 2, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points1 );
-
+    int ref;
+    cin >>ref;
     SparseMatrix<double> constraint;
 
     {
@@ -66,11 +67,11 @@ int main()
             std::vector<KnotVector<double>>{knot_vector, knot_vector}, points3 );
         for ( auto& i : domains )
         {
-            i->DegreeElevate( 2 );
+            i->DegreeElevate( 1 );
         }
         for ( auto& i : domains )
         {
-            i->UniformRefine( 5 );
+            i->UniformRefine( ref );
         }
         vector<shared_ptr<Surface<2, double>>> cells;
         for ( int i = 0; i < 3; i++ )
@@ -97,8 +98,8 @@ int main()
         // cout << constraint.rows() << " " << constraint.cols() << endl;
     }
 
-    domain->DegreeElevate( 2 );
-    domain->UniformRefine( 5 );
+    domain->DegreeElevate( 1 );
+    domain->UniformRefine( ref );
     int dof = domain->GetDof();
     VectorXd c = VectorXd::Random( dof ) * .005 + VectorXd::Constant( dof, .63 );
 
