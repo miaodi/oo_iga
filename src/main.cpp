@@ -19,6 +19,7 @@
 #include <Eigen/Geometry>
 #include <fstream>
 #include <iostream>
+#include <random>
 #include <time.h>
 #include <unsupported/Eigen/KroneckerProduct>
 
@@ -45,63 +46,12 @@ int main()
     shared_ptr<PhyTensorBsplineBasis<2, 2, double>> domain =
         make_shared<PhyTensorBsplineBasis<2, 2, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points1 );
     int ref;
-    cin >>ref;
-    SparseMatrix<double> constraint;
-
-    {
-        Vector2d xMove( 1, 0 );
-        Vector2d yMove( 0, 1 );
-        GeometryVector points1( {point1, point2, point3, point4} );
-        GeometryVector points2( {point1 + 0 * xMove + 1 * yMove, point2 + 0 * xMove + 1 * yMove,
-                                 point3 + 0 * xMove + 1 * yMove, point4 + 0 * xMove + 1 * yMove} );
-
-        GeometryVector points3( {point1 + 1 * xMove + 0 * yMove, point2 + 1 * xMove + 0 * yMove,
-                                 point3 + 1 * xMove + 0 * yMove, point4 + 1 * xMove + 0 * yMove} );
-
-        array<shared_ptr<PhyTensorBsplineBasis<2, 2, double>>, 3> domains;
-        domains[0] = make_shared<PhyTensorBsplineBasis<2, 2, double>>(
-            std::vector<KnotVector<double>>{knot_vector, knot_vector}, points1 );
-        domains[1] = make_shared<PhyTensorBsplineBasis<2, 2, double>>(
-            std::vector<KnotVector<double>>{knot_vector, knot_vector}, points2 );
-        domains[2] = make_shared<PhyTensorBsplineBasis<2, 2, double>>(
-            std::vector<KnotVector<double>>{knot_vector, knot_vector}, points3 );
-        for ( auto& i : domains )
-        {
-            i->DegreeElevate( 1 );
-        }
-        for ( auto& i : domains )
-        {
-            i->UniformRefine( ref );
-        }
-        vector<shared_ptr<Surface<2, double>>> cells;
-        for ( int i = 0; i < 3; i++ )
-        {
-            cells.push_back( make_shared<Surface<2, double>>( domains[i] ) );
-            cells[i]->SurfaceInitialize();
-        }
-
-        for ( int i = 0; i < 2; i++ )
-        {
-            for ( int j = i + 1; j < 3; j++ )
-            {
-                cells[i]->Match( cells[j] );
-            }
-        }
-        DofMapper dof;
-        dof.Insert( cells[0]->GetID(), cells[0]->GetDomain()->GetDof() );
-
-        ConstraintAssembler<2, 2, double> constraint_assemble( dof );
-        constraint_assemble.ConstraintCreator( cells );
-        constraint_assemble.AssembleByReducedKernel( constraint );
-        constraint.prune( 1e-5, 1e-5 );
-        // cout << MatrixXd( constraint ) << endl;
-        // cout << constraint.rows() << " " << constraint.cols() << endl;
-    }
+    cin >> ref;
 
     domain->DegreeElevate( 1 );
     domain->UniformRefine( ref );
     int dof = domain->GetDof();
-    VectorXd c = VectorXd::Random( dof ) * .005 + VectorXd::Constant( dof, .63 );
+    VectorXd c;
 
     VectorXd ct = VectorXd::Zero( dof );
 
@@ -118,48 +68,32 @@ int main()
     cell->SurfaceInitialize();
     auto load = []( const VectorXd& u ) -> std::vector<double> { return std::vector<double>{0, 0}; };
     {
-        L2StiffnessVisitor<double> l2( load );
+        auto target_function = []( const VectorXd& u ) -> std::vector<double> {
+            double lower_bound = -.005;
+            double upper_bound = .005;
+            std::uniform_real_distribution<double> unif( lower_bound, upper_bound );
+            std::default_random_engine re;
+            double a_random_double = unif( re );
+            return std::vector<double>{.99 * u( 0 ) + .005 + a_random_double};
+        };
+        L2StiffnessVisitor<double> l2( target_function );
         cell->Accept( l2 );
         const auto l2_stiffness_triplet = l2.GetStiffness();
-        SparseMatrix<double> l2_matrix;
+        const auto l2_rhs_triplet = l2.GetRhs();
+        SparseMatrix<double> l2_matrix, l2_load;
         l2_matrix.resize( dof, dof );
+        l2_load.resize( dof, 1 );
         l2_matrix.setFromTriplets( l2_stiffness_triplet.begin(), l2_stiffness_triplet.end() );
-
+        l2_load.setFromTriplets( l2_rhs_triplet.begin(), l2_rhs_triplet.end() );
         BiCGSTAB<SparseMatrix<double>> solver;
-        solver.compute( constraint.transpose() * l2_matrix * constraint );
-        VectorXd c_new = solver.solve( constraint.transpose() * l2_matrix * c );
-        c = constraint * c_new;
+        solver.compute( l2_matrix );
+        c = solver.solve( l2_load );
     }
 
-    // {
-    //     std::ofstream file1, file2, file3, file4;
-    //     file1.open( "domain_1.txt" );
-    //     file2.open( "domain_2.txt" );
-    //     file3.open( "domain_3.txt" );
-    //     file4.open( "domain_4.txt" );
-    //     for ( int x = 0; x <= 50; x++ )
-    //     {
-    //         for ( int y = 0; y <= 50; y++ )
-    //         {
-    //             Vector2d u;
-    //             u << 1.0 * x / 50, 1.0 * y / 50;
-    //             double val = 0;
-    //             auto eval = domain->EvalDerAllTensor( u );
-    //             for ( auto& i : *eval )
-    //             {
-    //                 val += i.second[0] * c( i.first );
-    //             }
-    //             file1 << u( 0 ) << " " << u( 1 ) << " " << val << std::endl;
-    //             file2 << u( 0 ) << " " << u( 1 ) + 1 << " " << val << std::endl;
-    //             file3 << u( 0 ) + 1 << " " << u( 1 ) << " " << val << std::endl;
-    //             file4 << u( 0 ) + 1 << " " << u( 1 ) + 1 << " " << val << std::endl;
-    //         }
-    //     }
-    // }
     int thd;
     cin >> thd;
-    auto g_alpha = [&c, &ct, cell, &load, dof, &dt, &constraint, thd](
-                       double alpha_m, double alpha_f, double gamma, VectorXd& c_next, VectorXd& ct_next, double steps ) -> bool {
+    auto g_alpha = [&c, &ct, cell, &load, dof, &dt, thd]( double alpha_m, double alpha_f, double gamma,
+                                                          VectorXd& c_next, VectorXd& ct_next, double steps ) -> bool {
         // predictor stage
         VectorXd c_pred = c;
         VectorXd ct_pred = ( gamma - 1 ) / gamma * ct;
@@ -215,10 +149,9 @@ int main()
             stiffness_matrix_chm.setFromTriplets( stiffness_triplet_chm.begin(), stiffness_triplet_chm.end() );
 
             SparseMatrix<double> stiffness_matrx =
-                constraint.transpose() *
-                ( alpha_m * stiffness_matrix_chm + alpha_f * gamma * dt * ( stiffness_matrix_ch2nd + stiffness_matrix_ch4th ) ) *
-                constraint;
-            VectorXd load_vector = constraint.transpose() * ( -load_vector_chm - load_vector_ch2nd - load_vector_ch4th );
+
+                ( alpha_m * stiffness_matrix_chm + alpha_f * gamma * dt * ( stiffness_matrix_ch2nd + stiffness_matrix_ch4th ) );
+            VectorXd load_vector = ( -load_vector_chm - load_vector_ch2nd - load_vector_ch4th );
 
             if ( i == 0 )
                 relative_residual = load_vector.template lpNorm<Infinity>();
@@ -235,7 +168,7 @@ int main()
             solver.compute( stiffness_matrx );
             solver.setTolerance( 1e-16 );
 
-            VectorXd dct = constraint * solver.solve( load_vector );
+            VectorXd dct = solver.solve( load_vector );
 
             ct_pred.noalias() += dct;
             c_pred.noalias() += gamma * dt * dct;
