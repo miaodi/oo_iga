@@ -48,6 +48,10 @@ protected:
             bilinear_form_test( 0, j ) = ( *evals )[j].second[3] + ( *evals )[j].second[5];
             laplacian_c += bilinear_form_test( 0, j ) * *( _disp + ( *evals )[j].first );
         }
+        if ( c < 0 )
+            c = 1e-10;
+        if ( c > 1 )
+            c = 1 - 1e-10;
         bilinear_form_trail = laplacian_c * ( 1 - 2 * c ) * dc + c * ( 1 - c ) * bilinear_form_test;
         linear_form_test = bilinear_form_test;
         linear_form_value( 0, 0 ) = c * ( 1 - c ) * laplacian_c;
@@ -110,6 +114,10 @@ protected:
             lc( 0, j ) = ( *evals )[j].second[3] + ( *evals )[j].second[5];
             laplacian_c += lc( 0, j ) * *( _disp + ( *evals )[j].first );
         }
+        if ( c < 0 )
+            c = 1e-10;
+        if ( c > 1 )
+            c = 1 - 1e-10;
         linear_form_value = ( 3000 * ( 1 - 6 * c + 6 * c * c ) + laplacian_c * ( 1 - 2 * c ) ) * grad;
         linear_form_test = bilinear_form_test;
         bilinear_form_trail = 18000 * ( 2 * c - 1 ) * grad * dc +
