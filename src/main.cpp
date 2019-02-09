@@ -95,8 +95,8 @@ int main()
         dof.Insert( cells[0]->GetID(), cells[0]->GetDomain()->GetDof() );
 
         ConstraintAssembler<2, 2, double> constraint_assemble( dof );
-        constraint_assemble.ConstraintCreator( cells );
-        constraint_assemble.AssembleByReducedKernel( constraint );
+        constraint_assemble.ConstraintCodimensionCreator( cells );
+        constraint_assemble.AssembleByCodimension( constraint );
         constraint.prune( 1e-5, 1e-5 );
         // cout << MatrixXd( constraint ) << endl;
         // cout << constraint.rows() << " " << constraint.cols() << endl;
@@ -134,31 +134,7 @@ int main()
         c = constraint * c_new;
     }
 
-    // {
-    //     std::ofstream file1, file2, file3, file4;
-    //     file1.open( "domain_1.txt" );
-    //     file2.open( "domain_2.txt" );
-    //     file3.open( "domain_3.txt" );
-    //     file4.open( "domain_4.txt" );
-    //     for ( int x = 0; x <= 50; x++ )
-    //     {
-    //         for ( int y = 0; y <= 50; y++ )
-    //         {
-    //             Vector2d u;
-    //             u << 1.0 * x / 50, 1.0 * y / 50;
-    //             double val = 0;
-    //             auto eval = domain->EvalDerAllTensor( u );
-    //             for ( auto& i : *eval )
-    //             {
-    //                 val += i.second[0] * c( i.first );
-    //             }
-    //             file1 << u( 0 ) << " " << u( 1 ) << " " << val << std::endl;
-    //             file2 << u( 0 ) << " " << u( 1 ) + 1 << " " << val << std::endl;
-    //             file3 << u( 0 ) + 1 << " " << u( 1 ) << " " << val << std::endl;
-    //             file4 << u( 0 ) + 1 << " " << u( 1 ) + 1 << " " << val << std::endl;
-    //         }
-    //     }
-    // }
+
     int thd;
     cin >> thd;
     auto g_alpha = [&c, &ct, cell, &load, dof, &dt, &constraint, thd](
@@ -287,15 +263,16 @@ int main()
             {
                 for ( int y = 0; y <= 100; y++ )
                 {
-                    Vector2d u;
-                    u << 1.0 * x / 100, 1.0 * y / 100;
+                    Vector2d u, uphy;
+                    uphy << 1.0 * x / 100, 1.0 * y / 100;
+                    domain->InversePts( uphy, u );
                     double val = 0;
                     auto eval = domain->EvalDerAllTensor( u );
                     for ( auto& i : *eval )
                     {
                         val += i.second[0] * c( i.first );
                     }
-                    file << u( 0 ) << " " << u( 1 ) << " " << val << std::endl;
+                    file << uphy( 0 ) << " " << uphy( 1 ) << " " << val << std::endl;
                 }
             }
             file.close();

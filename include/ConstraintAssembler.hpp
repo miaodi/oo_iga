@@ -78,8 +78,8 @@ public:
 
                     int slave_id = biharmonic_interface.SlaveID();
                     int master_id = biharmonic_interface.MasterID();
-                    int slave_starting_dof = _dof.StartingDof( slave_id );
-                    int master_starting_dof = _dof.StartingDof( master_id );
+                    int slave_starting_dof = 0;
+                    int master_starting_dof = 0;
 
                     auto constraint_data = biharmonic_interface.ConstraintData();
                     auto vertices_constraint_data = biharmonic_interface.VerticesConstraintData();
