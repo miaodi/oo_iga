@@ -75,6 +75,7 @@ int main()
 
         for ( auto& i : domains )
         {
+            i->DegreeElevate( 1 );
             i->UniformRefine( ref );
         }
         vector<shared_ptr<Surface<2, double>>> cells;
@@ -101,7 +102,7 @@ int main()
         // cout << MatrixXd( constraint ) << endl;
         // cout << constraint.rows() << " " << constraint.cols() << endl;
     }
-
+    domain->DegreeElevate( 1 );
     domain->UniformRefine( ref );
     int dof = domain->GetDof();
     VectorXd c = VectorXd::Random( dof ) * .005 + VectorXd::Constant( dof, .63 );
