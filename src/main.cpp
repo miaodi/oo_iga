@@ -95,9 +95,9 @@ int main()
         dof.Insert( cells[0]->GetID(), cells[0]->GetDomain()->GetDof() );
 
         ConstraintAssembler<2, 2, double> constraint_assemble( dof );
-        constraint_assemble.ConstraintCodimensionCreator( cells );
-        constraint_assemble.AssembleByCodimension( constraint );
-        constraint.prune( 1e-5, 1e-5 );
+        constraint_assemble.ConstraintCreator( cells );
+        constraint_assemble.AssembleByReducedKernel( constraint );
+        constraint.prune( 1e-8, 1e-8 );
         // cout << MatrixXd( constraint ) << endl;
         // cout << constraint.rows() << " " << constraint.cols() << endl;
     }
