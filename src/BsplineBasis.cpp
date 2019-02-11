@@ -300,7 +300,7 @@ void BsplineBasis<T>::BezierDualInitialize()
     // }
 
     _dualBasis._basisKnot = &( this->_basisKnot );
-    _dualBasis._codimension = 0;
+    _dualBasis._codimension = 2;
     _dualBasis.Initialization();
 }
 
