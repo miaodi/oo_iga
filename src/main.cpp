@@ -105,7 +105,7 @@ int main()
     domain->DegreeElevate( 1 );
     domain->UniformRefine( ref );
     int dof = domain->GetDof();
-    VectorXd c = VectorXd::Random( dof ) * .0005 + VectorXd::Constant( dof, .63 );
+    VectorXd c = VectorXd::Random( dof ) * .1 + VectorXd::Constant( dof, .63 );
 
     VectorXd ct = VectorXd::Zero( dof );
 
