@@ -161,7 +161,7 @@ public:
         std::vector<std::pair<int, Eigen::SparseVector<T>>> assembly_null_vectors;
 
         // completeness of constructed dual basis functions
-        const int polynomial_completeness = _basisKnot->GetDegree();
+        const int polynomial_completeness = _basisKnot->GetDegree() - 2;
         // const int polynomial_completeness = 0;
 
         // move some assembly vectors to null space due to the codimension

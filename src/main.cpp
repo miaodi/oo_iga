@@ -36,13 +36,13 @@ int main()
     KnotVector<double> knot_vector;
     knot_vector.InitClosed( 2, 0, 1 );
     Vector2d point1( 0, 0 );
-    Vector2d point2( 0, .6 );
+    Vector2d point2( 0, .55 );
     Vector2d point3( 0, 1.0 );
-    Vector2d point4( .4, 0 );
+    Vector2d point4( .45, 0 );
     Vector2d point5( .5, .5 );
-    Vector2d point6( .6, 1.0 );
+    Vector2d point6( .55, 1.0 );
     Vector2d point7( 1.0, 0 );
-    Vector2d point8( 1.0, .4 );
+    Vector2d point8( 1.0, .45 );
     Vector2d point9( 1.0, 1.0 );
 
     GeometryVector points1( {point1, point2, point3, point4, point5, point6, point7, point8, point9} );
@@ -98,14 +98,14 @@ int main()
         ConstraintAssembler<2, 2, double> constraint_assemble( dof );
         constraint_assemble.ConstraintCodimensionCreator( cells );
         constraint_assemble.AssembleByCodimension( constraint );
-        constraint.prune( 1e-8, 1e-8 );
+        constraint.prune( 1e-10, 1e-10 );
         // cout << MatrixXd( constraint ) << endl;
         // cout << constraint.rows() << " " << constraint.cols() << endl;
     }
     domain->DegreeElevate( 1 );
     domain->UniformRefine( ref );
     int dof = domain->GetDof();
-    VectorXd c = VectorXd::Random( dof ) * .005 + VectorXd::Constant( dof, .63 );
+    VectorXd c = VectorXd::Random( dof ) * .0005 + VectorXd::Constant( dof, .63 );
 
     VectorXd ct = VectorXd::Zero( dof );
 
@@ -114,9 +114,9 @@ int main()
     double alpha_f = 1.0 / ( 1 + rho_inf );
     double gamma = .5 + alpha_m - alpha_f;
 
-    double t_final = 1.0;
+    double t_final = 100.0;
     double t_current = .0;
-    double dt = 2.5e-8;
+    double dt = 1e-8;
     shared_ptr<Surface<2, double>> cell = make_shared<Surface<2, double>>( domain );
 
     cell->SurfaceInitialize();
