@@ -119,7 +119,7 @@ int main()
             cout << "end assemble CH4th stiffness" << endl;
             cout << "start assemble CH2nd stiffness" << endl;
             cell->Accept( CH2ndsv );
-            cout << "end assemble CH4th stiffness" << endl;
+            cout << "end assemble CH2th stiffness" << endl;
             cout << "start assemble CHmv stiffness" << endl;
             cell->Accept( CHmv );
             cout << "end assemble CHmv stiffness" << endl;
@@ -163,12 +163,13 @@ int main()
                 ct_next = ct_pred;
                 return true;
             }
-
-            BiCGSTAB<SparseMatrix<double, RowMajor>> solver;
+            cout << "Solving the problem" << endl;
+            LeastSquaresConjugateGradient<SparseMatrix<double, RowMajor>> solver;
             solver.compute( stiffness_matrx );
             solver.setTolerance( 1e-16 );
 
             VectorXd dct = solver.solve( load_vector );
+            cout << "Finished solve" << endl;
 
             ct_pred.noalias() += dct;
             c_pred.noalias() += gamma * dt * dct;
