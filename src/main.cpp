@@ -67,11 +67,13 @@ int main()
             std::vector<KnotVector<double>>{knot_vector, knot_vector}, points1 );
         domains[1] = make_shared<PhyTensorBsplineBasis<2, 2, double>>(
             std::vector<KnotVector<double>>{knot_vector, knot_vector}, points2 );
+
         for ( auto& i : domains )
         {
             // i->DegreeElevate( 1 );
             i->UniformRefine( ref );
         }
+
         vector<shared_ptr<Surface<2, double>>> cells;
         for ( int i = 0; i < 2; i++ )
         {
