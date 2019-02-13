@@ -164,7 +164,7 @@ int main()
                 return true;
             }
             cout << "Solving the problem" << endl;
-            LeastSquaresConjugateGradient<SparseMatrix<double, RowMajor>> solver;
+            BiCGSTAB<SparseMatrix<double, RowMajor>> solver;
             solver.compute( stiffness_matrx );
             solver.setTolerance( 1e-16 );
 
