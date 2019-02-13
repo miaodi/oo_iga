@@ -48,7 +48,7 @@ int main()
     int ref;
     cin >> ref;
 
-    domain->DegreeElevate( 1 );
+    domain->DegreeElevate( 2 );
     domain->UniformRefine( ref );
     int dof = domain->GetDof();
     VectorXd c;
