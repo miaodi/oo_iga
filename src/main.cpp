@@ -124,7 +124,7 @@ int main()
             std::uniform_real_distribution<double> unif( lower_bound, upper_bound );
             std::default_random_engine re;
             double a_random_double = unif( re );
-            return std::vector<double>{.5 * ( u( 0 ) + .5 ) + a_random_double};
+            return std::vector<double>{.2 * ( u( 0 ) - .5 ) + .5 + a_random_double};
         };
         L2StiffnessVisitor<double> l2( target_function );
         cell->Accept( l2 );
