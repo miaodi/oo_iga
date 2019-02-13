@@ -62,7 +62,7 @@ int main()
                                  point4 + 0 * xMove + 1 * yMove, point5 + 0 * xMove + 1 * yMove, point6 + 0 * xMove + 1 * yMove,
                                  point7 + 0 * xMove + 1 * yMove, point8 + 0 * xMove + 1 * yMove, point9 + 0 * xMove + 1 * yMove} );
 
-        array<shared_ptr<PhyTensorBsplineBasis<2, 2, double>>, 3> domains;
+        array<shared_ptr<PhyTensorBsplineBasis<2, 2, double>>, 2> domains;
         domains[0] = make_shared<PhyTensorBsplineBasis<2, 2, double>>(
             std::vector<KnotVector<double>>{knot_vector, knot_vector}, points1 );
         domains[1] = make_shared<PhyTensorBsplineBasis<2, 2, double>>(
@@ -93,13 +93,13 @@ int main()
         constraint_assemble.ConstraintCreator( cells );
         constraint_assemble.AssembleByReducedKernel( constraint );
         constraint.prune( 1e-10, 1e-10 );
-        // cout << MatrixXd( constraint ) << endl;
+        cout << MatrixXd( constraint ) << endl;
         // cout << constraint.rows() << " " << constraint.cols() << endl;
     }
     domain->DegreeElevate( 1 );
     domain->UniformRefine( ref );
     int dof = domain->GetDof();
-    VectorXd c = VectorXd::Random( dof ) * .1 + VectorXd::Constant( dof, .63 );
+    VectorXd c;
 
     VectorXd ct = VectorXd::Zero( dof );
 
@@ -134,8 +134,10 @@ int main()
         l2_matrix.setFromTriplets( l2_stiffness_triplet.begin(), l2_stiffness_triplet.end() );
         l2_load.setFromTriplets( l2_rhs_triplet.begin(), l2_rhs_triplet.end() );
         BiCGSTAB<SparseMatrix<double>> solver;
-        solver.compute( constraint.transpose() * l2_matrix * constraint );
-        VectorXd c_new = solver.solve( constraint.transpose() * l2_load );
+        SparseMatrix<double> stiffness_sol = constraint.transpose() * l2_matrix * constraint;
+        SparseMatrix<double> rhs_sol = constraint.transpose() * l2_load;
+        solver.compute( stiffness_sol );
+        VectorXd c_new = solver.solve( rhs_sol );
         c = constraint * c_new;
     }
 
