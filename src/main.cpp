@@ -164,7 +164,7 @@ int main()
                 return true;
             }
 
-            BiCGSTAB<SparseMatrix<double>> solver;
+            BiCGSTAB<SparseMatrix<double, RowMajor>> solver;
             solver.compute( stiffness_matrx );
             solver.setTolerance( 1e-16 );
 
