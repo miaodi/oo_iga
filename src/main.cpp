@@ -93,7 +93,7 @@ int main()
         constraint_assemble.ConstraintCreator( cells );
         constraint_assemble.AssembleByReducedKernel( constraint );
         constraint.prune( 1e-10, 1e-10 );
-        cout << MatrixXd( constraint ) << endl;
+        // cout << MatrixXd( constraint ) << endl;
         // cout << constraint.rows() << " " << constraint.cols() << endl;
     }
     domain->DegreeElevate( 1 );
