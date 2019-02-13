@@ -380,7 +380,7 @@ protected:
     }
 
     //    Convert non-zero MatrixData elements to Triplet
-    void Triplet( const MatrixData<T>& matrix, std::vector<Eigen::Triplet<T>>& triplet, const T& tol = 1e-15 ) const
+    void Triplet( const MatrixData<T>& matrix, std::vector<Eigen::Triplet<T>>& triplet, const T& tol = 1e-13 ) const
     {
         for ( int i = 0; i < matrix._rowIndices->size(); ++i )
         {
@@ -395,7 +395,7 @@ protected:
         }
     }
     //    Convert non-zero VectorData elements to Triplet
-    void Triplet( const VectorData<T>& vector, std::vector<Eigen::Triplet<T>>& triplet, const T& tol = 1e-15 ) const
+    void Triplet( const VectorData<T>& vector, std::vector<Eigen::Triplet<T>>& triplet, const T& tol = 1e-13 ) const
     {
         for ( int i = 0; i < vector._rowIndices->size(); ++i )
         {
@@ -547,6 +547,6 @@ protected:
 
 protected:
     std::mutex _mutex;
-    unsigned int _num_of_threads{std::thread::hardware_concurrency()};
+    unsigned int _num_of_threads{1};
     // u_int _num_of_threads{1};
 };

@@ -43,7 +43,7 @@ int main()
     Vector2d point5( .5, .5 );
     Vector2d point6( .5, 1.0 );
     Vector2d point7( 1.0, 0 );
-    Vector2d point8( 1.0, .45 );
+    Vector2d point8( 1.0, .5 );
     Vector2d point9( 1.0, 1.0 );
 
     GeometryVector points1( {point1, point2, point3, point4, point5, point6, point7, point8, point9} );
@@ -69,7 +69,7 @@ int main()
             std::vector<KnotVector<double>>{knot_vector, knot_vector}, points2 );
         for ( auto& i : domains )
         {
-            i->DegreeElevate( 1 );
+            // i->DegreeElevate( 1 );
             i->UniformRefine( ref );
         }
         vector<shared_ptr<Surface<2, double>>> cells;
@@ -90,13 +90,13 @@ int main()
         dof.Insert( cells[0]->GetID(), cells[0]->GetDomain()->GetDof() );
 
         ConstraintAssembler<2, 2, double> constraint_assemble( dof );
-        constraint_assemble.ConstraintCodimensionCreator( cells );
-        constraint_assemble.AssembleByCodimension( constraint );
+        constraint_assemble.ConstraintCreator( cells );
+        constraint_assemble.AssembleByReducedKernel( constraint );
         constraint.prune( 1e-10, 1e-10 );
         // cout << MatrixXd( constraint ) << endl;
         // cout << constraint.rows() << " " << constraint.cols() << endl;
     }
-    domain->DegreeElevate( 1 );
+    // domain->DegreeElevate( 1 );
     domain->UniformRefine( ref );
     int dof = domain->GetDof();
     VectorXd c;
