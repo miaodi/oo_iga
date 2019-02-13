@@ -117,12 +117,12 @@ int main()
     auto load = []( const VectorXd& u ) -> std::vector<double> { return std::vector<double>{0, 0}; };
     {
         auto target_function = []( const VectorXd& u ) -> std::vector<double> {
-            double lower_bound = -.005;
-            double upper_bound = .005;
+            double lower_bound = -.05;
+            double upper_bound = .05;
             std::uniform_real_distribution<double> unif( lower_bound, upper_bound );
             std::default_random_engine re;
             double a_random_double = unif( re );
-            return std::vector<double>{u( 0 ) + a_random_double};
+            return std::vector<double>{.5 * ( u( 0 ) + .5 ) + a_random_double};
         };
         L2StiffnessVisitor<double> l2( target_function );
         cell->Accept( l2 );
@@ -271,9 +271,9 @@ int main()
                 {
                     Vector2d u, uphy;
                     uphy << 1.0 * x / 100, 1.0 * y / 100;
-                    domain->InversePts( uphy, u );
+                    // domain->InversePts( uphy, u );
                     double val = 0;
-                    auto eval = domain->EvalDerAllTensor( u );
+                    auto eval = domain->EvalDerAllTensor( uphy );
                     for ( auto& i : *eval )
                     {
                         val += i.second[0] * c( i.first );
