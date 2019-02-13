@@ -148,7 +148,7 @@ int main()
             load_vector_chm.setFromTriplets( load_triplet_chm.begin(), load_triplet_chm.end() );
             stiffness_matrix_chm.setFromTriplets( stiffness_triplet_chm.begin(), stiffness_triplet_chm.end() );
 
-            SparseMatrix<double> stiffness_matrx =
+            SparseMatrix<double, RowMajor> stiffness_matrx =
 
                 ( alpha_m * stiffness_matrix_chm + alpha_f * gamma * dt * ( stiffness_matrix_ch2nd + stiffness_matrix_ch4th ) );
             VectorXd load_vector = ( -load_vector_chm - load_vector_ch2nd - load_vector_ch4th );
