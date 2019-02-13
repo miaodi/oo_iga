@@ -21,7 +21,6 @@
 #include <iostream>
 #include <time.h>
 #include <unsupported/Eigen/KroneckerProduct>
-#include <random>
 
 using namespace Eigen;
 using namespace std;
@@ -35,23 +34,28 @@ const double Pi = 3.14159265358979323846264338327;
 int main()
 {
     KnotVector<double> knot_vector;
-    knot_vector.InitClosed( 1, 0, 1 );
+    knot_vector.InitClosed( 2, 0, 1 );
     Vector2d point1( 0, 0 );
-    Vector2d point2( 0, 1.0 );
-    Vector2d point3( 1.0, 0 );
-    Vector2d point4( 1.0, 1.0 );
+    Vector2d point2( 0, .5 );
+    Vector2d point3( 0, 1.0 );
+    Vector2d point4( .5, 0 );
+    Vector2d point5( .5, .5 );
+    Vector2d point6( .5, 1.0 );
+    Vector2d point7( 1.0, 0 );
+    Vector2d point8( 1.0, .5 );
+    Vector2d point9( 1.0, 1.0 );
 
-    GeometryVector points1( {point1, point2, point3, point4} );
+    GeometryVector points1( {point1, point2, point3, point4, point5, point6, point7, point8, point9} );
 
     shared_ptr<PhyTensorBsplineBasis<2, 2, double>> domain =
         make_shared<PhyTensorBsplineBasis<2, 2, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points1 );
     int ref;
     cin >> ref;
-
-    domain->DegreeElevate( 2 );
+  
+    domain->DegreeElevate( 1 );
     domain->UniformRefine( ref );
     int dof = domain->GetDof();
-    VectorXd c;
+    VectorXd c = VectorXd::Random( dof ) * .05 + VectorXd::Constant( dof, .5 );
 
     VectorXd ct = VectorXd::Zero( dof );
 
@@ -60,40 +64,18 @@ int main()
     double alpha_f = 1.0 / ( 1 + rho_inf );
     double gamma = .5 + alpha_m - alpha_f;
 
-    double t_final = 1.0;
+    double t_final = 100.0;
     double t_current = .0;
-    double dt = 2.5e-8;
+    double dt = 1e-8;
     shared_ptr<Surface<2, double>> cell = make_shared<Surface<2, double>>( domain );
 
     cell->SurfaceInitialize();
-    auto load = []( const VectorXd& u ) -> std::vector<double> { return std::vector<double>{0, 0}; };
-    {
-        auto target_function = []( const VectorXd& u ) -> std::vector<double> {
-            double lower_bound = -.005;
-            double upper_bound = .005;
-            std::uniform_real_distribution<double> unif( lower_bound, upper_bound );
-            std::default_random_engine re;
-            double a_random_double = unif( re );
-            return std::vector<double>{u( 0 ) + a_random_double};
-        };
-        L2StiffnessVisitor<double> l2( target_function );
-        cell->Accept( l2 );
-        const auto l2_stiffness_triplet = l2.GetStiffness();
-        const auto l2_rhs_triplet = l2.GetRhs();
-        SparseMatrix<double> l2_matrix, l2_load;
-        l2_matrix.resize( dof, dof );
-        l2_load.resize( dof, 1 );
-        l2_matrix.setFromTriplets( l2_stiffness_triplet.begin(), l2_stiffness_triplet.end() );
-        l2_load.setFromTriplets( l2_rhs_triplet.begin(), l2_rhs_triplet.end() );
-        BiCGSTAB<SparseMatrix<double>> solver;
-        solver.compute( l2_matrix );
-        c = solver.solve( l2_load );
-    }
 
+    auto load = []( const VectorXd& u ) -> std::vector<double> { return std::vector<double>{0, 0}; };
     int thd;
     cin >> thd;
-    auto g_alpha = [&c, &ct, cell, &load, dof, &dt, thd]( double alpha_m, double alpha_f, double gamma,
-                                                          VectorXd& c_next, VectorXd& ct_next, double steps ) -> bool {
+    auto g_alpha = [&c, &ct, cell, &load, dof, &dt, thd](
+                       double alpha_m, double alpha_f, double gamma, VectorXd& c_next, VectorXd& ct_next, double steps ) -> bool {
         // predictor stage
         VectorXd c_pred = c;
         VectorXd ct_pred = ( gamma - 1 ) / gamma * ct;
@@ -119,7 +101,7 @@ int main()
             cout << "end assemble CH4th stiffness" << endl;
             cout << "start assemble CH2nd stiffness" << endl;
             cell->Accept( CH2ndsv );
-            cout << "end assemble CH2th stiffness" << endl;
+            cout << "end assemble CH4th stiffness" << endl;
             cout << "start assemble CHmv stiffness" << endl;
             cell->Accept( CHmv );
             cout << "end assemble CHmv stiffness" << endl;
@@ -149,7 +131,6 @@ int main()
             stiffness_matrix_chm.setFromTriplets( stiffness_triplet_chm.begin(), stiffness_triplet_chm.end() );
 
             SparseMatrix<double> stiffness_matrx =
-
                 ( alpha_m * stiffness_matrix_chm + alpha_f * gamma * dt * ( stiffness_matrix_ch2nd + stiffness_matrix_ch4th ) );
             VectorXd load_vector = ( -load_vector_chm - load_vector_ch2nd - load_vector_ch4th );
 
@@ -163,13 +144,12 @@ int main()
                 ct_next = ct_pred;
                 return true;
             }
-            cout << "Solving the problem" << endl;
-            LeastSquaresConjugateGradient<SparseMatrix<double>> solver;
+
+            BiCGSTAB<SparseMatrix<double>> solver;
             solver.compute( stiffness_matrx );
             solver.setTolerance( 1e-16 );
 
             VectorXd dct = solver.solve( load_vector );
-            cout << "Finished solve" << endl;
 
             ct_pred.noalias() += dct;
             c_pred.noalias() += gamma * dt * dct;
@@ -189,7 +169,7 @@ int main()
             cout << " generalized alpha does not converge\n";
             return 1;
         }
-        if ( !g_alpha( 1, 1, 1, c_next_be, ct_next_be, 60 ) )
+        if ( !g_alpha( 1, 1, 1, c_next_be, ct_next_be, 30 ) )
         {
             cout << " backward-euler does not converge\n";
             return 2;
@@ -218,8 +198,9 @@ int main()
             {
                 for ( int y = 0; y <= 100; y++ )
                 {
-                    Vector2d u;
+                    Vector2d u, uphy;
                     u << 1.0 * x / 100, 1.0 * y / 100;
+                    // domain->InversePts( uphy, u );
                     double val = 0;
                     auto eval = domain->EvalDerAllTensor( u );
                     for ( auto& i : *eval )
