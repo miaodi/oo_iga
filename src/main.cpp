@@ -197,6 +197,7 @@ int main()
         c = basis * c_new;
     }
 
+
     int thd;
     cout << "How many threads?" << endl;
     cin >> thd;
@@ -320,7 +321,7 @@ int main()
                     auto eval = domains[0]->EvalDerAllTensor( uphy );
                     for ( auto& i : *eval )
                     {
-                        val += i.second[0] * c( i.first + dof.StartingDof( 0 ) );
+                        val += i.second[0] * c( i.first + dof.StartingDof( cells[0]->GetID() ) );
                     }
                     u = domains[0]->AffineMap( uphy );
                     file << u( 0 ) << " " << u( 1 ) << " " << val << std::endl;
@@ -334,7 +335,7 @@ int main()
                     auto eval = domains[1]->EvalDerAllTensor( uphy );
                     for ( auto& i : *eval )
                     {
-                        val += i.second[0] * c( i.first + dof.StartingDof( 1 ) );
+                        val += i.second[0] * c( i.first + dof.StartingDof( cells[1]->GetID() ) );
                     }
                     u = domains[1]->AffineMap( uphy );
                     file << u( 0 ) << " " << u( 1 ) << " " << val << std::endl;
@@ -351,7 +352,7 @@ int main()
                     auto eval = domains[2]->EvalDerAllTensor( uphy );
                     for ( auto& i : *eval )
                     {
-                        val += i.second[0] * c( i.first + dof.StartingDof( 2 ) );
+                        val += i.second[0] * c( i.first + dof.StartingDof( cells[2]->GetID() ) );
                     }
                     u = domains[2]->AffineMap( uphy );
                     file << u( 0 ) << " " << u( 1 ) << " " << val << std::endl;
@@ -365,7 +366,7 @@ int main()
                     auto eval = domains[3]->EvalDerAllTensor( uphy );
                     for ( auto& i : *eval )
                     {
-                        val += i.second[0] * c( i.first + dof.StartingDof( 3 ) );
+                        val += i.second[0] * c( i.first + dof.StartingDof( cells[3]->GetID() ) );
                     }
                     u = domains[3]->AffineMap( uphy );
                     file << u( 0 ) << " " << u( 1 ) << " " << val << std::endl;
