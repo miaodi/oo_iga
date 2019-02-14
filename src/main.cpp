@@ -17,6 +17,7 @@
 #include "Utility.hpp"
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
+#include <ctime>
 #include <fstream>
 #include <iostream>
 #include <random>
@@ -146,12 +147,14 @@ int main()
     auto load = []( const VectorXd& u ) -> std::vector<double> { return std::vector<double>{0, 0}; };
     {
         auto target_function = []( const VectorXd& u ) -> std::vector<double> {
-            double lower_bound = -.05;
-            double upper_bound = .05;
-            std::uniform_real_distribution<double> unif( lower_bound, upper_bound );
-            std::default_random_engine re;
-            double a_random_double = unif( re );
-            return std::vector<double>{.15 * ( u( 0 ) - .5 ) + .5 + a_random_double};
+            // Type of random number distribution
+            std::uniform_real_distribution<double> dist( -.05, .05 ); //(min, max)
+
+            // Mersenne Twister: Good quality random number generator
+            std::mt19937 rng;
+            // Initialize with non-deterministic seeds
+            rng.seed( std::random_device{}() );
+            return std::vector<double>{.5 * ( u( 0 ) - .5 ) + .5 + dist( rng )};
         };
         L2StiffnessVisitor<double> l2( target_function );
         cell->Accept( l2 );
@@ -287,7 +290,7 @@ int main()
             ct = ct_next_alpha;
             dt *= sqrt( .85 * 1e-3 / err );
         }
-        
+
         if ( num_of_steps % 20 == 0 || num_of_steps == 0 )
         {
             std::ofstream file;
