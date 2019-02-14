@@ -166,46 +166,46 @@ public:
         int total_dof = _dof.TotalDof();
         MatrixData<T> global_constraint;
         for ( auto& i : _matrix_data_container )
-        {
-            global_constraint += i;
-        }
-
-        for ( auto m = global_constraint._rowIndices->begin(); m != global_constraint._rowIndices->end(); m++ )
-        {
-            {
-                Eigen::SparseVector<T> sparse_vector( total_dof );
-                sparse_vector.coeffRef( *m ) = 1.0;
-                for ( int n = 0; n < global_constraint._colIndices->size(); n++ )
-                {
-                    sparse_vector.coeffRef( ( *global_constraint._colIndices )[n] ) =
-                        -( *global_constraint._matrix )( m - global_constraint._rowIndices->begin(), n );
-                }
-                constraint_container.push_back( sparse_vector );
-            }
-        }
-
-        // for ( auto& i : _matrix_data_container )
         // {
-        //     for ( auto m = i._rowIndices->begin(); m != i._rowIndices->end(); m++ )
+        //     global_constraint += i;
+        // }
+
+        // for ( auto m = global_constraint._rowIndices->begin(); m != global_constraint._rowIndices->end(); m++ )
+        // {
         //     {
-        //         // if (std::find(_additional_constraint.begin(),
-        //         // _additional_constraint.end(), *m) == _additional_constraint.end())
+        //         Eigen::SparseVector<T> sparse_vector( total_dof );
+        //         sparse_vector.coeffRef( *m ) = 1.0;
+        //         for ( int n = 0; n < global_constraint._colIndices->size(); n++ )
         //         {
-        //             Eigen::SparseVector<T> sparse_vector( total_dof );
-        //             sparse_vector.coeffRef( *m ) = 1.0;
-        //             for ( int n = 0; n < i._colIndices->size(); n++ )
-        //             {
-        //                 // if (std::find(_additional_constraint.begin(),
-        //                 // _additional_constraint.end(), (*i._colIndices)[n]) ==
-        //                 // _additional_constraint.end())
-        //                 {
-        //                     sparse_vector.coeffRef( ( *i._colIndices )[n] ) = -( *i._matrix )( m - i._rowIndices->begin(), n );
-        //                 }
-        //             }
-        //             constraint_container.push_back( sparse_vector );
+        //             sparse_vector.coeffRef( ( *global_constraint._colIndices )[n] ) =
+        //                 -( *global_constraint._matrix )( m - global_constraint._rowIndices->begin(), n );
         //         }
+        //         constraint_container.push_back( sparse_vector );
         //     }
         // }
+
+        for ( auto& i : _matrix_data_container )
+        {
+            for ( auto m = i._rowIndices->begin(); m != i._rowIndices->end(); m++ )
+            {
+                // if (std::find(_additional_constraint.begin(),
+                // _additional_constraint.end(), *m) == _additional_constraint.end())
+                {
+                    Eigen::SparseVector<T> sparse_vector( total_dof );
+                    sparse_vector.coeffRef( *m ) = 1.0;
+                    for ( int n = 0; n < i._colIndices->size(); n++ )
+                    {
+                        // if (std::find(_additional_constraint.begin(),
+                        // _additional_constraint.end(), (*i._colIndices)[n]) ==
+                        // _additional_constraint.end())
+                        {
+                            sparse_vector.coeffRef( ( *i._colIndices )[n] ) = -( *i._matrix )( m - i._rowIndices->begin(), n );
+                        }
+                    }
+                    constraint_container.push_back( sparse_vector );
+                }
+            }
+        }
         sparse_constraint_matrix.resize( constraint_container.size(), _dof.TotalDof() );
         for ( int i = 0; i < constraint_container.size(); i++ )
         {
