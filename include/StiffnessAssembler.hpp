@@ -50,10 +50,10 @@ public:
                 load_triplet.push_back( Eigen::Triplet<DataType>( starting_dof + j.row(), j.col(), j.value() ) );
             }
         }
-        Eigen::SparseMatrix<DataType> triangle_stiffness_matrix;
-        triangle_stiffness_matrix.resize( Dim * _dof.TotalDof(), Dim * _dof.TotalDof() );
-        triangle_stiffness_matrix.setFromTriplets( stiffness_triplet.begin(), stiffness_triplet.end() );
-        stiffness_matrix += triangle_stiffness_matrix.template selfadjointView<Eigen::Upper>();
+        // Eigen::SparseMatrix<DataType> triangle_stiffness_matrix;
+        // triangle_stiffness_matrix.resize( Dim * _dof.TotalDof(), Dim * _dof.TotalDof() );
+        stiffness_matrix.setFromTriplets( stiffness_triplet.begin(), stiffness_triplet.end() );
+        // stiffness_matrix += triangle_stiffness_matrix.template selfadjointView<Eigen::Upper>();
         load_vector.setFromTriplets( load_triplet.begin(), load_triplet.end() );
     }
 
@@ -90,10 +90,12 @@ public:
                 load_triplet.push_back( Eigen::Triplet<DataType>( starting_dof + j.row(), j.col(), j.value() ) );
             }
         }
-        Eigen::SparseMatrix<DataType> triangle_stiffness_matrix;
-        triangle_stiffness_matrix.resize( Dim * _dof.TotalDof(), Dim * _dof.TotalDof() );
-        triangle_stiffness_matrix.setFromTriplets( stiffness_triplet.begin(), stiffness_triplet.end() );
-        stiffness_matrix += triangle_stiffness_matrix.template selfadjointView<Eigen::Upper>();
+        // Eigen::SparseMatrix<DataType> triangle_stiffness_matrix;
+        // triangle_stiffness_matrix.resize( Dim * _dof.TotalDof(), Dim * _dof.TotalDof() );
+        // triangle_stiffness_matrix.setFromTriplets( stiffness_triplet.begin(), stiffness_triplet.end() );
+        // stiffness_matrix += triangle_stiffness_matrix.template selfadjointView<Eigen::Upper>();
+
+        stiffness_matrix.setFromTriplets( stiffness_triplet.begin(), stiffness_triplet.end() );
     }
 
     void SetStateDatas( DataType* disp, DataType* vel )
