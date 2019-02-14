@@ -1,4 +1,3 @@
-
 #include "BiharmonicInterfaceVisitor.hpp"
 #include "BiharmonicStiffnessVisitor.hpp"
 #include "BsplineBasis.h"
@@ -36,131 +35,31 @@ const double Pi = 3.14159265358979323846264338327;
 int main()
 {
     KnotVector<double> knot_vector;
-    knot_vector.InitClosed( 1, 0, 1 );
+    knot_vector.InitClosed( 2, 0, 1 );
     Vector2d point1( 0, 0 );
-    Vector2d point2( 0, 1 );
-    Vector2d point3( 1, 0 );
-    Vector2d point4( 1, 1 );
-    Vector2d xMove( .5, 0 );
-    Vector2d yMove( 0, .5 );
+    Vector2d point2( 0, .5 );
+    Vector2d point3( 0, 1.0 );
+    Vector2d point4( .5, 0 );
+    Vector2d point5( .5, .5 );
+    Vector2d point6( .5, 1.0 );
+    Vector2d point7( 1.0, 0 );
+    Vector2d point8( 1.0, .5 );
+    Vector2d point9( 1.0, 1.0 );
 
-    GeometryVector points1( {point1, point2, point3, point4} );
-    GeometryVector points2( {point1 + 0 * xMove + 1 * yMove, point2 + 0 * xMove + 1 * yMove,
-                             point3 + 0 * xMove + 1 * yMove, point4 + 0 * xMove + 1 * yMove} );
-    GeometryVector points3( {point1 + 1 * xMove + 0 * yMove, point2 + 1 * xMove + 0 * yMove,
-                             point3 + 1 * xMove + 0 * yMove, point4 + 1 * xMove + 0 * yMove} );
-    GeometryVector points4( {point1 + 1 * xMove + 1 * yMove, point2 + 1 * xMove + 1 * yMove,
-                             point3 + 1 * xMove + 1 * yMove, point4 + 1 * xMove + 1 * yMove} );
+    GeometryVector points1( {point1, point2, point3, point4, point5, point6, point7, point8, point9} );
 
-    array<shared_ptr<PhyTensorBsplineBasis<2, 2, double>>, 1> domains;
-    domains[0] =
+    shared_ptr<PhyTensorBsplineBasis<2, 2, double>> domain =
         make_shared<PhyTensorBsplineBasis<2, 2, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points1 );
-    // domains[1] =
-    //     make_shared<PhyTensorBsplineBasis<2, 2, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points2 );
-    // domains[2] =
-    //     make_shared<PhyTensorBsplineBasis<2, 2, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points3 );
-    // domains[3] =
-    //     make_shared<PhyTensorBsplineBasis<2, 2, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points4 );
-    for ( auto& i : domains )
-    {
-        i->DegreeElevate( 1 );
-    }
+    int ref;
+    cin >> ref;
+    SparseMatrix<double> constraint;
 
-    domains[0]->UniformRefineDof( 0, 70 );
-    domains[0]->UniformRefineDof( 1, 70 );
-
-    // domains[1]->UniformRefineDof( 0, 46 );
-    // domains[1]->UniformRefineDof( 1, 46 );
-
-    // domains[2]->UniformRefineDof( 0, 46 );
-    // domains[2]->UniformRefineDof( 1, 46 );
-
-    // domains[3]->UniformRefineDof( 0, 48 );
-    // domains[3]->UniformRefineDof( 1, 48 );
-
-    vector<shared_ptr<Surface<2, double>>> cells;
-    for ( int i = 0; i < 1; i++ )
-    {
-        cells.push_back( make_shared<Surface<2, double>>( domains[i] ) );
-        cells[i]->SurfaceInitialize();
-    }
-    DofMapper dof;
-    for ( auto& i : cells )
-    {
-        dof.Insert( i->GetID(), i->GetDomain()->GetDof() );
-    }
-    // for ( int i = 0; i < 3; i++ )
-    // {
-    //     for ( int j = i + 1; j < 4; j++ )
-    //     {
-    //         cells[i]->Match( cells[j] );
-    //     }
-    // }
-    SparseMatrix<double, RowMajor> constraint;
-    ConstraintAssembler<2, 2, double> constraint_assemble( dof );
-    constraint_assemble.ConstraintCreator( cells );
-    constraint_assemble.AssembleConstraint( constraint );
-
-    for ( auto i : cells )
-    {
-        for ( int j = 0; j < 4; j++ )
-        {
-            auto edge = i->EdgePointerGetter( j );
-            if ( !edge->IsMatched() )
-            {
-                if ( edge->GetOrient() == Orientation::west )
-                {
-                    auto c0_ind = i->GetDomain()->HyperPlaneIndices( 0, 0 );
-                    auto c1_ind = i->GetDomain()->HyperPlaneIndices( 0, 1 );
-                    for ( int num = 0; num < c0_ind->size(); num++ )
-                    {
-                        constraint.conservativeResize( constraint.rows() + 1, dof.TotalDof() );
-                        constraint.coeffRef( constraint.rows() - 1, ( *c0_ind )[num] + dof.StartingDof( i->GetID() ) ) = 1;
-                        constraint.coeffRef( constraint.rows() - 1, ( *c1_ind )[num] + dof.StartingDof( i->GetID() ) ) = -1;
-                    }
-                }
-                else if ( edge->GetOrient() == Orientation::east )
-                {
-                    auto c0_ind = i->GetDomain()->HyperPlaneIndices( 0, i->GetDomain()->GetDof( 0 ) - 1 );
-                    auto c1_ind = i->GetDomain()->HyperPlaneIndices( 0, i->GetDomain()->GetDof( 0 ) - 2 );
-                    for ( int num = 0; num < c0_ind->size(); num++ )
-                    {
-                        constraint.conservativeResize( constraint.rows() + 1, dof.TotalDof() );
-                        constraint.coeffRef( constraint.rows() - 1, ( *c0_ind )[num] + dof.StartingDof( i->GetID() ) ) = 1;
-                        constraint.coeffRef( constraint.rows() - 1, ( *c1_ind )[num] + dof.StartingDof( i->GetID() ) ) = -1;
-                    }
-                }
-                else if ( edge->GetOrient() == Orientation::south )
-                {
-                    auto c0_ind = i->GetDomain()->HyperPlaneIndices( 1, 0 );
-                    auto c1_ind = i->GetDomain()->HyperPlaneIndices( 1, 1 );
-                    for ( int num = 0; num < c0_ind->size(); num++ )
-                    {
-                        constraint.conservativeResize( constraint.rows() + 1, dof.TotalDof() );
-                        constraint.coeffRef( constraint.rows() - 1, ( *c0_ind )[num] + dof.StartingDof( i->GetID() ) ) = 1;
-                        constraint.coeffRef( constraint.rows() - 1, ( *c1_ind )[num] + dof.StartingDof( i->GetID() ) ) = -1;
-                    }
-                }
-                else
-                {
-                    auto c0_ind = i->GetDomain()->HyperPlaneIndices( 1, i->GetDomain()->GetDof( 1 ) - 1 );
-                    auto c1_ind = i->GetDomain()->HyperPlaneIndices( 1, i->GetDomain()->GetDof( 1 ) - 2 );
-                    for ( int num = 0; num < c0_ind->size(); num++ )
-                    {
-                        constraint.conservativeResize( constraint.rows() + 1, dof.TotalDof() );
-                        constraint.coeffRef( constraint.rows() - 1, ( *c0_ind )[num] + dof.StartingDof( i->GetID() ) ) = 1;
-                        constraint.coeffRef( constraint.rows() - 1, ( *c1_ind )[num] + dof.StartingDof( i->GetID() ) ) = -1;
-                    }
-                }
-            }
-        }
-    }
-    MatrixXd dense_constraint = constraint;
-    FullPivLU<MatrixXd> lu_decomp( dense_constraint );
-    lu_decomp.setThreshold( 1e-10 );
-    MatrixXd basis = lu_decomp.kernel();
+    // domain->DegreeElevate( 1 );
+    domain->UniformRefine( ref );
+    int dof = domain->GetDof();
     VectorXd c;
-    VectorXd ct = VectorXd::Zero( dof.TotalDof() );
+
+    VectorXd ct = VectorXd::Zero( dof );
 
     double rho_inf = .5;
     double alpha_m = .5 * ( 3 - rho_inf ) / ( 1 + rho_inf );
@@ -170,6 +69,79 @@ int main()
     double t_final = 100.0;
     double t_current = .0;
     double dt = 1e-8;
+    shared_ptr<Surface<2, double>> cell = make_shared<Surface<2, double>>( domain );
+
+    cell->SurfaceInitialize();
+
+    constraint.resize( dof, ( domain->GetDof( 0 ) - 2 ) * ( domain->GetDof( 1 ) - 2 ) );
+    {
+        vector<int> boundary_indices;
+        auto c0_ind = domain->HyperPlaneIndices( 0, 0 );
+        auto c1_ind = domain->HyperPlaneIndices( 0, 1 );
+        boundary_indices.insert( boundary_indices.end(), c0_ind->begin(), c0_ind->end() );
+        boundary_indices.insert( boundary_indices.end(), c1_ind->begin(), c1_ind->end() );
+        int colNum = 0;
+        for ( int i = 2; i < domain->GetDof( 1 ) - 2; i++ )
+        {
+            constraint.coeffRef( ( *c0_ind )[i], colNum ) = 1;
+            constraint.coeffRef( ( *c1_ind )[i], colNum ) = 1;
+            colNum++;
+        }
+
+        c0_ind = domain->HyperPlaneIndices( 0, domain->GetDof( 0 ) - 1 );
+        c1_ind = domain->HyperPlaneIndices( 0, domain->GetDof( 0 ) - 2 );
+        boundary_indices.insert( boundary_indices.end(), c0_ind->begin(), c0_ind->end() );
+        boundary_indices.insert( boundary_indices.end(), c1_ind->begin(), c1_ind->end() );
+        for ( int i = 2; i < domain->GetDof( 1 ) - 2; i++ )
+        {
+            constraint.coeffRef( ( *c0_ind )[i], colNum ) = 1;
+            constraint.coeffRef( ( *c1_ind )[i], colNum ) = 1;
+            colNum++;
+        }
+
+        c0_ind = domain->HyperPlaneIndices( 1, 0 );
+        c1_ind = domain->HyperPlaneIndices( 1, 1 );
+        boundary_indices.insert( boundary_indices.end(), c0_ind->begin(), c0_ind->end() );
+        boundary_indices.insert( boundary_indices.end(), c1_ind->begin(), c1_ind->end() );
+        for ( int i = 2; i < domain->GetDof( 0 ) - 2; i++ )
+        {
+            constraint.coeffRef( ( *c0_ind )[i], colNum ) = 1;
+            constraint.coeffRef( ( *c1_ind )[i], colNum ) = 1;
+            colNum++;
+        }
+
+        c0_ind = domain->HyperPlaneIndices( 1, domain->GetDof( 1 ) - 1 );
+        c1_ind = domain->HyperPlaneIndices( 1, domain->GetDof( 1 ) - 2 );
+        boundary_indices.insert( boundary_indices.end(), c0_ind->begin(), c0_ind->end() );
+        boundary_indices.insert( boundary_indices.end(), c1_ind->begin(), c1_ind->end() );
+        for ( int i = 2; i < domain->GetDof( 0 ) - 2; i++ )
+        {
+            constraint.coeffRef( ( *c0_ind )[i], colNum ) = 1;
+            constraint.coeffRef( ( *c1_ind )[i], colNum ) = 1;
+            colNum++;
+        }
+        sort( boundary_indices.begin(), boundary_indices.end() );
+        std::vector<int> dof_indices( dof );
+        std::iota( dof_indices.begin(), dof_indices.end(), 0 );
+        std::vector<int> idle_index;
+        std::set_difference( dof_indices.begin(), dof_indices.end(), boundary_indices.begin(), boundary_indices.end(),
+                             std::back_inserter( idle_index ) );
+        for ( auto i : idle_index )
+        {
+            constraint.coeffRef( i, colNum ) = 1;
+            colNum++;
+        }
+        for ( int i = 0; i < 4; i++ )
+        {
+            auto vertex_ind = cell->VertexPointerGetter( i )->ExclusiveIndices( 1, 1 );
+            constraint.coeffRef( vertex_ind[0], colNum ) = 1;
+            constraint.coeffRef( vertex_ind[1], colNum ) = 1;
+            constraint.coeffRef( vertex_ind[2], colNum ) = 1;
+            constraint.coeffRef( vertex_ind[3], colNum ) = 1;
+            colNum++;
+        }
+    }
+    // cout << MatrixXd( constraint ) << endl;
 
     auto load = []( const VectorXd& u ) -> std::vector<double> { return std::vector<double>{0, 0}; };
     {
@@ -181,28 +153,29 @@ int main()
             std::mt19937 rng;
             // Initialize with non-deterministic seeds
             rng.seed( std::random_device{}() );
-            return std::vector<double>{.6 * ( u( 0 ) - .5 ) + .5 + dist( rng )};
+            return std::vector<double>{.5 * ( u( 0 ) - .5 ) + .5 + dist( rng )};
         };
-
+        L2StiffnessVisitor<double> l2( target_function );
+        cell->Accept( l2 );
+        const auto l2_stiffness_triplet = l2.GetStiffness();
+        const auto l2_rhs_triplet = l2.GetRhs();
         SparseMatrix<double> l2_matrix, l2_load;
-        l2_matrix.resize( dof.TotalDof(), dof.TotalDof() );
-        l2_load.resize( dof.TotalDof(), 1 );
-
-        StiffnessAssembler<L2StiffnessVisitor<double>> stiffness_assemble( dof );
-        stiffness_assemble.Assemble( cells, target_function, l2_matrix, l2_load );
+        l2_matrix.resize( dof, dof );
+        l2_load.resize( dof, 1 );
+        l2_matrix.setFromTriplets( l2_stiffness_triplet.begin(), l2_stiffness_triplet.end() );
+        l2_load.setFromTriplets( l2_rhs_triplet.begin(), l2_rhs_triplet.end() );
         BiCGSTAB<SparseMatrix<double>> solver;
-        SparseMatrix<double> stiffness_sol = ( basis.transpose() * l2_matrix * basis ).sparseView();
-        SparseMatrix<double> rhs_sol = ( basis.transpose() * l2_load ).sparseView();
+        SparseMatrix<double> stiffness_sol = constraint.transpose() * l2_matrix * constraint;
+        SparseMatrix<double> rhs_sol = constraint.transpose() * l2_load;
         solver.compute( stiffness_sol );
         VectorXd c_new = solver.solve( rhs_sol );
-        c = basis * c_new;
+        c = constraint * c_new;
     }
 
     int thd;
-    cout << "How many threads?" << endl;
     cin >> thd;
-    auto g_alpha = [&c, &ct, &cells, &load, &dof, &dt, &basis, thd]( double alpha_m, double alpha_f, double gamma,
-                                                                     VectorXd& c_next, VectorXd& ct_next, double steps ) -> bool {
+    auto g_alpha = [&c, &ct, cell, &load, dof, &dt, &constraint, thd](
+                       double alpha_m, double alpha_f, double gamma, VectorXd& c_next, VectorXd& ct_next, double steps ) -> bool {
         // predictor stage
         VectorXd c_pred = c;
         VectorXd ct_pred = ( gamma - 1 ) / gamma * ct;
@@ -213,42 +186,55 @@ int main()
             VectorXd c_alpha = c + alpha_f * ( c_pred - c );
             VectorXd ct_alpha = ct + alpha_m * ( ct_pred - ct );
 
-            StiffnessAssembler<CH4thStiffnessVisitor<double>> CH4thsv( dof );
-            StiffnessAssembler<CH2ndStiffnessVisitor<double>> CH2ndsv( dof );
-            StiffnessAssembler<CHMassVisitor<double>> CHmv( dof );
+            CH4thStiffnessVisitor<double> CH4thsv( load );
+            CH2ndStiffnessVisitor<double> CH2ndsv( load );
+            CHMassVisitor<double> CHmv( load );
             CH4thsv.ThreadSetter( thd );
             CH2ndsv.ThreadSetter( thd );
             CHmv.ThreadSetter( thd );
-            CH4thsv.SetStateDatas( c_alpha.data(), ct_alpha.data() );
-            CH2ndsv.SetStateDatas( c_alpha.data(), ct_alpha.data() );
-            CHmv.SetStateDatas( c_alpha.data(), ct_alpha.data() );
+            CH4thsv.SetStateData( c_alpha.data() );
+            CH2ndsv.SetStateData( c_alpha.data() );
+            CHmv.SetStateData( ct_alpha.data() );
 
             cout << "start assemble CH4th stiffness" << endl;
-            SparseMatrix<double> stiffness_matrix_ch4th, load_vector_ch4th;
-            load_vector_ch4th.resize( dof.TotalDof(), 1 );
-            stiffness_matrix_ch4th.resize( dof.TotalDof(), dof.TotalDof() );
-            CH4thsv.Assemble( cells, load, stiffness_matrix_ch4th, load_vector_ch4th );
+            cell->Accept( CH4thsv );
             cout << "end assemble CH4th stiffness" << endl;
-
             cout << "start assemble CH2nd stiffness" << endl;
-            SparseMatrix<double> stiffness_matrix_ch2nd, load_vector_ch2nd;
-            load_vector_ch2nd.resize( dof.TotalDof(), 1 );
-            stiffness_matrix_ch2nd.resize( dof.TotalDof(), dof.TotalDof() );
-            CH2ndsv.Assemble( cells, load, stiffness_matrix_ch2nd, load_vector_ch2nd );
+            cell->Accept( CH2ndsv );
             cout << "end assemble CH4th stiffness" << endl;
-
             cout << "start assemble CHmv stiffness" << endl;
-            SparseMatrix<double> stiffness_matrix_chm, load_vector_chm;
-            load_vector_chm.resize( dof.TotalDof(), 1 );
-            stiffness_matrix_chm.resize( dof.TotalDof(), dof.TotalDof() );
-            CHmv.Assemble( cells, load, stiffness_matrix_chm, load_vector_chm );
+            cell->Accept( CHmv );
             cout << "end assemble CHmv stiffness" << endl;
 
+            const auto stiffness_triplet_ch4th = CH4thsv.GetStiffness();
+            const auto load_triplet_ch4th = CH4thsv.GetRhs();
+            SparseMatrix<double> stiffness_matrix_ch4th, load_vector_ch4th;
+            load_vector_ch4th.resize( dof, 1 );
+            stiffness_matrix_ch4th.resize( dof, dof );
+            load_vector_ch4th.setFromTriplets( load_triplet_ch4th.begin(), load_triplet_ch4th.end() );
+            stiffness_matrix_ch4th.setFromTriplets( stiffness_triplet_ch4th.begin(), stiffness_triplet_ch4th.end() );
+
+            const auto stiffness_triplet_ch2nd = CH2ndsv.GetStiffness();
+            const auto load_triplet_ch2nd = CH2ndsv.GetRhs();
+            SparseMatrix<double> stiffness_matrix_ch2nd, load_vector_ch2nd;
+            load_vector_ch2nd.resize( dof, 1 );
+            stiffness_matrix_ch2nd.resize( dof, dof );
+            load_vector_ch2nd.setFromTriplets( load_triplet_ch2nd.begin(), load_triplet_ch2nd.end() );
+            stiffness_matrix_ch2nd.setFromTriplets( stiffness_triplet_ch2nd.begin(), stiffness_triplet_ch2nd.end() );
+
+            const auto stiffness_triplet_chm = CHmv.GetStiffness();
+            const auto load_triplet_chm = CHmv.GetRhs();
+            SparseMatrix<double> stiffness_matrix_chm, load_vector_chm;
+            load_vector_chm.resize( dof, 1 );
+            stiffness_matrix_chm.resize( dof, dof );
+            load_vector_chm.setFromTriplets( load_triplet_chm.begin(), load_triplet_chm.end() );
+            stiffness_matrix_chm.setFromTriplets( stiffness_triplet_chm.begin(), stiffness_triplet_chm.end() );
+
             SparseMatrix<double> stiffness_matrx =
-                ( basis.transpose() *
-                  ( alpha_m * stiffness_matrix_chm + alpha_f * gamma * dt * ( stiffness_matrix_ch2nd + stiffness_matrix_ch4th ) ) * basis )
-                    .sparseView();
-            VectorXd load_vector = basis.transpose() * ( -load_vector_chm - load_vector_ch2nd - load_vector_ch4th );
+                constraint.transpose() *
+                ( alpha_m * stiffness_matrix_chm + alpha_f * gamma * dt * ( stiffness_matrix_ch2nd + stiffness_matrix_ch4th ) ) *
+                constraint;
+            VectorXd load_vector = constraint.transpose() * ( -load_vector_chm - load_vector_ch2nd - load_vector_ch4th );
 
             if ( i == 0 )
                 relative_residual = load_vector.template lpNorm<Infinity>();
@@ -263,9 +249,9 @@ int main()
 
             BiCGSTAB<SparseMatrix<double>> solver;
             solver.compute( stiffness_matrx );
-            solver.setTolerance( 1e-17 );
+            solver.setTolerance( 1e-16 );
 
-            VectorXd dct = basis * solver.solve( load_vector );
+            VectorXd dct = constraint * solver.solve( load_vector );
 
             ct_pred.noalias() += dct;
             c_pred.noalias() += gamma * dt * dct;
@@ -318,60 +304,14 @@ int main()
                     uphy << 1.0 * x / 100, 1.0 * y / 100;
                     // domain->InversePts( uphy, u );
                     double val = 0;
-                    auto eval = domains[0]->EvalDerAllTensor( uphy );
+                    auto eval = domain->EvalDerAllTensor( uphy );
                     for ( auto& i : *eval )
                     {
-                        val += i.second[0] * c( i.first + dof.StartingDof( cells[0]->GetID() ) );
+                        val += i.second[0] * c( i.first );
                     }
-                    u = domains[0]->AffineMap( uphy );
-                    file << u( 0 ) << " " << u( 1 ) << " " << val << std::endl;
+                    file << uphy( 0 ) << " " << uphy( 1 ) << " " << val << std::endl;
                 }
-                // for ( int y = 0; y <= 50; y++ )
-                // {
-                //     Vector2d u, uphy;
-                //     uphy << 1.0 * x / 50, 1.0 * y / 50;
-                //     // domain->InversePts( uphy, u );
-                //     double val = 0;
-                //     auto eval = domains[1]->EvalDerAllTensor( uphy );
-                //     for ( auto& i : *eval )
-                //     {
-                //         val += i.second[0] * c( i.first + dof.StartingDof( cells[1]->GetID() ) );
-                //     }
-                //     u = domains[1]->AffineMap( uphy );
-                //     file << u( 0 ) << " " << u( 1 ) << " " << val << std::endl;
-                // }
             }
-            // for ( int x = 0; x <= 50; x++ )
-            // {
-            //     for ( int y = 0; y <= 50; y++ )
-            //     {
-            //         Vector2d u, uphy;
-            //         uphy << 1.0 * x / 50, 1.0 * y / 50;
-            //         // domain->InversePts( uphy, u );
-            //         double val = 0;
-            //         auto eval = domains[2]->EvalDerAllTensor( uphy );
-            //         for ( auto& i : *eval )
-            //         {
-            //             val += i.second[0] * c( i.first + dof.StartingDof( cells[2]->GetID() ) );
-            //         }
-            //         u = domains[2]->AffineMap( uphy );
-            //         file << u( 0 ) << " " << u( 1 ) << " " << val << std::endl;
-            //     }
-            //     for ( int y = 0; y <= 50; y++ )
-            //     {
-            //         Vector2d u, uphy;
-            //         uphy << 1.0 * x / 50, 1.0 * y / 50;
-            //         // domain->InversePts( uphy, u );
-            //         double val = 0;
-            //         auto eval = domains[3]->EvalDerAllTensor( uphy );
-            //         for ( auto& i : *eval )
-            //         {
-            //             val += i.second[0] * c( i.first + dof.StartingDof( cells[3]->GetID() ) );
-            //         }
-            //         u = domains[3]->AffineMap( uphy );
-            //         file << u( 0 ) << " " << u( 1 ) << " " << val << std::endl;
-            //     }
-            // }
             file.close();
         }
         num_of_steps++;
