@@ -108,7 +108,7 @@ int main()
             auto edge = i->EdgePointerGetter( j );
             if ( !edge->IsMatched() )
             {
-                if ( edge->GetOrient() == Orientation::east )
+                if ( edge->GetOrient() == Orientation::west )
                 {
                     auto c0_ind = i->GetDomain()->HyperPlaneIndices( 0, 0 );
                     auto c1_ind = i->GetDomain()->HyperPlaneIndices( 0, 1 );
@@ -119,7 +119,7 @@ int main()
                         constraint.coeffRef( constraint.rows() - 1, ( *c1_ind )[num] + dof.StartingDof( i->GetID() ) ) = -1;
                     }
                 }
-                else if ( edge->GetOrient() == Orientation::west )
+                else if ( edge->GetOrient() == Orientation::east )
                 {
                     auto c0_ind = i->GetDomain()->HyperPlaneIndices( 0, i->GetDomain()->GetDof( 0 ) - 1 );
                     auto c1_ind = i->GetDomain()->HyperPlaneIndices( 0, i->GetDomain()->GetDof( 0 ) - 2 );
@@ -196,7 +196,6 @@ int main()
         VectorXd c_new = solver.solve( rhs_sol );
         c = basis * c_new;
     }
-
 
     int thd;
     cout << "How many threads?" << endl;
