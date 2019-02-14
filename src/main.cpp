@@ -54,50 +54,6 @@ int main()
     cin >> ref;
     SparseMatrix<double> constraint;
 
-    {
-        Vector2d xMove( 1, 0 );
-        Vector2d yMove( 0, 1 );
-        GeometryVector points1( {point1, point2, point3, point4, point5, point6, point7, point8, point9} );
-        GeometryVector points2( {point1 + 0 * xMove + 1 * yMove, point2 + 0 * xMove + 1 * yMove, point3 + 0 * xMove + 1 * yMove,
-                                 point4 + 0 * xMove + 1 * yMove, point5 + 0 * xMove + 1 * yMove, point6 + 0 * xMove + 1 * yMove,
-                                 point7 + 0 * xMove + 1 * yMove, point8 + 0 * xMove + 1 * yMove, point9 + 0 * xMove + 1 * yMove} );
-
-        array<shared_ptr<PhyTensorBsplineBasis<2, 2, double>>, 2> domains;
-        domains[0] = make_shared<PhyTensorBsplineBasis<2, 2, double>>(
-            std::vector<KnotVector<double>>{knot_vector, knot_vector}, points1 );
-        domains[1] = make_shared<PhyTensorBsplineBasis<2, 2, double>>(
-            std::vector<KnotVector<double>>{knot_vector, knot_vector}, points2 );
-
-        for ( auto& i : domains )
-        {
-            // i->DegreeElevate( 1 );
-            i->UniformRefine( ref );
-        }
-
-        vector<shared_ptr<Surface<2, double>>> cells;
-        for ( int i = 0; i < 2; i++ )
-        {
-            cells.push_back( make_shared<Surface<2, double>>( domains[i] ) );
-            cells[i]->SurfaceInitialize();
-        }
-
-        for ( int i = 0; i < 1; i++ )
-        {
-            for ( int j = i + 1; j < 2; j++ )
-            {
-                cells[i]->Match( cells[j] );
-            }
-        }
-        DofMapper dof;
-        dof.Insert( cells[0]->GetID(), cells[0]->GetDomain()->GetDof() );
-
-        ConstraintAssembler<2, 2, double> constraint_assemble( dof );
-        constraint_assemble.ConstraintCreator( cells );
-        constraint_assemble.AssembleByReducedKernel( constraint );
-        constraint.prune( 1e-10, 1e-10 );
-        // cout << MatrixXd( constraint ) << endl;
-        // cout << constraint.rows() << " " << constraint.cols() << endl;
-    }
     // domain->DegreeElevate( 1 );
     domain->UniformRefine( ref );
     int dof = domain->GetDof();
@@ -116,6 +72,77 @@ int main()
     shared_ptr<Surface<2, double>> cell = make_shared<Surface<2, double>>( domain );
 
     cell->SurfaceInitialize();
+
+    constraint.resize( dof, ( domain->GetDof( 0 ) - 2 ) * ( domain->GetDof( 1 ) - 2 ) );
+    {
+        vector<int> boundary_indices;
+        auto c0_ind = domain->HyperPlaneIndices( 0, 0 );
+        auto c1_ind = domain->HyperPlaneIndices( 0, 1 );
+        boundary_indices.insert( boundary_indices.end(), c0_ind->begin(), c0_ind->end() );
+        boundary_indices.insert( boundary_indices.end(), c1_ind->begin(), c1_ind->end() );
+        int colNum = 0;
+        for ( int i = 2; i < domain->GetDof( 1 ) - 2; i++ )
+        {
+            constraint.coeffRef( ( *c0_ind )[i], colNum ) = 1;
+            constraint.coeffRef( ( *c1_ind )[i], colNum ) = 1;
+            colNum++;
+        }
+
+        c0_ind = domain->HyperPlaneIndices( 0, domain->GetDof( 0 ) - 1 );
+        c1_ind = domain->HyperPlaneIndices( 0, domain->GetDof( 0 ) - 2 );
+        boundary_indices.insert( boundary_indices.end(), c0_ind->begin(), c0_ind->end() );
+        boundary_indices.insert( boundary_indices.end(), c1_ind->begin(), c1_ind->end() );
+        for ( int i = 2; i < domain->GetDof( 1 ) - 2; i++ )
+        {
+            constraint.coeffRef( ( *c0_ind )[i], colNum ) = 1;
+            constraint.coeffRef( ( *c1_ind )[i], colNum ) = 1;
+            colNum++;
+        }
+
+        c0_ind = domain->HyperPlaneIndices( 1, 0 );
+        c1_ind = domain->HyperPlaneIndices( 1, 1 );
+        boundary_indices.insert( boundary_indices.end(), c0_ind->begin(), c0_ind->end() );
+        boundary_indices.insert( boundary_indices.end(), c1_ind->begin(), c1_ind->end() );
+        for ( int i = 2; i < domain->GetDof( 0 ) - 2; i++ )
+        {
+            constraint.coeffRef( ( *c0_ind )[i], colNum ) = 1;
+            constraint.coeffRef( ( *c1_ind )[i], colNum ) = 1;
+            colNum++;
+        }
+
+        c0_ind = domain->HyperPlaneIndices( 1, domain->GetDof( 1 ) - 1 );
+        c1_ind = domain->HyperPlaneIndices( 1, domain->GetDof( 1 ) - 2 );
+        boundary_indices.insert( boundary_indices.end(), c0_ind->begin(), c0_ind->end() );
+        boundary_indices.insert( boundary_indices.end(), c1_ind->begin(), c1_ind->end() );
+        for ( int i = 2; i < domain->GetDof( 0 ) - 2; i++ )
+        {
+            constraint.coeffRef( ( *c0_ind )[i], colNum ) = 1;
+            constraint.coeffRef( ( *c1_ind )[i], colNum ) = 1;
+            colNum++;
+        }
+        sort( boundary_indices.begin(), boundary_indices.end() );
+        std::vector<int> dof_indices( dof );
+        std::iota( dof_indices.begin(), dof_indices.end(), 0 );
+        std::vector<int> idle_index;
+        std::set_difference( dof_indices.begin(), dof_indices.end(), boundary_indices.begin(), boundary_indices.end(),
+                             std::back_inserter( idle_index ) );
+        for ( auto i : idle_index )
+        {
+            constraint.coeffRef( i, colNum ) = 1;
+            colNum++;
+        }
+        for ( int i = 0; i < 4; i++ )
+        {
+            auto vertex_ind = cell->VertexPointerGetter( i )->ExclusiveIndices( 1, 1 );
+            constraint.coeffRef( vertex_ind[0], colNum ) = 1;
+            constraint.coeffRef( vertex_ind[1], colNum ) = 1;
+            constraint.coeffRef( vertex_ind[2], colNum ) = 1;
+            constraint.coeffRef( vertex_ind[3], colNum ) = 1;
+            colNum++;
+        }
+    }
+    // cout << MatrixXd( constraint ) << endl;
+
     auto load = []( const VectorXd& u ) -> std::vector<double> { return std::vector<double>{0, 0}; };
     {
         auto target_function = []( const VectorXd& u ) -> std::vector<double> {
