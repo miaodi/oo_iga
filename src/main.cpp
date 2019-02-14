@@ -151,7 +151,7 @@ int main()
             std::uniform_real_distribution<double> unif( lower_bound, upper_bound );
             std::default_random_engine re;
             double a_random_double = unif( re );
-            return std::vector<double>{.2 * ( u( 0 ) - .5 ) + .5 + a_random_double};
+            return std::vector<double>{.15 * ( u( 0 ) - .5 ) + .5 + a_random_double};
         };
         L2StiffnessVisitor<double> l2( target_function );
         cell->Accept( l2 );
@@ -287,7 +287,7 @@ int main()
             ct = ct_next_alpha;
             dt *= sqrt( .85 * 1e-3 / err );
         }
-        num_of_steps++;
+        
         if ( num_of_steps % 20 == 0 || num_of_steps == 0 )
         {
             std::ofstream file;
@@ -312,6 +312,7 @@ int main()
             }
             file.close();
         }
+        num_of_steps++;
     }
 
     return 0;
