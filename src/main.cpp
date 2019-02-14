@@ -180,7 +180,7 @@ int main()
             std::mt19937 rng;
             // Initialize with non-deterministic seeds
             rng.seed( std::random_device{}() );
-            return std::vector<double>{.8 * ( u( 0 ) - .5 ) + .5 + dist( rng )};
+            return std::vector<double>{.5 * ( u( 0 ) - .5 ) + .5 + dist( rng )};
         };
 
         SparseMatrix<double> l2_matrix, l2_load;
