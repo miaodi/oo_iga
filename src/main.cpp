@@ -52,34 +52,34 @@ int main()
     GeometryVector points4( {point1 + 1 * xMove + 1 * yMove, point2 + 1 * xMove + 1 * yMove,
                              point3 + 1 * xMove + 1 * yMove, point4 + 1 * xMove + 1 * yMove} );
 
-    array<shared_ptr<PhyTensorBsplineBasis<2, 2, double>>, 4> domains;
+    array<shared_ptr<PhyTensorBsplineBasis<2, 2, double>>, 1> domains;
     domains[0] =
         make_shared<PhyTensorBsplineBasis<2, 2, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points1 );
-    domains[1] =
-        make_shared<PhyTensorBsplineBasis<2, 2, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points2 );
-    domains[2] =
-        make_shared<PhyTensorBsplineBasis<2, 2, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points3 );
-    domains[3] =
-        make_shared<PhyTensorBsplineBasis<2, 2, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points4 );
+    // domains[1] =
+    //     make_shared<PhyTensorBsplineBasis<2, 2, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points2 );
+    // domains[2] =
+    //     make_shared<PhyTensorBsplineBasis<2, 2, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points3 );
+    // domains[3] =
+    //     make_shared<PhyTensorBsplineBasis<2, 2, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points4 );
     for ( auto& i : domains )
     {
         i->DegreeElevate( 1 );
     }
 
-    domains[0]->UniformRefineDof( 0, 48);
-    domains[0]->UniformRefineDof( 1, 48 );
+    domains[0]->UniformRefineDof( 0, 70);
+    domains[0]->UniformRefineDof( 1, 70 );
 
-    domains[1]->UniformRefineDof( 0, 46 );
-    domains[1]->UniformRefineDof( 1, 46 );
+    // domains[1]->UniformRefineDof( 0, 46 );
+    // domains[1]->UniformRefineDof( 1, 46 );
 
-    domains[2]->UniformRefineDof( 0, 46 );
-    domains[2]->UniformRefineDof( 1, 46 );
+    // domains[2]->UniformRefineDof( 0, 46 );
+    // domains[2]->UniformRefineDof( 1, 46 );
 
-    domains[3]->UniformRefineDof( 0, 48 );
-    domains[3]->UniformRefineDof( 1, 48 );
+    // domains[3]->UniformRefineDof( 0, 48 );
+    // domains[3]->UniformRefineDof( 1, 48 );
 
     vector<shared_ptr<Surface<2, double>>> cells;
-    for ( int i = 0; i < 4; i++ )
+    for ( int i = 0; i < 1; i++ )
     {
         cells.push_back( make_shared<Surface<2, double>>( domains[i] ) );
         cells[i]->SurfaceInitialize();
@@ -89,13 +89,13 @@ int main()
     {
         dof.Insert( i->GetID(), i->GetDomain()->GetDof() );
     }
-    for ( int i = 0; i < 3; i++ )
-    {
-        for ( int j = i + 1; j < 4; j++ )
-        {
-            cells[i]->Match( cells[j] );
-        }
-    }
+    // for ( int i = 0; i < 3; i++ )
+    // {
+    //     for ( int j = i + 1; j < 4; j++ )
+    //     {
+    //         cells[i]->Match( cells[j] );
+    //     }
+    // }
     SparseMatrix<double, RowMajor> constraint;
     ConstraintAssembler<2, 2, double> constraint_assemble( dof );
     constraint_assemble.ConstraintCreator( cells );
