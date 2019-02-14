@@ -66,8 +66,8 @@ int main()
         i->DegreeElevate( 1 );
     }
 
-    domains[0]->UniformRefineDof( 0, 36 );
-    domains[0]->UniformRefineDof( 1, 36 );
+    domains[0]->UniformRefineDof( 0, 34 );
+    domains[0]->UniformRefineDof( 1, 34 );
 
     domains[1]->UniformRefineDof( 0, 36 );
     domains[1]->UniformRefineDof( 1, 36 );
@@ -75,8 +75,8 @@ int main()
     domains[2]->UniformRefineDof( 0, 36 );
     domains[2]->UniformRefineDof( 1, 36 );
 
-    domains[3]->UniformRefineDof( 0, 36 );
-    domains[3]->UniformRefineDof( 1, 36 );
+    domains[3]->UniformRefineDof( 0, 34 );
+    domains[3]->UniformRefineDof( 1, 34 );
 
     vector<shared_ptr<Surface<2, double>>> cells;
     for ( int i = 0; i < 4; i++ )
@@ -157,6 +157,7 @@ int main()
     }
     MatrixXd dense_constraint = constraint;
     FullPivLU<MatrixXd> lu_decomp( dense_constraint );
+    lu_decomp.setThreshold( 1e-10 );
     MatrixXd basis = lu_decomp.kernel();
     VectorXd c;
     VectorXd ct = VectorXd::Zero( dof.TotalDof() );
@@ -180,7 +181,7 @@ int main()
             std::mt19937 rng;
             // Initialize with non-deterministic seeds
             rng.seed( std::random_device{}() );
-            return std::vector<double>{.5 * ( u( 0 ) - .5 ) + .5 + dist( rng )};
+            return std::vector<double>{.6 * ( u( 0 ) - .5 ) + .5 + dist( rng )};
         };
 
         SparseMatrix<double> l2_matrix, l2_load;
