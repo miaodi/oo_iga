@@ -63,11 +63,11 @@ int main()
         make_shared<PhyTensorBsplineBasis<2, 2, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points4 );
     for ( auto& i : domains )
     {
-        i->DegreeElevate( 2 );
+        i->DegreeElevate( 1 );
     }
 
-    domains[0]->UniformRefineDof( 0, 32 );
-    domains[0]->UniformRefineDof( 1, 32 );
+    domains[0]->UniformRefineDof( 0, 36 );
+    domains[0]->UniformRefineDof( 1, 36 );
 
     domains[1]->UniformRefineDof( 0, 36 );
     domains[1]->UniformRefineDof( 1, 36 );
@@ -75,8 +75,8 @@ int main()
     domains[2]->UniformRefineDof( 0, 36 );
     domains[2]->UniformRefineDof( 1, 36 );
 
-    domains[3]->UniformRefineDof( 0, 32 );
-    domains[3]->UniformRefineDof( 1, 32 );
+    domains[3]->UniformRefineDof( 0, 36 );
+    domains[3]->UniformRefineDof( 1, 36 );
 
     vector<shared_ptr<Surface<2, double>>> cells;
     for ( int i = 0; i < 4; i++ )
@@ -262,7 +262,7 @@ int main()
 
             BiCGSTAB<SparseMatrix<double>> solver;
             solver.compute( stiffness_matrx );
-            solver.setTolerance( 1e-16 );
+            solver.setTolerance( 1e-17 );
 
             VectorXd dct = basis * solver.solve( load_vector );
 
