@@ -38,9 +38,9 @@ int main()
     KnotVector<double> knot_vector;
     knot_vector.InitClosed( 1, 0, 1 );
     Vector2d point1( 0, 0 );
-    Vector2d point2( 0, .5 );
-    Vector2d point3( .5, 0 );
-    Vector2d point4( .5, .5 );
+    Vector2d point2( 0, 1 );
+    Vector2d point3( 1, 0 );
+    Vector2d point4( 1, 1 );
     Vector2d xMove( .5, 0 );
     Vector2d yMove( 0, .5 );
 
@@ -66,7 +66,7 @@ int main()
         i->DegreeElevate( 1 );
     }
 
-    domains[0]->UniformRefineDof( 0, 70);
+    domains[0]->UniformRefineDof( 0, 70 );
     domains[0]->UniformRefineDof( 1, 70 );
 
     // domains[1]->UniformRefineDof( 0, 46 );
@@ -310,12 +310,12 @@ int main()
             std::string name;
             name = "TIME_" + std::to_string( t_current ) + ".txt";
             file.open( name );
-            for ( int x = 0; x <= 50; x++ )
+            for ( int x = 0; x <= 100; x++ )
             {
-                for ( int y = 0; y <= 50; y++ )
+                for ( int y = 0; y <= 100; y++ )
                 {
                     Vector2d u, uphy;
-                    uphy << 1.0 * x / 50, 1.0 * y / 50;
+                    uphy << 1.0 * x / 100, 1.0 * y / 100;
                     // domain->InversePts( uphy, u );
                     double val = 0;
                     auto eval = domains[0]->EvalDerAllTensor( uphy );
@@ -326,52 +326,52 @@ int main()
                     u = domains[0]->AffineMap( uphy );
                     file << u( 0 ) << " " << u( 1 ) << " " << val << std::endl;
                 }
-                for ( int y = 0; y <= 50; y++ )
-                {
-                    Vector2d u, uphy;
-                    uphy << 1.0 * x / 50, 1.0 * y / 50;
-                    // domain->InversePts( uphy, u );
-                    double val = 0;
-                    auto eval = domains[1]->EvalDerAllTensor( uphy );
-                    for ( auto& i : *eval )
-                    {
-                        val += i.second[0] * c( i.first + dof.StartingDof( cells[1]->GetID() ) );
-                    }
-                    u = domains[1]->AffineMap( uphy );
-                    file << u( 0 ) << " " << u( 1 ) << " " << val << std::endl;
-                }
+                // for ( int y = 0; y <= 50; y++ )
+                // {
+                //     Vector2d u, uphy;
+                //     uphy << 1.0 * x / 50, 1.0 * y / 50;
+                //     // domain->InversePts( uphy, u );
+                //     double val = 0;
+                //     auto eval = domains[1]->EvalDerAllTensor( uphy );
+                //     for ( auto& i : *eval )
+                //     {
+                //         val += i.second[0] * c( i.first + dof.StartingDof( cells[1]->GetID() ) );
+                //     }
+                //     u = domains[1]->AffineMap( uphy );
+                //     file << u( 0 ) << " " << u( 1 ) << " " << val << std::endl;
+                // }
             }
-            for ( int x = 0; x <= 50; x++ )
-            {
-                for ( int y = 0; y <= 50; y++ )
-                {
-                    Vector2d u, uphy;
-                    uphy << 1.0 * x / 50, 1.0 * y / 50;
-                    // domain->InversePts( uphy, u );
-                    double val = 0;
-                    auto eval = domains[2]->EvalDerAllTensor( uphy );
-                    for ( auto& i : *eval )
-                    {
-                        val += i.second[0] * c( i.first + dof.StartingDof( cells[2]->GetID() ) );
-                    }
-                    u = domains[2]->AffineMap( uphy );
-                    file << u( 0 ) << " " << u( 1 ) << " " << val << std::endl;
-                }
-                for ( int y = 0; y <= 50; y++ )
-                {
-                    Vector2d u, uphy;
-                    uphy << 1.0 * x / 50, 1.0 * y / 50;
-                    // domain->InversePts( uphy, u );
-                    double val = 0;
-                    auto eval = domains[3]->EvalDerAllTensor( uphy );
-                    for ( auto& i : *eval )
-                    {
-                        val += i.second[0] * c( i.first + dof.StartingDof( cells[3]->GetID() ) );
-                    }
-                    u = domains[3]->AffineMap( uphy );
-                    file << u( 0 ) << " " << u( 1 ) << " " << val << std::endl;
-                }
-            }
+            // for ( int x = 0; x <= 50; x++ )
+            // {
+            //     for ( int y = 0; y <= 50; y++ )
+            //     {
+            //         Vector2d u, uphy;
+            //         uphy << 1.0 * x / 50, 1.0 * y / 50;
+            //         // domain->InversePts( uphy, u );
+            //         double val = 0;
+            //         auto eval = domains[2]->EvalDerAllTensor( uphy );
+            //         for ( auto& i : *eval )
+            //         {
+            //             val += i.second[0] * c( i.first + dof.StartingDof( cells[2]->GetID() ) );
+            //         }
+            //         u = domains[2]->AffineMap( uphy );
+            //         file << u( 0 ) << " " << u( 1 ) << " " << val << std::endl;
+            //     }
+            //     for ( int y = 0; y <= 50; y++ )
+            //     {
+            //         Vector2d u, uphy;
+            //         uphy << 1.0 * x / 50, 1.0 * y / 50;
+            //         // domain->InversePts( uphy, u );
+            //         double val = 0;
+            //         auto eval = domains[3]->EvalDerAllTensor( uphy );
+            //         for ( auto& i : *eval )
+            //         {
+            //             val += i.second[0] * c( i.first + dof.StartingDof( cells[3]->GetID() ) );
+            //         }
+            //         u = domains[3]->AffineMap( uphy );
+            //         file << u( 0 ) << " " << u( 1 ) << " " << val << std::endl;
+            //     }
+            // }
             file.close();
         }
         num_of_steps++;
