@@ -192,9 +192,9 @@ int main()
             CH4thsv.ThreadSetter( thd );
             CH2ndsv.ThreadSetter( thd );
             CHmv.ThreadSetter( thd );
-            CH4thsv.SetStateData( c_alpha.data() );
-            CH2ndsv.SetStateData( c_alpha.data() );
-            CHmv.SetStateData( ct_alpha.data() );
+            CH4thsv.SetStateDatas( c_alpha.data(), ct_alpha.data() );
+            CH2ndsv.SetStateDatas( c_alpha.data(), ct_alpha.data() );
+            CHmv.SetStateDatas( c_alpha.data(), ct_alpha.data() );
 
             cout << "start assemble CH4th stiffness" << endl;
             cell->Accept( CH4thsv );
