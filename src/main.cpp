@@ -66,17 +66,17 @@ int main()
         i->DegreeElevate( 1 );
     }
 
-    domains[0]->UniformRefineDof( 0, 34 );
-    domains[0]->UniformRefineDof( 1, 34 );
+    domains[0]->UniformRefineDof( 0, 48);
+    domains[0]->UniformRefineDof( 1, 48 );
 
-    domains[1]->UniformRefineDof( 0, 36 );
-    domains[1]->UniformRefineDof( 1, 36 );
+    domains[1]->UniformRefineDof( 0, 46 );
+    domains[1]->UniformRefineDof( 1, 46 );
 
-    domains[2]->UniformRefineDof( 0, 36 );
-    domains[2]->UniformRefineDof( 1, 36 );
+    domains[2]->UniformRefineDof( 0, 46 );
+    domains[2]->UniformRefineDof( 1, 46 );
 
-    domains[3]->UniformRefineDof( 0, 34 );
-    domains[3]->UniformRefineDof( 1, 34 );
+    domains[3]->UniformRefineDof( 0, 48 );
+    domains[3]->UniformRefineDof( 1, 48 );
 
     vector<shared_ptr<Surface<2, double>>> cells;
     for ( int i = 0; i < 4; i++ )
@@ -143,8 +143,8 @@ int main()
                 }
                 else
                 {
-                    auto c0_ind = i->GetDomain()->HyperPlaneIndices( 1, i->GetDomain()->GetDof( 0 ) - 1 );
-                    auto c1_ind = i->GetDomain()->HyperPlaneIndices( 1, i->GetDomain()->GetDof( 0 ) - 2 );
+                    auto c0_ind = i->GetDomain()->HyperPlaneIndices( 1, i->GetDomain()->GetDof( 1 ) - 1 );
+                    auto c1_ind = i->GetDomain()->HyperPlaneIndices( 1, i->GetDomain()->GetDof( 1 ) - 2 );
                     for ( int num = 0; num < c0_ind->size(); num++ )
                     {
                         constraint.conservativeResize( constraint.rows() + 1, dof.TotalDof() );
@@ -175,7 +175,7 @@ int main()
     {
         auto target_function = []( const VectorXd& u ) -> std::vector<double> {
             // Type of random number distribution
-            std::uniform_real_distribution<double> dist( -.005, .005 ); //(min, max)
+            std::uniform_real_distribution<double> dist( -.05, .05 ); //(min, max)
 
             // Mersenne Twister: Good quality random number generator
             std::mt19937 rng;
