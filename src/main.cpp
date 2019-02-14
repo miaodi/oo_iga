@@ -63,7 +63,7 @@ int main()
         make_shared<PhyTensorBsplineBasis<2, 2, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points4 );
     for ( auto& i : domains )
     {
-        i->DegreeElevate( 1 );
+        i->DegreeElevate( 2 );
     }
 
     domains[0]->UniformRefineDof( 0, 38);
