@@ -25,6 +25,11 @@ public:
         for ( auto& i : cells )
         {
             std::unique_ptr<T> biharmonic( new T( load ) );
+            if ( _historyData )
+            {
+                biharmonic->SetStateDatas( _c + _dof.StartingDof( i->GetID() ) * Dim, _ct + _dof.StartingDof( i->GetID() ) * Dim );
+            }
+            biharmonic->ThreadSetter( _thd );
             i->Accept( *biharmonic );
             bihamronic_visitors.push_back( std::move( biharmonic ) );
         }
@@ -60,6 +65,11 @@ public:
         for ( auto& i : cells )
         {
             std::unique_ptr<T> biharmonic( new T( load ) );
+            if ( _historyData )
+            {
+                biharmonic->SetStateDatas( _c + _dof.StartingDof( i->GetID() ) * Dim, _ct + _dof.StartingDof( i->GetID() ) * Dim );
+            }
+            biharmonic->ThreadSetter( _thd );
             i->Accept( *biharmonic );
             bihamronic_visitors.push_back( std::move( biharmonic ) );
         }
@@ -86,6 +96,21 @@ public:
         stiffness_matrix += triangle_stiffness_matrix.template selfadjointView<Eigen::Upper>();
     }
 
+    void SetStateDatas( DataType* disp, DataType* vel )
+    {
+        _c = disp;
+        _ct = vel;
+        _historyData = true;
+    }
+    void ThreadSetter( int thd )
+    {
+        _thd = thd;
+    }
+
 protected:
     const DofMapper _dof;
+    DataType* _c;
+    DataType* _ct;
+    bool _historyData{false};
+    int _thd = 8;
 };

@@ -29,8 +29,8 @@ public:
                     i->EdgePointerGetter( j )->Accept( biharmonic_interface );
                     int slave_id = biharmonic_interface.SlaveID();
                     int master_id = biharmonic_interface.MasterID();
-                    int slave_starting_dof = 0;
-                    int master_starting_dof = 0;
+                    int slave_starting_dof = _dof.StartingDof( slave_id );
+                    int master_starting_dof = _dof.StartingDof( master_id );
                     for ( int k = 0; k <= 1; k++ )
                     {
                         auto vertex = i->EdgePointerGetter( j )->VertexPointerGetter( k );

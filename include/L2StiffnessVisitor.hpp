@@ -22,6 +22,7 @@ public:
     L2StiffnessVisitor( const LoadFunctor& body_force ) : StiffnessVisitor<2, 1, T>( body_force )
     {
     }
+    void SetStateDatas( T* disp, T* vel ){};
 
 protected:
     virtual void IntegralElementAssembler( Matrix& bilinear_form_trail,

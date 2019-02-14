@@ -23,9 +23,10 @@ public:
     {
     }
 
-    void SetStateData( T* disp )
+    void SetStateDatas( T* disp, T* vel )
     {
         _disp = disp;
+        _vel = vel;
     }
 
 protected:
@@ -59,6 +60,7 @@ protected:
 
 protected:
     T* _disp{nullptr};
+    T* _vel{nullptr};
 };
 
 template <typename T>
@@ -82,9 +84,10 @@ public:
     {
     }
 
-    void SetStateData( T* disp )
+    void SetStateDatas( T* disp, T* vel )
     {
         _disp = disp;
+        _vel = vel;
     }
 
 protected:
@@ -127,6 +130,7 @@ protected:
 
 protected:
     T* _disp{nullptr};
+    T* _vel{nullptr};
 };
 
 template <typename T>
@@ -150,8 +154,9 @@ public:
     {
     }
 
-    void SetStateData( T* vel )
+    void SetStateDatas( T* disp, T* vel )
     {
+        _disp = disp;
         _vel = vel;
     }
 
@@ -178,5 +183,6 @@ protected:
     }
 
 protected:
+    T* _disp{nullptr};
     T* _vel{nullptr};
 };
