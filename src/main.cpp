@@ -175,13 +175,13 @@ int main()
     {
         auto target_function = []( const VectorXd& u ) -> std::vector<double> {
             // Type of random number distribution
-            std::uniform_real_distribution<double> dist( -.05, .05 ); //(min, max)
+            std::uniform_real_distribution<double> dist( -.01, .01 ); //(min, max)
 
             // Mersenne Twister: Good quality random number generator
             std::mt19937 rng;
             // Initialize with non-deterministic seeds
             rng.seed( std::random_device{}() );
-            return std::vector<double>{.6 * ( u( 0 ) - .5 ) + .5 + dist( rng )};
+            return std::vector<double>{.4 * ( u( 0 ) - .5 ) + .5 + dist( rng )};
         };
 
         SparseMatrix<double> l2_matrix, l2_load;
