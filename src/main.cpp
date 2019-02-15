@@ -38,11 +38,11 @@ int main()
     KnotVector<double> knot_vector;
     knot_vector.InitClosed( 1, 0, 1 );
     Vector2d point1( 0, 0 );
-    Vector2d point2( 0, .5 );
-    Vector2d point3( .5, 0 );
-    Vector2d point4( .5, .5 );
-    Vector2d xMove( .5, 0 );
-    Vector2d yMove( 0, .5 );
+    Vector2d point2( 0, 1 );
+    Vector2d point3( 1, 0 );
+    Vector2d point4( 1, 1 );
+    Vector2d xMove( 1, 0 );
+    Vector2d yMove( 0, 1 );
 
     GeometryVector points1( {point1, point2, point3, point4} );
     GeometryVector points2( {point1 + 0 * xMove + 1 * yMove, point2 + 0 * xMove + 1 * yMove,
@@ -66,17 +66,17 @@ int main()
         i->DegreeElevate( 2 );
     }
 
-    domains[0]->UniformRefineDof( 0, 38);
-    domains[0]->UniformRefineDof( 1, 38 );
+    domains[0]->UniformRefineDof( 0, 63 );
+    domains[0]->UniformRefineDof( 1, 63 );
 
-    domains[1]->UniformRefineDof( 0, 32 );
-    domains[1]->UniformRefineDof( 1, 32 );
+    domains[1]->UniformRefineDof( 0, 65 );
+    domains[1]->UniformRefineDof( 1, 65 );
 
-    domains[2]->UniformRefineDof( 0, 32 );
-    domains[2]->UniformRefineDof( 1, 32 );
+    domains[2]->UniformRefineDof( 0, 65 );
+    domains[2]->UniformRefineDof( 1, 65 );
 
-    domains[3]->UniformRefineDof( 0, 38 );
-    domains[3]->UniformRefineDof( 1, 38 );
+    domains[3]->UniformRefineDof( 0, 63 );
+    domains[3]->UniformRefineDof( 1, 63 );
 
     vector<shared_ptr<Surface<2, double>>> cells;
     for ( int i = 0; i < 4; i++ )
@@ -175,13 +175,13 @@ int main()
     {
         auto target_function = []( const VectorXd& u ) -> std::vector<double> {
             // Type of random number distribution
-            std::uniform_real_distribution<double> dist( -.01, .01 ); //(min, max)
+            std::uniform_real_distribution<double> dist( -.005, .005 ); //(min, max)
 
             // Mersenne Twister: Good quality random number generator
             std::mt19937 rng;
             // Initialize with non-deterministic seeds
             rng.seed( std::random_device{}() );
-            return std::vector<double>{.4 * ( u( 0 ) - .5 ) + .5 + dist( rng )};
+            return std::vector<double>{.4 * ( u( 0 ) - 1 ) + .5 + dist( rng )};
         };
 
         SparseMatrix<double> l2_matrix, l2_load;
@@ -295,6 +295,7 @@ int main()
         if ( err > 1e-3 )
         {
             dt *= sqrt( .85 * 1e-3 / err );
+            dt = min( dt, .01 );
         }
         else
         {
@@ -302,6 +303,7 @@ int main()
             c = c_next_alpha;
             ct = ct_next_alpha;
             dt *= sqrt( .85 * 1e-3 / err );
+            dt = min( dt, .01 );
         }
 
         if ( num_of_steps % 20 == 0 || num_of_steps == 0 )
