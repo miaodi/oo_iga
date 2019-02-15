@@ -37,7 +37,6 @@ const double Pi = 3.14159265358979323846264338327;
 
 int main()
 {
-    setNbThreads( 1 );
     KnotVector<double> knot_vector;
     knot_vector.InitClosed( 1, 0, 1 );
     Vector2d point1( 0, 0 );
@@ -215,7 +214,7 @@ int main()
             // alpha-levels
             VectorXd c_alpha = c + alpha_f * ( c_pred - c );
             VectorXd ct_alpha = ct + alpha_m * ( ct_pred - ct );
-
+            setNbThreads( 1 );
             StiffnessAssembler<CH4thStiffnessVisitor<double>> CH4thsv( dof );
             StiffnessAssembler<CH2ndStiffnessVisitor<double>> CH2ndsv( dof );
             StiffnessAssembler<CHMassVisitor<double>> CHmv( dof );
@@ -272,7 +271,6 @@ int main()
 
             ct_pred.noalias() += dct;
             c_pred.noalias() += gamma * dt * dct;
-            setNbThreads( 1 );
         }
         return false;
     };
