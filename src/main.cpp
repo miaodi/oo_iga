@@ -24,6 +24,8 @@
 #include <time.h>
 #include <unsupported/Eigen/KroneckerProduct>
 
+// #define EIGEN_DONT_PARALLELIZE
+
 using namespace Eigen;
 using namespace std;
 using GeometryVector = PhyTensorBsplineBasis<2, 2, double>::GeometryVector;
@@ -35,6 +37,7 @@ const double Pi = 3.14159265358979323846264338327;
 
 int main()
 {
+    setNbThreads( 1 );
     KnotVector<double> knot_vector;
     knot_vector.InitClosed( 1, 0, 1 );
     Vector2d point1( 0, 0 );
@@ -260,7 +263,7 @@ int main()
                 ct_next = ct_pred;
                 return true;
             }
-
+            setNbThreads( 72 );
             BiCGSTAB<SparseMatrix<double>> solver;
             solver.compute( stiffness_matrx );
             solver.setTolerance( 1e-17 );
@@ -269,6 +272,7 @@ int main()
 
             ct_pred.noalias() += dct;
             c_pred.noalias() += gamma * dt * dct;
+            setNbThreads( 1 );
         }
         return false;
     };
@@ -295,7 +299,7 @@ int main()
         if ( err > 1e-3 )
         {
             dt *= sqrt( .85 * 1e-3 / err );
-            dt = min( dt, .01 );
+            dt = min( dt, .005 );
         }
         else
         {
@@ -303,7 +307,7 @@ int main()
             c = c_next_alpha;
             ct = ct_next_alpha;
             dt *= sqrt( .85 * 1e-3 / err );
-            dt = min( dt, .01 );
+            dt = min( dt, .005 );
         }
 
         if ( num_of_steps % 20 == 0 || num_of_steps == 0 )
@@ -312,12 +316,12 @@ int main()
             std::string name;
             name = "TIME_" + std::to_string( t_current ) + ".txt";
             file.open( name );
-            for ( int x = 0; x <= 50; x++ )
+            for ( int x = 0; x <= 100; x++ )
             {
-                for ( int y = 0; y <= 50; y++ )
+                for ( int y = 0; y <= 100; y++ )
                 {
                     Vector2d u, uphy;
-                    uphy << 1.0 * x / 50, 1.0 * y / 50;
+                    uphy << 1.0 * x / 100, 1.0 * y / 100;
                     // domain->InversePts( uphy, u );
                     double val = 0;
                     auto eval = domains[0]->EvalDerAllTensor( uphy );
@@ -328,10 +332,10 @@ int main()
                     u = domains[0]->AffineMap( uphy );
                     file << u( 0 ) << " " << u( 1 ) << " " << val << std::endl;
                 }
-                for ( int y = 0; y <= 50; y++ )
+                for ( int y = 0; y <= 100; y++ )
                 {
                     Vector2d u, uphy;
-                    uphy << 1.0 * x / 50, 1.0 * y / 50;
+                    uphy << 1.0 * x / 100, 1.0 * y / 100;
                     // domain->InversePts( uphy, u );
                     double val = 0;
                     auto eval = domains[1]->EvalDerAllTensor( uphy );
@@ -343,12 +347,12 @@ int main()
                     file << u( 0 ) << " " << u( 1 ) << " " << val << std::endl;
                 }
             }
-            for ( int x = 0; x <= 50; x++ )
+            for ( int x = 0; x <= 100; x++ )
             {
-                for ( int y = 0; y <= 50; y++ )
+                for ( int y = 0; y <= 100; y++ )
                 {
                     Vector2d u, uphy;
-                    uphy << 1.0 * x / 50, 1.0 * y / 50;
+                    uphy << 1.0 * x / 100, 1.0 * y / 100;
                     // domain->InversePts( uphy, u );
                     double val = 0;
                     auto eval = domains[2]->EvalDerAllTensor( uphy );
@@ -359,10 +363,10 @@ int main()
                     u = domains[2]->AffineMap( uphy );
                     file << u( 0 ) << " " << u( 1 ) << " " << val << std::endl;
                 }
-                for ( int y = 0; y <= 50; y++ )
+                for ( int y = 0; y <= 100; y++ )
                 {
                     Vector2d u, uphy;
-                    uphy << 1.0 * x / 50, 1.0 * y / 50;
+                    uphy << 1.0 * x / 100, 1.0 * y / 100;
                     // domain->InversePts( uphy, u );
                     double val = 0;
                     auto eval = domains[3]->EvalDerAllTensor( uphy );
