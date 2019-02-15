@@ -160,7 +160,7 @@ int main()
     MatrixXd dense_constraint = constraint;
     FullPivLU<MatrixXd> lu_decomp( dense_constraint );
     lu_decomp.setThreshold( 1e-10 );
-    MatrixXd basis = lu_decomp.kernel();
+    SparseMatrix<double> basis = lu_decomp.kernel().sparseView();
     VectorXd c;
     VectorXd ct = VectorXd::Zero( dof.TotalDof() );
 
@@ -193,8 +193,8 @@ int main()
         StiffnessAssembler<L2StiffnessVisitor<double>> stiffness_assemble( dof );
         stiffness_assemble.Assemble( cells, target_function, l2_matrix, l2_load );
         BiCGSTAB<SparseMatrix<double>> solver;
-        SparseMatrix<double> stiffness_sol = ( basis.transpose() * l2_matrix * basis ).sparseView();
-        SparseMatrix<double> rhs_sol = ( basis.transpose() * l2_load ).sparseView();
+        SparseMatrix<double> stiffness_sol = basis.transpose() * l2_matrix * basis;
+        SparseMatrix<double> rhs_sol = basis.transpose() * l2_load;
         solver.compute( stiffness_sol );
         VectorXd c_new = solver.solve( rhs_sol );
         c = basis * c_new;
@@ -247,9 +247,8 @@ int main()
             cout << "end assemble CHmv stiffness" << endl;
             setNbThreads( 72 );
             SparseMatrix<double> stiffness_matrx =
-                ( basis.transpose() *
-                  ( alpha_m * stiffness_matrix_chm + alpha_f * gamma * dt * ( stiffness_matrix_ch2nd + stiffness_matrix_ch4th ) ) * basis )
-                    .sparseView();
+                basis.transpose() *
+                ( alpha_m * stiffness_matrix_chm + alpha_f * gamma * dt * ( stiffness_matrix_ch2nd + stiffness_matrix_ch4th ) ) * basis;
             VectorXd load_vector = basis.transpose() * ( -load_vector_chm - load_vector_ch2nd - load_vector_ch4th );
 
             if ( i == 0 )
