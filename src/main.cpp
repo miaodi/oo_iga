@@ -245,7 +245,7 @@ int main()
             stiffness_matrix_chm.resize( dof.TotalDof(), dof.TotalDof() );
             CHmv.Assemble( cells, load, stiffness_matrix_chm, load_vector_chm );
             cout << "end assemble CHmv stiffness" << endl;
-
+            setNbThreads( 72 );
             SparseMatrix<double> stiffness_matrx =
                 ( basis.transpose() *
                   ( alpha_m * stiffness_matrix_chm + alpha_f * gamma * dt * ( stiffness_matrix_ch2nd + stiffness_matrix_ch4th ) ) * basis )
@@ -262,7 +262,6 @@ int main()
                 ct_next = ct_pred;
                 return true;
             }
-            setNbThreads( 72 );
             BiCGSTAB<SparseMatrix<double>> solver;
             solver.compute( stiffness_matrx );
             solver.setTolerance( 1e-17 );
