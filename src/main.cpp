@@ -68,17 +68,17 @@ int main()
         i->DegreeElevate( 2 );
     }
 
-    domains[0]->UniformRefineDof( 0, 13 );
-    domains[0]->UniformRefineDof( 1, 13 );
+    domains[0]->UniformRefineDof( 0, 63 );
+    domains[0]->UniformRefineDof( 1, 63 );
 
-    domains[1]->UniformRefineDof( 0, 15 );
-    domains[1]->UniformRefineDof( 1, 15 );
+    domains[1]->UniformRefineDof( 0, 65 );
+    domains[1]->UniformRefineDof( 1, 65 );
 
-    domains[2]->UniformRefineDof( 0, 15 );
-    domains[2]->UniformRefineDof( 1, 15 );
+    domains[2]->UniformRefineDof( 0, 65 );
+    domains[2]->UniformRefineDof( 1, 65 );
 
-    domains[3]->UniformRefineDof( 0, 13 );
-    domains[3]->UniformRefineDof( 1, 13 );
+    domains[3]->UniformRefineDof( 0, 63 );
+    domains[3]->UniformRefineDof( 1, 63 );
 
     vector<shared_ptr<Surface<2, double>>> cells;
     for ( int i = 0; i < 4; i++ )
@@ -160,7 +160,7 @@ int main()
     MatrixXd dense_constraint = constraint;
     FullPivLU<MatrixXd> lu_decomp( dense_constraint );
     lu_decomp.setThreshold( 1e-10 );
-    SparseMatrix<double> basis = lu_decomp.kernel().sparseView(1e-13);
+    SparseMatrix<double> basis = lu_decomp.kernel().sparseView(1e-12);
     VectorXd c;
     VectorXd ct = VectorXd::Zero( dof.TotalDof() );
 
