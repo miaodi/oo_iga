@@ -645,3 +645,21 @@ void BiharmonicCodimensionInterfaceVisitor<N, T>::SolveConstraint( Edge<N, T>* e
     _slaveMasterConstraintData =
         vertices_constraint_data + c0_slave_c1_vertices_constraint_data + poisson_ptr->VerticesConstraintData();
 }
+
+// template <int N, typename T>
+// class KLShellCodimensionInterfaceVisitor : public BiharmonicInterfaceVisitor<N, T>
+// {
+// public:
+//     using Knot = typename BiharmonicInterfaceVisitor<N, T>::Knot;
+//     using Quadrature = typename BiharmonicInterfaceVisitor<N, T>::Quadrature;
+//     using QuadList = typename BiharmonicInterfaceVisitor<N, T>::QuadList;
+//     using KnotSpan = typename BiharmonicInterfaceVisitor<N, T>::KnotSpan;
+//     using KnotSpanlist = typename BiharmonicInterfaceVisitor<N, T>::KnotSpanlist;
+//     using LoadFunctor = typename BiharmonicInterfaceVisitor<N, T>::LoadFunctor;
+//     using Matrix = typename BiharmonicInterfaceVisitor<N, T>::Matrix;
+//     using Vector = typename BiharmonicInterfaceVisitor<N, T>::Vector;
+//     using DomainShared_ptr = typename BiharmonicInterfaceVisitor<N, T>::DomainShared_ptr;
+//     using ConstraintIntegralElementAssembler = typename BiharmonicInterfaceVisitor<N, T>::ConstraintIntegralElementAssembler;
+
+//     using BiharmonicInterfaceVisitor<N, T>::C1IntegralElementAssembler;
+// }

@@ -435,3 +435,117 @@ void PoissonCodimensionInterfaceVisitor<N, T>::SolveConstraint( Edge<N, T>* edge
     this->_constraintData = std::move( constraint_data );
     _slaveMasterConstraintData = std::move( vertices_constraint_data );
 }
+
+// template <typename T>
+// class KLShellC0InterfaceVisitor : public PoissonInterfaceVisitor<3, T>
+// {
+// public:
+//     using Knot = typename PoissonInterfaceVisitor<N, T>::Knot;
+//     using Quadrature = typename PoissonInterfaceVisitor<N, T>::Quadrature;
+//     using QuadList = typename PoissonInterfaceVisitor<N, T>::QuadList;
+//     using KnotSpan = typename PoissonInterfaceVisitor<N, T>::KnotSpan;
+//     using KnotSpanlist = typename PoissonInterfaceVisitor<N, T>::KnotSpanlist;
+//     using LoadFunctor = typename PoissonInterfaceVisitor<N, T>::LoadFunctor;
+//     using Matrix = typename PoissonInterfaceVisitor<N, T>::Matrix;
+//     using Vector = typename PoissonInterfaceVisitor<N, T>::Vector;
+//     using DomainShared_ptr = typename PoissonInterfaceVisitor<N, T>::DomainShared_ptr;
+//     using ConstraintIntegralElementAssembler = typename PoissonInterfaceVisitor<N, T>::ConstraintIntegralElementAssembler;
+
+// public:
+//     KLShellC0InterfaceVisitor() : PoissonInterfaceVisitor<3, T>()
+//     {
+//     }
+
+//     void C0IntegralElementAssembler( Matrix& slave_constraint_basis,
+//                                      std::vector<int>& slave_constraint_basis_indices,
+//                                      Matrix& master_constrint_basis,
+//                                      std::vector<int>& master_constraint_basis_indices,
+//                                      Matrix& multiplier_basis,
+//                                      std::vector<int>& multiplier_basis_indices,
+//                                      T& integral_weight,
+//                                      Edge<N, T>* edge,
+//                                      const Quadrature& u )
+//     {
+//         auto multiplier_domain = edge->GetDomain();
+//         auto slave_domain = edge->Parent( 0 ).lock()->GetDomain();
+//         auto master_domain = edge->Counterpart().lock()->Parent( 0 ).lock()->GetDomain();
+
+//         //    set up integration weights
+//         integral_weight = u.second;
+
+//         Vector slave_quadrature_abscissa, master_quadrature_abscissa;
+//         if ( !Accessory::MapParametricPoint( &*multiplier_domain, u.first, &*slave_domain, slave_quadrature_abscissa ) )
+//         {
+//             std::cout << "MapParametericPoint failed" << std::endl;
+//         }
+//         if ( !Accessory::MapParametricPoint( &*multiplier_domain, u.first, &*master_domain, master_quadrature_abscissa ) )
+//         {
+//             std::cout << "MapParametericPoint failed" << std::endl;
+//         }
+
+//         auto slave_evals = slave_domain->EvalDerAllTensor( slave_quadrature_abscissa, 0 );
+//         auto master_evals = master_domain->EvalDerAllTensor( master_quadrature_abscissa, 0 );
+//         auto multiplier_evals = multiplier_domain->EvalDualAllTensor( u.first );
+
+//         slave_constraint_basis.resize( 1, slave_evals->size() );
+//         master_constraint_basis.resize( 1, master_evals->size() );
+//         multiplier_basis.resize( 1, multiplier_evals->size() );
+
+//         for ( int j = 0; j < slave_evals->size(); ++j )
+//         {
+//             slave_constraint_basis( 0, j ) = ( *slave_evals )[j].second[0];
+//         }
+//         for ( int j = 0; j < master_evals->size(); ++j )
+//         {
+//             master_constraint_basis( 0, j ) = ( *master_evals )[j].second[0];
+//         }
+//         for ( int j = 0; j < multiplier_evals->size(); ++j )
+//         {
+//             multiplier_basis( 0, j ) = ( *multiplier_evals )[j].second[0];
+//         }
+
+//         Eigen::Matrix<T, 3, 3> identity;
+//         identity.setIdentity();
+
+//         master_constraint_basis = kroneckerProduct( master_constraint_basis, identity ).eval();
+//         slave_constraint_basis = kroneckerProduct( slave_constraint_basis, identity ).eval();
+//         multiplier_basis = kroneckerProduct( multiplier_basis, identity ).eval();
+
+//         // set up local indices corresponding to test basis functions and trial basis functions
+//         if ( slave_constraint_basis_indices.size() == 0 )
+//         {
+//             auto index = slave_domain->ActiveIndex( slave_quadrature_abscissa );
+//             for ( auto& i : index )
+//             {
+//                 for ( int j = 0; j < 3; j++ )
+//                 {
+//                     slave_constraint_basis_indices.push_back( 3 * i + j );
+//                 }
+//             }
+//         }
+//         if ( master_constraint_basis_indices.size() == 0 )
+//         {
+//             auto index = master_domain->ActiveIndex( master_quadrature_abscissa );
+//             for ( auto& i : index )
+//             {
+//                 for ( int j = 0; j < 3; j++ )
+//                 {
+//                     master_constraint_basis_indices.push_back( 3 * i + j );
+//                 }
+//             }
+//         }
+//         if ( multiplier_basis_indices.size() == 0 )
+//         {
+//             for ( auto& i : *multiplier_evals )
+//             {
+//                 for ( int j = 0; j < 3; j++ )
+//                 {
+//                     multiplier_basis_indices.push_back( 3 * i.first + j );
+//                 }
+//             }
+//         }
+//     }
+
+// protected:
+
+// }
