@@ -632,15 +632,33 @@ std::tuple<Eigen::Matrix<T, 3, 1>, Eigen::Matrix<T, 3, 1>, Eigen::Matrix<T, 3, 1
 }
 
 template <typename T>
+std::pair<T, T> SinCosBetweenTwoUniVec( const Eigen::Matrix<T, 3, 1>& from,
+                                        const Eigen::Matrix<T, 3, 1>& to,
+                                        const Eigen::Matrix<T, 3, 1>& normal )
+{
+    T c = from.dot( to );
+    T s = ( normal.cross( from ) ).dot( to );
+    return std::make_pair( s, c );
+}
+
+template <typename T>
 Eigen::Matrix<T, 3, 3> RotationMatrix( const Eigen::Matrix<T, 3, 1>& from, const Eigen::Matrix<T, 3, 1>& to )
 {
     Eigen::Matrix<T, 3, 1> n_from = from.normalized();
     Eigen::Matrix<T, 3, 1> n_to = to.normalized();
     Eigen::Matrix<T, 3, 1> v = n_from.cross( n_to );
-    T c = n_from.dot( n_to );
-    Eigen::Matrix<T, 3, 3> w;
-    w << 0, -v( 2 ), v( 1 ), v( 2 ), 0, -v( 0 ), -v( 1 ), v( 0 ), 0;
-    return Eigen::Matrix<T, 3, 3>::Identity() + w + w * w * 1.0 / ( 1 + c );
+    auto sc = SinCosBetweenTwoUniVec( n_from, n_to, v );
+    Eigen::Matrix<T, 3, 3> K;
+    K << 0, -v( 2 ), v( 1 ), v( 2 ), 0, -v( 0 ), -v( 1 ), v( 0 ), 0;
+    return Eigen::Matrix<T, 3, 3>::Identity() + sc.first * K + ( 1 - sc.second ) * K * K;
+}
+
+template <typename T>
+Eigen::Matrix<T, 3, 3> RotationMatrix( const Eigen::Matrix<T, 3, 1>& n, const T s, const T c )
+{
+    Eigen::Matrix<T, 3, 3> K;
+    K << 0, -n( 2 ), n( 1 ), n( 2 ), 0, -n( 0 ), -n( 1 ), n( 0 ), 0;
+    return Eigen::Matrix<T, 3, 3>::Identity() + s * K + ( 1 - c ) * K * K;
 }
 
 template <typename T>

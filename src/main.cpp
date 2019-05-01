@@ -42,8 +42,7 @@ int main()
     KnotVector<double> knot_vector;
     knot_vector.InitClosed( 1, 0, 1 );
 
-    Vector3d point11( 0.0, 0.0, 0.0 ), point12( 0.0, 10.0, 0.0 ), point13( 2.0, 0.0, 0.0 ),
-        point14( 2.0, 10.0, 0.0 );
+    Vector3d point11( 0.0, 0.0, 0.0 ), point12( 0.0, 10.0, 0.0 ), point13( 2.0, 0.0, 0.0 ), point14( 2.0, 10.0, 0.0 );
     Vector3d point21( 0.0, 0.0, 0.0 ), point22( 0.0, 10.0, 0.0 ), point23( 0.0, 0.0, -2.0 ), point24( 0.0, 10.0, -2.0 );
     GeometryVector points1{point11, point12, point13, point14};
     GeometryVector points2{point21, point22, point23, point24};
@@ -81,5 +80,13 @@ int main()
             cells[i]->Match( cells[j] );
         }
     }
+    for ( auto i : cells )
+    {
+        i->PrintEdgeInfo();
+    }
+    KLShellC0InterfaceVisitor<double> kl_c0;
+    cells[1]->EdgePointerGetter( 3 )->Accept( kl_c0 );
+    cells[1]->EdgePointerGetter( 3 )->Accept( kl_c0 );
+    cells[1]->EdgePointerGetter( 3 )->Accept( kl_c0 );
     return 0;
 }

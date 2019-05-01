@@ -591,7 +591,7 @@ void BiharmonicCodimensionInterfaceVisitor<N, T>::SolveConstraint( Edge<N, T>* e
     const int dimension = 1;
     auto vertices_indices = edge->VerticesIndices( dimension, _codimension - 1 );
 
-    // iterate across the constraint equation container and obtain activated global indices and lagrange multiplier indices
+    // iterate across the constraint equation container and obtain activated local indices and lagrange multiplier indices
     std::vector<int> slave_indices = Accessory::ColIndicesVector( this->_c1Slave );
     std::vector<int> master_indices = Accessory::ColIndicesVector( this->_c1Master );
     std::vector<int> multiplier_indices = Accessory::RowIndicesVector( this->_c1Slave );
@@ -646,20 +646,319 @@ void BiharmonicCodimensionInterfaceVisitor<N, T>::SolveConstraint( Edge<N, T>* e
         vertices_constraint_data + c0_slave_c1_vertices_constraint_data + poisson_ptr->VerticesConstraintData();
 }
 
-// template <int N, typename T>
-// class KLShellCodimensionInterfaceVisitor : public BiharmonicInterfaceVisitor<N, T>
-// {
-// public:
-//     using Knot = typename BiharmonicInterfaceVisitor<N, T>::Knot;
-//     using Quadrature = typename BiharmonicInterfaceVisitor<N, T>::Quadrature;
-//     using QuadList = typename BiharmonicInterfaceVisitor<N, T>::QuadList;
-//     using KnotSpan = typename BiharmonicInterfaceVisitor<N, T>::KnotSpan;
-//     using KnotSpanlist = typename BiharmonicInterfaceVisitor<N, T>::KnotSpanlist;
-//     using LoadFunctor = typename BiharmonicInterfaceVisitor<N, T>::LoadFunctor;
-//     using Matrix = typename BiharmonicInterfaceVisitor<N, T>::Matrix;
-//     using Vector = typename BiharmonicInterfaceVisitor<N, T>::Vector;
-//     using DomainShared_ptr = typename BiharmonicInterfaceVisitor<N, T>::DomainShared_ptr;
-//     using ConstraintIntegralElementAssembler = typename BiharmonicInterfaceVisitor<N, T>::ConstraintIntegralElementAssembler;
+template <typename T>
+class KLShellC1InterfaceVisitor : public BiharmonicInterfaceVisitor<3, T>
+{
+public:
+    using Knot = typename BiharmonicInterfaceVisitor<3, T>::Knot;
+    using Quadrature = typename BiharmonicInterfaceVisitor<3, T>::Quadrature;
+    using QuadList = typename BiharmonicInterfaceVisitor<3, T>::QuadList;
+    using KnotSpan = typename BiharmonicInterfaceVisitor<3, T>::KnotSpan;
+    using KnotSpanlist = typename BiharmonicInterfaceVisitor<3, T>::KnotSpanlist;
+    using LoadFunctor = typename BiharmonicInterfaceVisitor<3, T>::LoadFunctor;
+    using Matrix = typename BiharmonicInterfaceVisitor<3, T>::Matrix;
+    using Vector = typename BiharmonicInterfaceVisitor<3, T>::Vector;
+    using DomainShared_ptr = typename BiharmonicInterfaceVisitor<3, T>::DomainShared_ptr;
+    using ConstraintIntegralElementAssembler = typename BiharmonicInterfaceVisitor<3, T>::ConstraintIntegralElementAssembler;
 
-//     using BiharmonicInterfaceVisitor<N, T>::C1IntegralElementAssembler;
-// }
+    using BiharmonicInterfaceVisitor<3, T>::C1IntegralElementAssembler;
+
+private:
+    struct SlaveMasterAndAngle
+    {
+        SlaveMasterAndAngle()
+        {
+        }
+
+        SlaveMasterAndAngle( const Vector& s, const Vector& m, const T angle )
+            : _slaveQuadrature( s ), _masterQuadrature( m ), _angle( angle )
+        {
+        }
+        Vector _slaveQuadrature;
+        Vector _masterQuadrature;
+        T _angle;
+    };
+
+public:
+    KLShellC1InterfaceVisitor() : BiharmonicInterfaceVisitor<3, T>( std::make_unique<KLShellC0InterfaceVisitor<T>>() )
+    {
+    }
+    void C1IntegralElementAssembler( Matrix& slave_constraint_basis,
+                                     std::vector<int>& slave_constraint_basis_indices,
+                                     Matrix& master_constrint_basis,
+                                     std::vector<int>& master_constraint_basis_indices,
+                                     Matrix& multiplier_basis,
+                                     std::vector<int>& multiplier_basis_indices,
+                                     T& integral_weight,
+                                     Edge<3, T>* edge,
+                                     const Quadrature& u )
+    {
+        auto multiplier_domain = edge->GetDomain();
+        auto slave_domain = edge->Parent( 0 ).lock()->GetDomain();
+        auto master_domain = edge->Counterpart().lock()->Parent( 0 ).lock()->GetDomain();
+
+        //    set up integration weights
+        integral_weight = u.second;
+
+        // Map abscissa from Lagrange multiplier space to slave and master domain
+        Vector slave_quadrature_abscissa, master_quadrature_abscissa;
+
+        auto it = _quadratureMap.find( u.first( 0 ) );
+
+        if ( it == _quadratureMap.end() )
+        {
+            if ( !Accessory::MapParametricPoint( &*multiplier_domain, u.first, &*slave_domain, slave_quadrature_abscissa ) )
+            {
+                std::cout << "MapParametericPoint failed" << std::endl;
+            }
+            if ( !Accessory::MapParametricPoint( &*multiplier_domain, u.first, &*master_domain, master_quadrature_abscissa ) )
+            {
+                std::cout << "MapParametericPoint failed" << std::endl;
+            }
+        }
+        else
+        {
+            slave_quadrature_abscissa = ( it->second )._slaveQuadrature;
+            master_quadrature_abscissa = ( it->second )._masterQuadrature;
+        }
+
+        // Evaluate derivative upto 1^st order in slave and master domain
+        auto slave_evals = slave_domain->EvalDerAllTensor( slave_quadrature_abscissa, 1 );
+        auto master_evals = master_domain->EvalDerAllTensor( master_quadrature_abscissa, 1 );
+
+        //  Evaluate Lagrange multiplier basis
+        auto multiplier_evals = multiplier_domain->EvalDualAllTensor( u.first );
+
+        // Resize integration matrices
+        slave_constraint_basis.resize( 1, slave_evals->size() );
+        multiplier_basis.resize( 1, multiplier_evals->size() );
+
+        // Compute the following matrix
+        // +-----------+-----------+
+        // | ∂ξ_m/∂ξ_s | ∂η_m/∂ξ_s |
+        // +-----------+-----------+
+        // | ∂ξ_m/∂η_s | ∂η_m/∂η_s |
+        // +-----------+-----------+
+        Matrix slave_jacobian = slave_domain->JacobianMatrix( slave_quadrature_abscissa );
+        Matrix master_jacobian = master_domain->JacobianMatrix( master_quadrature_abscissa );
+        // Matrix master_to_slave = slave_jacobian * master_jacobian.inverse();
+        Eigen::Matrix<T, 3, 1> A1_s, A2_s, A1_m, A2_m;
+
+        A1_m = master_jacobian.col( 0 );
+        A2_m = master_jacobian.col( 1 );
+
+        switch ( edge->GetOrient() )
+        {
+        // For south and north edge derivative w.r.t η_s should be consistent
+        case Orientation::south:
+        case Orientation::north:
+        {
+            A1_s = slave_jacobian.col( 1 );
+            A2_s = -slave_jacobian.col( 0 );
+        }
+        // For south and north edge derivative w.r.t ξ_s should be consistent
+        case Orientation::east:
+        case Orientation::west:
+        {
+            A1_s = slave_jacobian.col( 0 );
+            A2_s = slave_jacobian.col( 1 );
+        }
+        }
+
+        switch ( edge->Counterpart()->GetOrient() )
+        {
+        // For south and north edge derivative w.r.t η_s should be consistent
+        case Orientation::south:
+        case Orientation::north:
+        {
+            A2_s = A2_s.dot( A1_m ) * A1_m;
+        }
+        // For south and north edge derivative w.r.t ξ_s should be consistent
+        case Orientation::east:
+        case Orientation::west:
+        {
+            A2_s = A2_s.dot( A2_m ) * A2_m;
+        }
+        }
+
+        const Eigen::Matrix<T, 3, 1> nA2_s = A2_s.normalized();
+        T angle = 0;
+        if ( it == _quadratureMap.end() )
+        {
+            Eigen::Matrix<T, 3, 1> A3_s = A1_s.cross( A2_s );
+            Eigen::Matrix<T, 3, 1> A3_m = A1_m.cross( A2_m );
+            A3_s.normalize();
+            A3_m.normalize();
+            auto sc = SinCosBetweenTwoUniVec( A3_m, A3_s, nA2_s );
+            angle = sc.first >= 0 ? std::acos( sc.second ) : ( 2 * M_PI - std::acos( sc.second ) );
+            _quadratureMap[u.first( 0 )] = SlaveMasterAndAngle( slave_quadrature_abscissa, master_quadrature_abscissa, angle );
+        }
+        else
+        {
+            angle = ( it->second )._angle;
+        }
+
+        const Eigen::Matrix<T, 3, 3> rotation_from_s_to_m =
+            Accessory::RotationMatrix( nA2_s, -std::sin( angle ), std::cos( angle ) );
+
+        Eigen::Matrix<T, 3, 1> A1_m_prime, A2_m_prime;
+        A1_m_prime = rotation_from_s_to_m * A1_s;
+        A2_m_prime = rotation_from_s_to_m * A2_s;
+
+        Matrix gramian = master_jacobian.transpose() * master_jacobian;
+        Vector A1_m_jac = gramian.partialPivLu().solve( master_jacobian.transpose() * A1_m_prime );
+        Vector A2_m_jac = gramian.partialPivLu().solve( master_jacobian.transpose() * A2_m_prime );
+
+        switch ( edge->GetOrient() )
+        {
+        // For south and north edge derivative w.r.t η_s should be consistent
+        case Orientation::south:
+        case Orientation::north:
+        {
+            for ( int j = 0; j < slave_evals->size(); ++j )
+            {
+                slave_constraint_basis( 0, j ) = ( *slave_evals )[j].second[2];
+            }
+            break;
+        }
+        // For south and north edge derivative w.r.t ξ_s should be consistent
+        case Orientation::east:
+        case Orientation::west:
+        {
+            for ( int j = 0; j < slave_evals->size(); ++j )
+            {
+                slave_constraint_basis( 0, j ) = ( *slave_evals )[j].second[1];
+            }
+            break;
+        }
+        }
+        Matrix u1_m = A1_m_jac.transpose() * ( *master_evals ).bottomRows( 2 );
+        Matrix u2_m = A2_m_jac.transpose() * ( *master_evals ).bottomRows( 2 );
+
+        Eigen::Matrix<T, 3, 3> rotation_from_m_to_s = Accessory::RotationMatrix( nA2_s, sc.first, sc.second );
+
+        Eigen::Matrix<T, 3, 3> dr_dot_A1_m DRdotA1m( A1_m_prime, A2_m_prime, angle );
+
+        Eigen::Matrix<T, 3, 3> identity;
+        identity.setIdentity();
+
+        slave_constraint_basis = kroneckerProduct( slave_constraint_basis, identity ).eval();
+        multiplier_basis = kroneckerProduct( multiplier_basis, identity ).eval();
+        u1_m = kroneckerProduct( u1_m, identity ).eval();
+        u2_m = kroneckerProduct( u2_m, identity ).eval();
+        master_constraint_basis = rotation_from_m_to_s * u1_m + dr_dot_A1_m * u2_m;
+    }
+
+    Eigen::Matrix<T, 3, 3> DRdotA1m( const Vector& A1, const Vector& A2, const T angle )
+    {
+        Eigen::Matrix<T, 3, 3> res;
+        const T A10 = A1( 0 ), A11 = A1( 1 ), A12 = A1( 2 );
+        const T A20 = A2( 0 ), A21 = A2( 1 ), A22 = A2( 2 );
+        const T A2_norm_square = std::pow( A20, 2 ) + std::pow( A21, 2 ) + std::pow( A22, 2 );
+        res( 0, 0 ) = 2 * sin( angle / 2 ) *
+                      ( A20 * ( A11 * A22 - A12 * A21 ) * std::sqrt( A2_norm_square ) * cos( angle / 2 ) +
+                        ( 2 * A10 * A20 * ( A2_norm_square - std::pow( A20, 2 ) ) +
+                          ( A11 * A21 + A12 * A22 ) * ( A2_norm_square - 2 * std::pow( A20, 2 ) ) ) *
+                            sin( angle / 2 ) ) /
+                      std::pow( A2_norm_square, 2 );
+        res( 0, 1 ) =
+            ( 2 * sin( angle / 2 ) *
+              ( std::sqrt( std::pow( A20, 2 ) + std::pow( A21, 2 ) + std::pow( A22, 2 ) ) *
+                    ( A11 * A21 * A22 + A12 * ( std::pow( A20, 2 ) + std::pow( A22, 2 ) ) ) * cos( angle / 2 ) +
+                A20 * ( -2 * A21 * ( A10 * A20 + A12 * A22 ) + A11 * ( std::pow( A20, 2 ) - std::pow( A21, 2 ) + std::pow( A22, 2 ) ) ) *
+                    sin( angle / 2 ) ) ) /
+            std::pow( std::pow( A20, 2 ) + std::pow( A21, 2 ) + std::pow( A22, 2 ), 2 );
+
+        res( 0, 2 ) = ( ( A20 * ( -2 * ( A10 * A20 + A11 * A21 ) * A22 +
+                                  A12 * ( std::pow( A20, 2 ) + std::pow( A21, 2 ) - std::pow( A22, 2 ) ) ) +
+                          A20 *
+                              ( -( A12 * ( std::pow( A20, 2 ) + std::pow( A21, 2 ) ) ) +
+                                2 * ( A10 * A20 + A11 * A21 ) * A22 + A12 * std::pow( A22, 2 ) ) *
+                              cos( angle ) -
+                          ( A11 * ( std::pow( A20, 2 ) + std::pow( A21, 2 ) ) + A12 * A21 * A22 ) *
+                              std::sqrt( std::pow( A20, 2 ) + std::pow( A21, 2 ) + std::pow( A22, 2 ) ) * sin( angle ) ) ) /
+                      std::pow( std::pow( A20, 2 ) + std::pow( A21, 2 ) + std::pow( A22, 2 ), 2 );
+
+        res( 1, 0 ) =
+            ( ( A21 * ( -2 * A20 * ( A11 * A21 + A12 * A22 ) + A10 * ( -std::pow( A20, 2 ) + std::pow( A21, 2 ) + std::pow( A22, 2 ) ) ) +
+                A21 * ( 2 * A20 * ( A11 * A21 + A12 * A22 ) + A10 * ( std::pow( A20, 2 ) - std::pow( A21, 2 ) - std::pow( A22, 2 ) ) ) *
+                    cos( angle ) -
+                std::sqrt( std::pow( A20, 2 ) + std::pow( A21, 2 ) + std::pow( A22, 2 ) ) *
+                    ( A10 * A20 * A22 + A12 * ( std::pow( A21, 2 ) + std::pow( A22, 2 ) ) ) * sin( angle ) ) ) /
+            std::pow( std::pow( A20, 2 ) + std::pow( A21, 2 ) + std::pow( A22, 2 ), 2 );
+
+        res( 1, 1 ) = ( 2 * sin( angle / 2. ) *
+                        ( A21 * ( A12 * A20 - A10 * A22 ) *
+                              std::sqrt( std::pow( A20, 2 ) + std::pow( A21, 2 ) + std::pow( A22, 2 ) ) * cos( angle / 2. ) +
+                          ( 2 * A11 * A21 * ( std::pow( A20, 2 ) + std::pow( A22, 2 ) ) +
+                            A10 * A20 * ( std::pow( A20, 2 ) - std::pow( A21, 2 ) + std::pow( A22, 2 ) ) +
+                            A12 * A22 * ( std::pow( A20, 2 ) - std::pow( A21, 2 ) + std::pow( A22, 2 ) ) ) *
+                              sin( angle / 2. ) ) ) /
+                      std::pow( std::pow( A20, 2 ) + std::pow( A21, 2 ) + std::pow( A22, 2 ), 2 );
+
+        res( 1, 2 ) =
+            ( 2 * sin( angle / 2. ) *
+              ( ( A10 * ( std::pow( A20, 2 ) + std::pow( A21, 2 ) ) + A12 * A20 * A22 ) *
+                    std::sqrt( std::pow( A20, 2 ) + std::pow( A21, 2 ) + std::pow( A22, 2 ) ) * cos( angle / 2. ) +
+                A21 * ( -2 * ( A10 * A20 + A11 * A21 ) * A22 + A12 * ( std::pow( A20, 2 ) + std::pow( A21, 2 ) - std::pow( A22, 2 ) ) ) *
+                    sin( angle / 2. ) ) ) /
+            std::pow( std::pow( A20, 2 ) + std::pow( A21, 2 ) + std::pow( A22, 2 ), 2 );
+
+        res( 2, 0 ) =
+            ( ( A22 * ( -2 * A20 * ( A11 * A21 + A12 * A22 ) + A10 * ( -std::pow( A20, 2 ) + std::pow( A21, 2 ) + std::pow( A22, 2 ) ) ) +
+                A22 * ( 2 * A20 * ( A11 * A21 + A12 * A22 ) + A10 * ( std::pow( A20, 2 ) - std::pow( A21, 2 ) - std::pow( A22, 2 ) ) ) *
+                    cos( angle ) +
+                std::sqrt( std::pow( A20, 2 ) + std::pow( A21, 2 ) + std::pow( A22, 2 ) ) *
+                    ( A10 * A20 * A21 + A11 * ( std::pow( A21, 2 ) + std::pow( A22, 2 ) ) ) * sin( angle ) ) ) /
+            std::pow( std::pow( A20, 2 ) + std::pow( A21, 2 ) + std::pow( A22, 2 ), 2 );
+
+        res( 2, 1 ) =
+            ( ( A22 * ( -2 * A21 * ( A10 * A20 + A12 * A22 ) + A11 * ( std::pow( A20, 2 ) - std::pow( A21, 2 ) + std::pow( A22, 2 ) ) ) +
+                A22 * ( 2 * A21 * ( A10 * A20 + A12 * A22 ) - A11 * ( std::pow( A20, 2 ) - std::pow( A21, 2 ) + std::pow( A22, 2 ) ) ) *
+                    cos( angle ) -
+                std::sqrt( std::pow( A20, 2 ) + std::pow( A21, 2 ) + std::pow( A22, 2 ) ) *
+                    ( A11 * A20 * A21 + A10 * ( std::pow( A20, 2 ) + std::pow( A22, 2 ) ) ) * sin( angle ) ) ) /
+            std::pow( std::pow( A20, 2 ) + std::pow( A21, 2 ) + std::pow( A22, 2 ), 2 );
+
+        res( 2, 2 ) =
+            ( 2 * sin( angle / 2. ) *
+              ( ( -( A11 * A20 ) + A10 * A21 ) * A22 *
+                    std::sqrt( std::pow( A20, 2 ) + std::pow( A21, 2 ) + std::pow( A22, 2 ) ) * cos( angle / 2. ) +
+                ( ( A10 * A20 + A11 * A21 ) * ( std::pow( A20, 2 ) + std::pow( A21, 2 ) ) +
+                  2 * A12 * ( std::pow( A20, 2 ) + std::pow( A21, 2 ) ) * A22 - ( A10 * A20 + A11 * A21 ) * std::pow( A22, 2 ) ) *
+                    sin( angle / 2. ) ) ) /
+            std::pow( std::pow( A20, 2 ) + std::pow( A21, 2 ) + std::pow( A22, 2 ), 2 );
+
+        return res;
+    }
+
+    void SolveConstraint( Edge<3, T>* edge )
+    {
+        const int dimension = 3;
+        auto vertices_indices = edge->VerticesIndices( dimension, 1 );
+
+        // iterate across the constraint equation container and obtain activated local indices and lagrange multiplier indices
+        std::vector<int> slave_indices = Accessory::ColIndicesVector( this->_c1Slave );
+        std::vector<int> master_indices = Accessory::ColIndicesVector( this->_c1Master );
+        std::vector<int> multiplier_indices = Accessory::RowIndicesVector( this->_c1Slave );
+
+        auto poisson_ptr = dynamic_cast<KLShellC0InterfaceVisitor<T>*>( this->_poisson.get() );
+        const std::vector<int>& c0_slave_indices = *( poisson_ptr->ConstraintData()._rowIndices );
+        std::vector<int> c1_slave_complement_indices;
+        std::set_union( vertices_indices.begin(), vertices_indices.end(), c0_slave_indices.begin(),
+                        c0_slave_indices.end(), std::back_inserter( c1_slave_complement_indices ) );
+        std::vector<int> c1_slave_indices;
+        std::set_difference( slave_indices.begin(), slave_indices.end(), c1_slave_complement_indices.begin(),
+                             c1_slave_complement_indices.end(), std::back_inserter( c1_slave_indices ) );
+
+        auto c1_slave_indices_inverse_map = Accessory::IndicesInverseMap( c1_slave_indices );
+        auto c0_slave_indices_inverse_map = Accessory::IndicesInverseMap( c0_slave_indices );
+        auto master_indices_inverse_map = Accessory::IndicesInverseMap( master_indices );
+        auto multiplier_indices_inverse_map = Accessory::IndicesInverseMap( multiplier_indices );
+        auto vertices_indices_inverse_map = Accessory::IndicesInverseMap( vertices_indices );
+    }
+
+protected:
+    MatrixData<T> _slaveMasterConstraintData;
+    std::unordered_map<T, SlaveMasterAndAngle> _quadratureMap;
+}
