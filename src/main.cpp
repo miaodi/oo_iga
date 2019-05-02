@@ -84,7 +84,7 @@ int main()
     {
         i->PrintEdgeInfo();
     }
-    KLShellC1InterfaceVisitor<double> kl_c1;
-    cells[1]->EdgePointerGetter( 3 )->Accept( kl_c1 );
+    KLShellConstraintAssembler<double> klconstraints( dof );
+    klconstraints.ConstraintInitialize( cells );
     return 0;
 }

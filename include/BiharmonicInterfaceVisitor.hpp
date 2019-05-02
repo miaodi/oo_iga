@@ -58,6 +58,11 @@ protected:
                                                                             T& integral_weight,
                                                                             Edge<N, T>* edge,
                                                                             const Quadrature& u );
+    void clear()
+    {
+        _c1Slave.clear();
+        _c1Master.clear();
+    }
 
 protected:
     std::vector<Eigen::Triplet<T>> _c1Slave;
@@ -983,7 +988,13 @@ public:
         this->_constraintData = c1_constraint_data + c0_slave_c1_constraint_data + poisson_ptr->ConstraintData();
         _slaveMasterConstraintData =
             vertices_constraint_data + c0_slave_c1_vertices_constraint_data + poisson_ptr->VerticesConstraintData();
-        this->_constraintData.Print();
+        _slaveMasterConstraintData.Print();
+        this->clear();
+    }
+
+    const MatrixData<T>& VerticesConstraintData() const
+    {
+        return _slaveMasterConstraintData;
     }
 
 protected:

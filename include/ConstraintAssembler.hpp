@@ -5,6 +5,8 @@
 #include "PoissonInterfaceVisitor.hpp"
 #include "Surface.hpp"
 #include <numeric>
+#include <unordered_map>
+
 template <int d, int N, typename T>
 class ConstraintAssembler
 {
@@ -166,46 +168,47 @@ public:
         int total_dof = _dof.TotalDof();
         MatrixData<T> global_constraint;
         for ( auto& i : _matrix_data_container )
-        // {
-        //     global_constraint += i;
-        // }
+            // {
+            //     global_constraint += i;
+            // }
 
-        // for ( auto m = global_constraint._rowIndices->begin(); m != global_constraint._rowIndices->end(); m++ )
-        // {
-        //     {
-        //         Eigen::SparseVector<T> sparse_vector( total_dof );
-        //         sparse_vector.coeffRef( *m ) = 1.0;
-        //         for ( int n = 0; n < global_constraint._colIndices->size(); n++ )
-        //         {
-        //             sparse_vector.coeffRef( ( *global_constraint._colIndices )[n] ) =
-        //                 -( *global_constraint._matrix )( m - global_constraint._rowIndices->begin(), n );
-        //         }
-        //         constraint_container.push_back( sparse_vector );
-        //     }
-        // }
+            // for ( auto m = global_constraint._rowIndices->begin(); m != global_constraint._rowIndices->end(); m++ )
+            // {
+            //     {
+            //         Eigen::SparseVector<T> sparse_vector( total_dof );
+            //         sparse_vector.coeffRef( *m ) = 1.0;
+            //         for ( int n = 0; n < global_constraint._colIndices->size(); n++ )
+            //         {
+            //             sparse_vector.coeffRef( ( *global_constraint._colIndices )[n] ) =
+            //                 -( *global_constraint._matrix )( m - global_constraint._rowIndices->begin(), n );
+            //         }
+            //         constraint_container.push_back( sparse_vector );
+            //     }
+            // }
 
-        for ( auto& i : _matrix_data_container )
-        {
-            for ( auto m = i._rowIndices->begin(); m != i._rowIndices->end(); m++ )
+            for ( auto& i : _matrix_data_container )
             {
-                // if (std::find(_additional_constraint.begin(),
-                // _additional_constraint.end(), *m) == _additional_constraint.end())
+                for ( auto m = i._rowIndices->begin(); m != i._rowIndices->end(); m++ )
                 {
-                    Eigen::SparseVector<T> sparse_vector( total_dof );
-                    sparse_vector.coeffRef( *m ) = 1.0;
-                    for ( int n = 0; n < i._colIndices->size(); n++ )
+                    // if (std::find(_additional_constraint.begin(),
+                    // _additional_constraint.end(), *m) == _additional_constraint.end())
                     {
-                        // if (std::find(_additional_constraint.begin(),
-                        // _additional_constraint.end(), (*i._colIndices)[n]) ==
-                        // _additional_constraint.end())
+                        Eigen::SparseVector<T> sparse_vector( total_dof );
+                        sparse_vector.coeffRef( *m ) = 1.0;
+                        for ( int n = 0; n < i._colIndices->size(); n++ )
                         {
-                            sparse_vector.coeffRef( ( *i._colIndices )[n] ) = -( *i._matrix )( m - i._rowIndices->begin(), n );
+                            // if (std::find(_additional_constraint.begin(),
+                            // _additional_constraint.end(), (*i._colIndices)[n]) ==
+                            // _additional_constraint.end())
+                            {
+                                sparse_vector.coeffRef( ( *i._colIndices )[n] ) =
+                                    -( *i._matrix )( m - i._rowIndices->begin(), n );
+                            }
                         }
+                        constraint_container.push_back( sparse_vector );
                     }
-                    constraint_container.push_back( sparse_vector );
                 }
             }
-        }
         sparse_constraint_matrix.resize( constraint_container.size(), _dof.TotalDof() );
         for ( int i = 0; i < constraint_container.size(); i++ )
         {
@@ -465,4 +468,114 @@ protected:
     std::vector<int> _involved_indices;
     std::vector<int> _additional_constraint;
     std::vector<Eigen::SparseVector<T>> _vertices_constraints;
+};
+
+template <typename T>
+class KLShellConstraintAssembler
+{
+public:
+    KLShellConstraintAssembler( DofMapper& dof ) : _dof( dof )
+    {
+    }
+
+    void ConstraintInitialize( const std::vector<std::shared_ptr<Surface<3, T>>>& cells )
+    {
+        for ( auto& i : cells )
+        {
+            for ( int j = 0; j < 4; j++ )
+            {
+                if ( i->EdgePointerGetter( j )->IsMatched() && i->EdgePointerGetter( j )->IsSlave() )
+                {
+                    _visitor_map[i->EdgePointerGetter( j )->GetID()] = std::move( KLShellC1InterfaceVisitor<T>() );
+                }
+            }
+        }
+    }
+
+    void ConstraintCreator( const std::vector<std::shared_ptr<Surface<3, T>>>& cells )
+    {
+        _matrix_data_container.clear();
+        _additional_constraint.clear();
+        for ( auto& i : cells )
+        {
+            for ( int j = 0; j < 4; j++ )
+            {
+                if ( i->EdgePointerGetter( j )->IsMatched() && i->EdgePointerGetter( j )->IsSlave() )
+                {
+                    auto it = _visitor_map.find( i->EdgePointerGetter( j )->GetID() );
+                    ASSERT( it != _visitor_map.end(), " constraint visitor not initialized.\n" );
+
+                    i->EdgePointerGetter( j )->Accept( it->second );
+                    int slave_id = it->second.SlaveID();
+                    int master_id = it->second.MasterID();
+                    int slave_starting_dof = _dof.StartingDof( slave_id );
+                    int master_starting_dof = _dof.StartingDof( master_id );
+
+                    auto constraint_data = it->second.ConstraintData();
+                    auto vertices_constraint_data = it->second.VerticesConstraintData();
+                    std::for_each( constraint_data._rowIndices->begin(), constraint_data._rowIndices->end(),
+                                   [&]( int& index ) { index += slave_starting_dof; } );
+                    std::for_each( constraint_data._colIndices->begin(), constraint_data._colIndices->end(),
+                                   [&]( int& index ) { index += master_starting_dof; } );
+                    std::for_each( vertices_constraint_data._rowIndices->begin(), vertices_constraint_data._rowIndices->end(),
+                                   [&]( int& index ) { index += slave_starting_dof; } );
+                    std::for_each( vertices_constraint_data._colIndices->begin(), vertices_constraint_data._colIndices->end(),
+                                   [&]( int& index ) { index += slave_starting_dof; } );
+                    _matrix_data_container.push_back( std::move( constraint_data ) );
+                    _matrix_data_container.push_back( std::move( vertices_constraint_data ) );
+                }
+            }
+        }
+    }
+    void Additional_Constraint( const std::vector<int>& indices )
+    {
+        _additional_constraint = indices;
+    }
+
+    void AssembleConstraints( Eigen::SparseMatrix<T>& sparse_kernel_matrix )
+    {
+        std::vector<Eigen::SparseVector<T>> basis_container;
+        int total_dof = _dof.TotalDof();
+
+        MatrixData<T> global_constraint;
+        for ( auto& i : _matrix_data_container )
+        {
+            global_constraint += i;
+        }
+
+        std::vector<Eigen::Triplet<T>> constraint_triplets;
+        int basis_size = 0;
+        for ( int i = 0; i < total_dof; ++i )
+        {
+            if ( std::find( _additional_constraint.begin(), _additional_constraint.end(), i ) != _additional_constraint.end() ||
+                 std::find( global_constraint._rowIndices->begin(), global_constraint._rowIndices->end(), i ) !=
+                     global_constraint._rowIndices->end() )
+            {
+                continue;
+            }
+            else
+            {
+                constraint_triplets.push_back( Eigen::Triplet<T>( 1, i, basis_size ) );
+                int pos = std::find( global_constraint._colIndices->begin(), global_constraint._colIndices->end(), i ) -
+                          global_constraint._colIndices->begin();
+                if ( pos < global_constraint._colIndices->size() )
+                {
+                    for ( int j = 0; j < global_constraint._rowIndices->size(); ++j )
+                    {
+                        constraint_triplets.push_back( Eigen::Triplet<T>(
+                            -( *global_constraint._matrix )( j, pos ), ( *global_constraint._rowIndices )[j], basis_size ) );
+                    }
+                }
+                basis_size++;
+            }
+        }
+        sparse_kernel_matrix.resize( total_dof, basis_size );
+        sparse_kernel_matrix.setFromTriplets( constraint_triplets.begin(), constraint_triplets.end() );
+    }
+
+protected:
+    const DofMapper _dof;
+    std::vector<MatrixData<T>> _matrix_data_container;
+    std::vector<int> _additional_constraint;
+    std::unordered_map<int, KLShellC1InterfaceVisitor<T>> _visitor_map;
 };
