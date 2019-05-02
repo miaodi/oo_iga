@@ -84,9 +84,7 @@ int main()
     {
         i->PrintEdgeInfo();
     }
-    KLShellC0InterfaceVisitor<double> kl_c0;
-    cells[1]->EdgePointerGetter( 3 )->Accept( kl_c0 );
-    cells[1]->EdgePointerGetter( 3 )->Accept( kl_c0 );
-    cells[1]->EdgePointerGetter( 3 )->Accept( kl_c0 );
+    KLShellC1InterfaceVisitor<double> kl_c1;
+    cells[1]->EdgePointerGetter( 3 )->Accept( kl_c1 );
     return 0;
 }

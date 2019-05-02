@@ -580,6 +580,11 @@ public:
         }
     }
 
+    const MatrixData<T>& VerticesConstraintData() const
+    {
+        return _slaveMasterConstraintData;
+    }
+
 protected:
     void SolveConstraint( Edge<3, T>* edge )
     {

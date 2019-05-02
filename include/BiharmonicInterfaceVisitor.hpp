@@ -685,7 +685,7 @@ public:
     }
     void C1IntegralElementAssembler( Matrix& slave_constraint_basis,
                                      std::vector<int>& slave_constraint_basis_indices,
-                                     Matrix& master_constrint_basis,
+                                     Matrix& master_constraint_basis,
                                      std::vector<int>& master_constraint_basis_indices,
                                      Matrix& multiplier_basis,
                                      std::vector<int>& multiplier_basis_indices,
@@ -835,10 +835,7 @@ public:
         Matrix u1_m = A1_m_jac.transpose() * ( *master_evals ).bottomRows( 2 );
         Matrix u2_m = A2_m_jac.transpose() * ( *master_evals ).bottomRows( 2 );
 
-        Eigen::Matrix<T, 3, 3> rotation_from_m_to_s = Accessory::RotationMatrix( nA2_s, sc.first, sc.second );
-
-        Eigen::Matrix<T, 3, 3> dr_dot_A1_m DRdotA1m( A1_m_prime, A2_m_prime, angle );
-
+        Eigen::Matrix<T, 3, 3> rotation_from_m_to_s = Accessory::RotationMatrix( nA2_s, std::sin( angle ), std::cos( angle ) );
         Eigen::Matrix<T, 3, 3> identity;
         identity.setIdentity();
 
@@ -846,7 +843,7 @@ public:
         multiplier_basis = kroneckerProduct( multiplier_basis, identity ).eval();
         u1_m = kroneckerProduct( u1_m, identity ).eval();
         u2_m = kroneckerProduct( u2_m, identity ).eval();
-        master_constraint_basis = rotation_from_m_to_s * u1_m + dr_dot_A1_m * u2_m;
+        master_constraint_basis = rotation_from_m_to_s * u1_m + DRdotA1m( A1_m_prime, A2_m_prime, angle ) * u2_m;
     }
 
     Eigen::Matrix<T, 3, 3> DRdotA1m( const Vector& A1, const Vector& A2, const T angle )
@@ -943,7 +940,7 @@ public:
         std::vector<int> multiplier_indices = Accessory::RowIndicesVector( this->_c1Slave );
 
         auto poisson_ptr = dynamic_cast<KLShellC0InterfaceVisitor<T>*>( this->_poisson.get() );
-        const std::vector<int>& c0_slave_indices = *( poisson_ptr->ConstraintData()._rowIndices );
+        std::vector<int> c0_slave_indices = *( poisson_ptr->ConstraintData()._rowIndices );
         std::vector<int> c1_slave_complement_indices;
         std::set_union( vertices_indices.begin(), vertices_indices.end(), c0_slave_indices.begin(),
                         c0_slave_indices.end(), std::back_inserter( c1_slave_complement_indices ) );
@@ -956,9 +953,40 @@ public:
         auto master_indices_inverse_map = Accessory::IndicesInverseMap( master_indices );
         auto multiplier_indices_inverse_map = Accessory::IndicesInverseMap( multiplier_indices );
         auto vertices_indices_inverse_map = Accessory::IndicesInverseMap( vertices_indices );
+
+        std::vector<Eigen::Triplet<T>> condensed_gramian, condensed_rhs, condensed_c0_slave, condensed_vertices_rhs;
+        this->CondensedTripletVia( multiplier_indices_inverse_map, c1_slave_indices_inverse_map, this->_c1Slave, condensed_gramian );
+        this->CondensedTripletVia( multiplier_indices_inverse_map, master_indices_inverse_map, this->_c1Master, condensed_rhs );
+        this->CondensedTripletVia( multiplier_indices_inverse_map, c0_slave_indices_inverse_map, this->_c1Slave, condensed_c0_slave );
+        this->CondensedTripletVia( multiplier_indices_inverse_map, vertices_indices_inverse_map, this->_c1Slave, condensed_vertices_rhs );
+
+        Matrix gramian_matrix, rhs_matrix, c0_slave_matrix, vertices_rhs_matrix;
+        this->MatrixAssembler( multiplier_indices_inverse_map.size(), c1_slave_indices_inverse_map.size(),
+                               condensed_gramian, gramian_matrix );
+        this->MatrixAssembler( multiplier_indices_inverse_map.size(), master_indices_inverse_map.size(), condensed_rhs, rhs_matrix );
+        this->MatrixAssembler( multiplier_indices_inverse_map.size(), c0_slave_indices_inverse_map.size(),
+                               condensed_c0_slave, c0_slave_matrix );
+        this->MatrixAssembler( multiplier_indices_inverse_map.size(), vertices_indices_inverse_map.size(),
+                               condensed_vertices_rhs, vertices_rhs_matrix );
+
+        Matrix c1_constraint = this->SolveNonSymmetric( gramian_matrix, rhs_matrix );
+        Matrix c0_c1_constraint = this->SolveNonSymmetric( gramian_matrix, -c0_slave_matrix );
+        Matrix vertices_constraint = this->SolveNonSymmetric( gramian_matrix, -vertices_rhs_matrix );
+        auto c1_slave_indices_copy = c1_slave_indices;
+        auto c1_slave_indices_copy_copy = c1_slave_indices;
+        MatrixData<T> c1_constraint_data( c1_constraint, c1_slave_indices, master_indices );
+        MatrixData<T> vertices_constraint_data( vertices_constraint, c1_slave_indices_copy_copy, vertices_indices );
+        MatrixData<T> c0_c1constraint_data( c0_c1_constraint, c1_slave_indices_copy, c0_slave_indices );
+
+        auto c0_slave_c1_constraint_data = c0_c1constraint_data * poisson_ptr->ConstraintData();
+        auto c0_slave_c1_vertices_constraint_data = c0_c1constraint_data * poisson_ptr->VerticesConstraintData();
+        this->_constraintData = c1_constraint_data + c0_slave_c1_constraint_data + poisson_ptr->ConstraintData();
+        _slaveMasterConstraintData =
+            vertices_constraint_data + c0_slave_c1_vertices_constraint_data + poisson_ptr->VerticesConstraintData();
+        this->_constraintData.Print();
     }
 
 protected:
     MatrixData<T> _slaveMasterConstraintData;
     std::unordered_map<T, SlaveMasterAndAngle> _quadratureMap;
-}
+};
