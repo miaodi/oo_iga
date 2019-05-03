@@ -86,5 +86,8 @@ int main()
     }
     KLShellConstraintAssembler<double> klconstraints( dof );
     klconstraints.ConstraintInitialize( cells );
+    klconstraints.ConstraintCreator( cells );
+    SparseMatrix<double> sp;
+    klconstraints.AssembleConstraints( sp );
     return 0;
 }

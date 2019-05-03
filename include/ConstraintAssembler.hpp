@@ -4,8 +4,8 @@
 #include "DofMapper.hpp"
 #include "PoissonInterfaceVisitor.hpp"
 #include "Surface.hpp"
+#include <map>
 #include <numeric>
-#include <unordered_map>
 
 template <int d, int N, typename T>
 class ConstraintAssembler
@@ -486,7 +486,8 @@ public:
             {
                 if ( i->EdgePointerGetter( j )->IsMatched() && i->EdgePointerGetter( j )->IsSlave() )
                 {
-                    _visitor_map[i->EdgePointerGetter( j )->GetID()] = std::move( KLShellC1InterfaceVisitor<T>() );
+                    _visitor_map[std::make_pair( i->EdgePointerGetter( j )->GetID(),
+                                                 i->EdgePointerGetter( j )->Counterpart().lock()->GetID() )];
                 }
             }
         }
@@ -502,7 +503,8 @@ public:
             {
                 if ( i->EdgePointerGetter( j )->IsMatched() && i->EdgePointerGetter( j )->IsSlave() )
                 {
-                    auto it = _visitor_map.find( i->EdgePointerGetter( j )->GetID() );
+                    auto it = _visitor_map.find( std::make_pair(
+                        i->EdgePointerGetter( j )->GetID(), i->EdgePointerGetter( j )->Counterpart().lock()->GetID() ) );
                     ASSERT( it != _visitor_map.end(), " constraint visitor not initialized.\n" );
 
                     i->EdgePointerGetter( j )->Accept( it->second );
@@ -555,15 +557,15 @@ public:
             }
             else
             {
-                constraint_triplets.push_back( Eigen::Triplet<T>( 1, i, basis_size ) );
+                constraint_triplets.push_back( Eigen::Triplet<T>( i, basis_size, 1 ) );
                 int pos = std::find( global_constraint._colIndices->begin(), global_constraint._colIndices->end(), i ) -
                           global_constraint._colIndices->begin();
                 if ( pos < global_constraint._colIndices->size() )
                 {
                     for ( int j = 0; j < global_constraint._rowIndices->size(); ++j )
                     {
-                        constraint_triplets.push_back( Eigen::Triplet<T>(
-                            -( *global_constraint._matrix )( j, pos ), ( *global_constraint._rowIndices )[j], basis_size ) );
+                        constraint_triplets.push_back( Eigen::Triplet<T>( ( *global_constraint._rowIndices )[j], basis_size,
+                                                                          -( *global_constraint._matrix )( j, pos ) ) );
                     }
                 }
                 basis_size++;
@@ -577,5 +579,5 @@ protected:
     const DofMapper _dof;
     std::vector<MatrixData<T>> _matrix_data_container;
     std::vector<int> _additional_constraint;
-    std::unordered_map<int, KLShellC1InterfaceVisitor<T>> _visitor_map;
+    std::map<std::pair<int, int>, KLShellC1InterfaceVisitor<T>> _visitor_map;
 };
