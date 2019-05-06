@@ -529,9 +529,54 @@ public:
             }
         }
     }
+
     void Additional_Constraint( const std::vector<int>& indices )
     {
         _additional_constraint = indices;
+    }
+
+    void AssembleConstraint( Eigen::SparseMatrix<T, Eigen::RowMajor>& sparse_constraint_matrix )
+    {
+        std::vector<Eigen::SparseVector<T>> constraint_container;
+        int total_dof = _dof.TotalDof();
+        MatrixData<T> global_constraint;
+        for ( auto& i : _matrix_data_container )
+        {
+            global_constraint += i;
+        }
+
+        for ( auto m = global_constraint._rowIndices->begin(); m != global_constraint._rowIndices->end(); m++ )
+        {
+            {
+                Eigen::SparseVector<T> sparse_vector( total_dof );
+                sparse_vector.coeffRef( *m ) = 1.0;
+                for ( int n = 0; n < global_constraint._colIndices->size(); n++ )
+                {
+                    sparse_vector.coeffRef( ( *global_constraint._colIndices )[n] ) =
+                        -( *global_constraint._matrix )( m - global_constraint._rowIndices->begin(), n );
+                }
+                constraint_container.push_back( sparse_vector );
+            }
+        }
+
+        sparse_constraint_matrix.resize( constraint_container.size(), _dof.TotalDof() );
+        for ( int i = 0; i < constraint_container.size(); i++ )
+        {
+            sparse_constraint_matrix.row( i ) = constraint_container[i].transpose();
+        }
+    }
+
+    void AssembleConstraintWithAdditionalConstraint( Eigen::SparseMatrix<T, Eigen::RowMajor>& sparse_constraint_matrix )
+    {
+        AssembleConstraint( sparse_constraint_matrix );
+        int original_constraint_size = sparse_constraint_matrix.rows();
+        sparse_constraint_matrix.conservativeResize( sparse_constraint_matrix.rows() + _additional_constraint.size(),
+                                                     sparse_constraint_matrix.cols() );
+        for ( int i = 0; i < _additional_constraint.size(); i++ )
+        {
+            sparse_constraint_matrix.coeffRef( original_constraint_size, _additional_constraint[i] ) = 1;
+            original_constraint_size++;
+        }
     }
 
     void AssembleConstraints( Eigen::SparseMatrix<T>& sparse_kernel_matrix )
@@ -565,7 +610,7 @@ public:
                     for ( int j = 0; j < global_constraint._rowIndices->size(); ++j )
                     {
                         constraint_triplets.push_back( Eigen::Triplet<T>( ( *global_constraint._rowIndices )[j], basis_size,
-                                                                          -( *global_constraint._matrix )( j, pos ) ) );
+                                                                          ( *global_constraint._matrix )( j, pos ) ) );
                     }
                 }
                 basis_size++;

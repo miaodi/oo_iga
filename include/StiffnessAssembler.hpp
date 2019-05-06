@@ -40,7 +40,7 @@ public:
             const auto stiffness_triplet_in = i->GetStiffness();
             const auto load_triplet_in = i->GetRhs();
             int id = i->ID();
-            int starting_dof = _dof.StartingDof( id ) * Dim;
+            int starting_dof = _dof.StartingDof( id );
             for ( const auto& j : stiffness_triplet_in )
             {
                 stiffness_triplet.push_back( Eigen::Triplet<DataType>( starting_dof + j.row(), starting_dof + j.col(), j.value() ) );
@@ -50,10 +50,7 @@ public:
                 load_triplet.push_back( Eigen::Triplet<DataType>( starting_dof + j.row(), j.col(), j.value() ) );
             }
         }
-        // Eigen::SparseMatrix<DataType> triangle_stiffness_matrix;
-        // triangle_stiffness_matrix.resize( Dim * _dof.TotalDof(), Dim * _dof.TotalDof() );
         stiffness_matrix.setFromTriplets( stiffness_triplet.begin(), stiffness_triplet.end() );
-        // stiffness_matrix += triangle_stiffness_matrix.template selfadjointView<Eigen::Upper>();
         load_vector.setFromTriplets( load_triplet.begin(), load_triplet.end() );
     }
 
@@ -80,7 +77,7 @@ public:
             const auto stiffness_triplet_in = i->GetStiffness();
             const auto load_triplet_in = i->GetRhs();
             int id = i->ID();
-            int starting_dof = _dof.StartingDof( id ) * Dim;
+            int starting_dof = _dof.StartingDof( id );
             for ( const auto& j : stiffness_triplet_in )
             {
                 stiffness_triplet.push_back( Eigen::Triplet<DataType>( starting_dof + j.row(), starting_dof + j.col(), j.value() ) );

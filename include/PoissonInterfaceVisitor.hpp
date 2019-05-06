@@ -519,7 +519,44 @@ public:
 
         auto slave_evals = slave_domain->EvalDerAllTensor( slave_quadrature_abscissa, 0 );
         auto master_evals = master_domain->EvalDerAllTensor( master_quadrature_abscissa, 0 );
-        auto multiplier_evals = multiplier_domain->EvalDualAllTensor( u.first );
+        // auto multiplier_evals = multiplier_domain->EvalDualAllTensor( u.first );
+        // auto multiplier_evals = ( multiplier_domain->BasisGetter( 0 ) ).EvalCodimensionBezierDual( u.first( 0 ) );
+
+        auto knot_vector = ( multiplier_domain->BasisGetter( 0 ) ).Knots();
+        for ( auto it = knot_vector.begin(); it != knot_vector.end(); ++it )
+        {
+            if ( *it != 0 )
+            {
+                knot_vector.erase( it );
+                break;
+            }
+        }
+        for ( auto it = knot_vector.begin(); it != knot_vector.end(); ++it )
+        {
+            if ( *it != 0 )
+            {
+                knot_vector.erase( it );
+                break;
+            }
+        }
+        for ( auto it = knot_vector.end() - 1; it != knot_vector.begin(); --it )
+        {
+            if ( *it != 1 )
+            {
+                knot_vector.erase( it );
+                break;
+            }
+        }
+        for ( auto it = knot_vector.end() - 1; it != knot_vector.begin(); --it )
+        {
+            if ( *it != 1 )
+            {
+                knot_vector.erase( it );
+                break;
+            }
+        }
+        BsplineBasis<T> tmp( knot_vector );
+        auto multiplier_evals = tmp.EvalDerAll( u.first( 0 ), 0 );
 
         slave_constraint_basis.resize( 1, slave_evals->size() );
         master_constraint_basis.resize( 1, master_evals->size() );
@@ -622,10 +659,9 @@ protected:
         // Accessory::removeNoise( gramian_matrix, 1e-7 * abs( vertices_rhs_matrix( 0, 0 ) ) );
         // Accessory::removeNoise( rhs_matrix, 1e-14 );
         // Accessory::removeNoise( vertices_rhs_matrix, 1e-7 * abs( vertices_rhs_matrix( 0, 0 ) ) );
-
+        // std::cout << ( gramian_matrix - Eigen::MatrixXd::Identity( gramian_matrix.rows(), gramian_matrix.cols() ) ) << std::endl;
         Matrix constraint = this->SolveNonSymmetric( gramian_matrix, rhs_matrix );
         Matrix vertices_constraint = this->SolveNonSymmetric( -gramian_matrix, vertices_rhs_matrix );
-        std::cout << gramian_matrix << std::endl;
         auto slave_activated_indices1 = slave_activated_indices;
         MatrixData<T> constraint_data( constraint, slave_activated_indices, master_activated_indices );
         MatrixData<T> vertices_constraint_data( vertices_constraint, slave_activated_indices1, vertices_activated_indices );

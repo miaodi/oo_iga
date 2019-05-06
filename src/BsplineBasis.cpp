@@ -145,31 +145,31 @@ typename BsplineBasis<T>::BasisFunValDerAllList_ptr BsplineBasis<T>::BezierDual(
     T uPara = ( u - span( 0 ) ) / ( span( 1 ) - span( 0 ) );
     auto bernstein = Accessory::AllBernstein( degree, uPara );
     Eigen::Map<vector> bernsteinVector( bernstein.data(), bernstein.size() );
-    // if ( !_complete_dual )
-    // {
-    //     int spanNum = _basisKnot.SpanNum( u );
-    //     int firstIndex = FirstActive( u );
-    //     vector weight = _basisWeight.block( spanNum, firstIndex, 1, degree + 1 ).transpose();
-    //     vector dual = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>( weight.asDiagonal() ) *
-    //                   _reconstruction[spanNum].transpose() * _gramianInv * bernsteinVector / ( span( 1 ) - span( 0 ) );
-    //     BasisFunValDerAll aaa{0, std::vector<T>( 1, 0 )};
-    //     BasisFunValDerAllList_ptr result( new BasisFunValDerAllList( degree + 1, aaa ) );
-    //     for ( int ii = 0; ii != result->size(); ii++ )
-    //         ( *result )[ii].second[0] = dual( ii );
-    //     for ( int ii = 0; ii != result->size(); ++ii )
-    //     {
-    //         ( *result )[ii].first = firstIndex + ii;
-    //     }
-    //     return result;
-    // }
+    if ( !_complete_dual )
+    {
+        int spanNum = _basisKnot.SpanNum( u );
+        int firstIndex = FirstActive( u );
+        vector weight = _basisWeight.block( spanNum, firstIndex, 1, degree + 1 ).transpose();
+        vector dual = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>( weight.asDiagonal() ) *
+                      _reconstruction[spanNum].transpose() * _gramianInv * bernsteinVector / ( span( 1 ) - span( 0 ) );
+        BasisFunValDerAll aaa{0, std::vector<T>( 1, 0 )};
+        BasisFunValDerAllList_ptr result( new BasisFunValDerAllList( degree + 1, aaa ) );
+        for ( int ii = 0; ii != result->size(); ii++ )
+            ( *result )[ii].second[0] = dual( ii );
+        for ( int ii = 0; ii != result->size(); ++ii )
+        {
+            ( *result )[ii].first = firstIndex + ii;
+        }
+        return result;
+    }
     // else
     // {
     //     int spanNum = _basisKnot.SpanNum( u );
     //     vector dual = _localWeightContainer[spanNum].second.transpose() * _reconstruction[spanNum].transpose() *
     //                   _gramianInv * bernsteinVector / ( span( 1 ) - span( 0 ) );
     //     BasisFunValDerAll aaa{0, std::vector<T>( 1, 0 )};
-    //     BasisFunValDerAllList_ptr result( new BasisFunValDerAllList( _localWeightContainer[spanNum].second.cols(), aaa ) );
-    //     for ( int ii = 0; ii != result->size(); ii++ )
+    //     BasisFunValDerAllList_ptr result( new BasisFunValDerAllList( _localWeightContainer[spanNum].second.cols(),
+    //     aaa ) ); for ( int ii = 0; ii != result->size(); ii++ )
     //         ( *result )[ii].second[0] = dual( ii );
     //     for ( int ii = 0; ii != result->size(); ++ii )
     //     {
@@ -199,19 +199,19 @@ typename BsplineBasis<T>::BasisFunValDerAllList_ptr BsplineBasis<T>::EvalCodimen
     int dof = GetDof();
     for ( auto& i : *evals )
     {
-        if ( i.first == 0 || i.first == 1 )
+        if ( i.first == 0 || i.first == 1 || i.first == 2 )
         {
             i.first = 0;
             // i.second[0] = 0;
         }
-        else if ( i.first == dof - 1 || i.first == dof - 2 )
+        else if ( i.first == dof - 1 || i.first == dof - 2 || i.first == dof - 3 )
         {
             i.first = dof - 3;
             // i.second[0] = 0;
         }
         else
         {
-            i.first = i.first - 1;
+            i.first = i.first - 2;
         }
     }
     return evals;
@@ -224,10 +224,11 @@ void BsplineBasis<T>::BezierDualInitialize()
     _reconstruction = *Accessory::BezierReconstruction<T>( _basisKnot );
     _gramianInv = Accessory::GramianInverse<T>( degree );
 
-    // if ( !_complete_dual )
-    // {
-    //     _basisWeight = std::move( *BasisWeight() );
-    // }
+    if ( !_complete_dual )
+    {
+        _basisWeight = std::move( *BasisWeight() );
+        return;
+    }
     // else
     // {
     //     auto assemble_vecs = BasisAssemblyVecs();

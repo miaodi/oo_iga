@@ -133,7 +133,7 @@ typename PhyTensorNURBSBasis<d, N, T>::BasisFunValDerAllList_ptr PhyTensorNURBSB
     T weight = _weightFunction.AffineMap( u )( 0 );
     for ( auto& i : *eval )
     {
-        i.second[0] *= weight / WtPtsGetter( i.first + 1 )( 0 );
+        i.second[0] *= weight / WtPtsGetter( i.first )( 0 );
     }
     return eval;
 }

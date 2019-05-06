@@ -23,6 +23,10 @@ public:
     {
     }
 
+    void SetStateDatas( T* disp, T* vel )
+    {
+    }
+
 protected:
     virtual void IntegralElementAssembler( Matrix& bilinear_form_trail,
                                            Matrix& bilinear_form_test,
