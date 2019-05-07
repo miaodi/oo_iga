@@ -467,7 +467,18 @@ std::unique_ptr<ExtractionOperatorContainer<T>> BezierReconstruction( const Knot
     return res;
 }
 
-int Binomial( const int n, const int k );
+template <typename T>
+T Binomial( const int n, const int k )
+{
+    auto diff = std::min( n - k, k );
+    T res = 1;
+    for ( int i = 0; i < diff; )
+    {
+        res *= ( n - i );
+        res /= ++i;
+    }
+    return res;
+}
 
 template <typename T>
 Matrix<T, Dynamic, Dynamic> Gramian( int p )
@@ -479,7 +490,7 @@ Matrix<T, Dynamic, Dynamic> Gramian( int p )
     {
         for ( int j = 0; j <= i; j++ )
         {
-            res( i, j ) = Binomial( p, i ) * Binomial( p, j ) / ( 2 * p + 1 ) / Binomial( 2 * p, i + j );
+            res( i, j ) = Binomial<T>( p, i ) * Binomial<T>( p, j ) / ( 2 * p + 1 ) / Binomial<T>( 2 * p, i + j );
         }
     }
     res = res.template selfadjointView<Eigen::Lower>();
@@ -499,10 +510,10 @@ Matrix<T, Dynamic, Dynamic> GramianInverse( int p )
             T sum = 0;
             for ( int k = 0; k <= std::min( i, j ); k++ )
             {
-                sum += ( 2 * k + 1 ) * Binomial( p + k + 1, p - i ) * Binomial( p - k, p - i ) *
-                       Binomial( p + k + 1, p - j ) * Binomial( p - k, p - j );
+                sum += ( 2 * k + 1 ) * Binomial<T>( p + k + 1, p - i ) * Binomial<T>( p - k, p - i ) *
+                       Binomial<T>( p + k + 1, p - j ) * Binomial<T>( p - k, p - j );
             }
-            res( i, j ) = sum * pow( -1, i + j ) / Binomial( p, i ) / Binomial( p, j );
+            res( i, j ) = sum * pow( -1, i + j ) / Binomial<T>( p, i ) / Binomial<T>( p, j );
         }
     }
     res = res.template selfadjointView<Eigen::Lower>();
@@ -861,7 +872,7 @@ Matrix<T, Dynamic, Dynamic> BernsteinInnerPolynomial( const int p, const int q )
     {
         for ( int j = 0; j <= q; j++ )
         {
-            res( i, j ) = Binomial( p, i ) * Factorial( i + j ) * Factorial( p - i ) / Factorial( 1 + j + p );
+            res( i, j ) = Binomial<T>( p, i ) * Factorial( i + j ) * Factorial( p - i ) / Factorial( 1 + j + p );
         }
     }
     return res;
@@ -877,7 +888,7 @@ Matrix<T, Dynamic, Dynamic> AffineMappingOp( const int p, const T a, const T b )
     {
         for ( int i = 0; i <= j; i++ )
         {
-            res( i, j ) = Binomial( j, i ) * pow( 1.0 / ( b - a ), i ) * pow( -a / ( b - a ), j - i );
+            res( i, j ) = Binomial<T>( j, i ) * pow( 1.0 / ( b - a ), i ) * pow( -a / ( b - a ), j - i );
         }
     }
     return res;

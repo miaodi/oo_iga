@@ -68,15 +68,3 @@ int Accessory::Factorial( const int n )
     }
     return fac;
 }
-
-int Accessory::Binomial( const int n, const int k )
-{
-    auto diff = std::min( n - k, k );
-    int res = 1;
-    for ( int i = 0; i < diff; )
-    {
-        res *= ( n - i );
-        res /= ++i;
-    }
-    return res;
-}
