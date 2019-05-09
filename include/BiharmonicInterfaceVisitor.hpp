@@ -666,6 +666,8 @@ public:
     using DomainShared_ptr = typename BiharmonicInterfaceVisitor<3, T>::DomainShared_ptr;
     using ConstraintIntegralElementAssembler = typename BiharmonicInterfaceVisitor<3, T>::ConstraintIntegralElementAssembler;
 
+    // using BiharmonicInterfaceVisitor<3, T>::C1IntegralElementAssembler;
+
 private:
     struct SlaveMasterAndAngle
     {
@@ -731,214 +733,48 @@ public:
         auto master_evals = master_domain->EvalDerAllTensor( master_quadrature_abscissa, 1 );
 
         //  Evaluate Lagrange multiplier basis
-        auto multiplier_evals = multiplier_domain->EvalDualAllTensor( u.first );
+        // auto multiplier_evals = multiplier_domain->EvalDualAllTensor( u.first );
         // auto multiplier_evals = ( multiplier_domain->BasisGetter( 0 ) ).EvalCodimensionBezierDual( u.first( 0 ) );
 
-        // auto knot_vector = ( multiplier_domain->BasisGetter( 0 ) ).Knots();
-        // for ( auto it = knot_vector.begin(); it != knot_vector.end(); ++it )
-        // {
-        //     if ( *it != 0 )
-        //     {
-        //         knot_vector.erase( it );
-        //         break;
-        //     }
-        // }
-        // for ( auto it = knot_vector.begin(); it != knot_vector.end(); ++it )
-        // {
-        //     if ( *it != 0 )
-        //     {
-        //         knot_vector.erase( it );
-        //         break;
-        //     }
-        // }
-        // for ( auto it = knot_vector.end() - 1; it != knot_vector.begin(); --it )
-        // {
-        //     if ( *it != 1 )
-        //     {
-        //         knot_vector.erase( it );
-        //         break;
-        //     }
-        // }
-        // for ( auto it = knot_vector.end() - 1; it != knot_vector.begin(); --it )
-        // {
-        //     if ( *it != 1 )
-        //     {
-        //         knot_vector.erase( it );
-        //         break;
-        //     }
-        // }
-        // BsplineBasis<T> tmp( knot_vector );
-        // auto multiplier_evals = tmp.EvalDerAll( u.first( 0 ), 0 );
-
-        // // Resize integration matrices
-        // slave_constraint_basis.resize( 1, slave_evals->size() );
-        // master_constraint_basis.resize( 2, master_evals->size() );
-        // multiplier_basis.resize( 1, multiplier_evals->size() );
-
-        // // Compute the following matrix
-        // // +-----------+-----------+
-        // // | ∂ξ_m/∂ξ_s | ∂η_m/∂ξ_s |
-        // // +-----------+-----------+
-        // // | ∂ξ_m/∂η_s | ∂η_m/∂η_s |
-        // // +-----------+-----------+
-        // Matrix slave_jacobian = slave_domain->JacobianMatrix( slave_quadrature_abscissa );
-        // Matrix master_jacobian = master_domain->JacobianMatrix( master_quadrature_abscissa );
-        // // Matrix master_to_slave = slave_jacobian * master_jacobian.inverse();
-        // Eigen::Matrix<T, 3, 1> A1_s, A2_s, A1_m, A2_m;
-
-        // A1_m = master_jacobian.col( 0 );
-        // A2_m = master_jacobian.col( 1 );
-
-        // switch ( edge->GetOrient() )
-        // {
-        // // For south and north edge derivative w.r.t η_s should be consistent
-        // case Orientation::south:
-        // case Orientation::north:
-        // {
-        //     A1_s = slave_jacobian.col( 1 );
-        //     A2_s = -slave_jacobian.col( 0 );
-        //     break;
-        // }
-        // // For south and north edge derivative w.r.t ξ_s should be consistent
-        // case Orientation::east:
-        // case Orientation::west:
-        // {
-        //     A1_s = slave_jacobian.col( 0 );
-        //     A2_s = slave_jacobian.col( 1 );
-        //     break;
-        // }
-        // }
-
-        // switch ( edge->Counterpart().lock()->GetOrient() )
-        // {
-        // // For south and north edge derivative w.r.t η_s should be consistent
-        // case Orientation::south:
-        // case Orientation::north:
-        // {
-        //     // std::cout << ( A2_s - A2_s.dot( A1_m.normalized() ) * A1_m.normalized() ).norm() << std::endl;
-        //     A2_s = A2_s.dot( A1_m.normalized() ) * A1_m.normalized();
-        //     break;
-        // }
-        // // For south and north edge derivative w.r.t ξ_s should be consistent
-        // case Orientation::east:
-        // case Orientation::west:
-        // {
-        //     // std::cout << ( A2_s - A2_s.dot( A2_m.normalized() ) * A2_m.normalized() ).norm() << std::endl;
-        //     A2_s = A2_s.dot( A2_m.normalized() ) * A2_m.normalized();
-        //     break;
-        // }
-        // }
-
-        // const Eigen::Matrix<T, 3, 1> nA2_s = A2_s.normalized();
-        // T angle = 0;
-        // if ( it == _quadratureMap.end() )
-        // {
-        //     Eigen::Matrix<T, 3, 1> A3_s = A1_s.cross( A2_s );
-        //     Eigen::Matrix<T, 3, 1> A3_m = A1_m.cross( A2_m );
-        //     A3_s.normalize();
-        //     A3_m.normalize();
-        //     auto sc = Accessory::SinCosBetweenTwoUniVec( A3_m, A3_s, nA2_s );
-        //     if ( sc.second >= 1 )
-        //         sc.second = 1;
-        //     if ( sc.second <= -1 )
-        //         sc.second = -1;
-        //     // angle = sc.first > 0 ? std::acos( sc.second ) : 2 * M_PI - std::acos( sc.second );
-        //     angle = 0;
-        //     _quadratureMap[u.first( 0 )] = SlaveMasterAndAngle( slave_quadrature_abscissa, master_quadrature_abscissa, angle );
-        // }
-        // else
-        // {
-        //     angle = ( it->second )._angle;
-        // }
-
-        // const Eigen::Matrix<T, 3, 3> rotation_from_s_to_m =
-        //     Accessory::RotationMatrix( nA2_s, -std::sin( angle ), std::cos( angle ) );
-
-        // Eigen::Matrix<T, 3, 1> A1_m_prime, A2_m_prime;
-        // A1_m_prime = rotation_from_s_to_m * A1_s;
-        // A2_m_prime = rotation_from_s_to_m * A2_s;
-
-        // Matrix gramian = master_jacobian.transpose() * master_jacobian;
-        // Vector A1_m_jac = gramian.partialPivLu().solve( master_jacobian.transpose() * A1_m_prime );
-        // Vector A2_m_jac = gramian.partialPivLu().solve( master_jacobian.transpose() * A2_m_prime );
-
-        // switch ( edge->GetOrient() )
-        // {
-        // // For south and north edge derivative w.r.t η_s should be consistent
-        // case Orientation::south:
-        // case Orientation::north:
-        // {
-        //     for ( int j = 0; j < slave_evals->size(); ++j )
-        //     {
-        //         slave_constraint_basis( 0, j ) = ( *slave_evals )[j].second[2];
-        //     }
-        //     break;
-        // }
-        // // For south and north edge derivative w.r.t ξ_s should be consistent
-        // case Orientation::east:
-        // case Orientation::west:
-        // {
-        //     for ( int j = 0; j < slave_evals->size(); ++j )
-        //     {
-        //         slave_constraint_basis( 0, j ) = ( *slave_evals )[j].second[1];
-        //     }
-        //     break;
-        // }
-        // }
-        // for ( int j = 0; j < master_evals->size(); ++j )
-        // {
-        //     master_constraint_basis( 0, j ) = ( *master_evals )[j].second[1];
-        //     master_constraint_basis( 1, j ) = ( *master_evals )[j].second[2];
-        // }
-
-        // Matrix u1_m = A1_m_jac.transpose() * master_constraint_basis;
-        // Matrix u2_m = A2_m_jac.transpose() * master_constraint_basis;
-
-        // Eigen::Matrix<T, 3, 3> rotation_from_m_to_s = Accessory::RotationMatrix( nA2_s, std::sin( angle ), std::cos(
-        // angle ) ); Eigen::Matrix<T, 3, 3> identity; identity.setIdentity();
-
-        // slave_constraint_basis = kroneckerProduct( slave_constraint_basis, identity ).eval();
-        // multiplier_basis = kroneckerProduct( multiplier_basis, identity ).eval();
-        // u1_m = kroneckerProduct( u1_m, identity ).eval();
-        // u2_m = kroneckerProduct( u2_m, identity ).eval();
-        // master_constraint_basis = rotation_from_m_to_s * u1_m;
-        // // set up local indices corresponding to test basis functions and trial basis functions
-        // if ( slave_constraint_basis_indices.size() == 0 )
-        // {
-        //     auto index = slave_domain->ActiveIndex( slave_quadrature_abscissa );
-        //     for ( auto& i : index )
-        //     {
-        //         for ( int j = 0; j < 3; j++ )
-        //         {
-        //             slave_constraint_basis_indices.push_back( 3 * i + j );
-        //         }
-        //     }
-        // }
-        // if ( master_constraint_basis_indices.size() == 0 )
-        // {
-        //     auto index = master_domain->ActiveIndex( master_quadrature_abscissa );
-        //     for ( auto& i : index )
-        //     {
-        //         for ( int j = 0; j < 3; j++ )
-        //         {
-        //             master_constraint_basis_indices.push_back( 3 * i + j );
-        //         }
-        //     }
-        // }
-        // if ( multiplier_basis_indices.size() == 0 )
-        // {
-        //     for ( auto& i : *multiplier_evals )
-        //     {
-        //         for ( int j = 0; j < 3; j++ )
-        //         {
-        //             multiplier_basis_indices.push_back( 3 * i.first + j );
-        //         }
-        //     }
-        // }
+        auto knot_vector = ( multiplier_domain->BasisGetter( 0 ) ).Knots();
+        for ( auto it = knot_vector.begin(); it != knot_vector.end(); ++it )
+        {
+            if ( *it != 0 )
+            {
+                knot_vector.erase( it );
+                break;
+            }
+        }
+        for ( auto it = knot_vector.begin(); it != knot_vector.end(); ++it )
+        {
+            if ( *it != 0 )
+            {
+                knot_vector.erase( it );
+                break;
+            }
+        }
+        for ( auto it = knot_vector.end() - 1; it != knot_vector.begin(); --it )
+        {
+            if ( *it != 1 )
+            {
+                knot_vector.erase( it );
+                break;
+            }
+        }
+        for ( auto it = knot_vector.end() - 1; it != knot_vector.begin(); --it )
+        {
+            if ( *it != 1 )
+            {
+                knot_vector.erase( it );
+                break;
+            }
+        }
+        BsplineBasis<T> tmp( knot_vector );
+        auto multiplier_evals = tmp.EvalDerAll( u.first( 0 ), 0 );
 
         // Resize integration matrices
         slave_constraint_basis.resize( 1, slave_evals->size() );
-        master_constraint_basis.resize( 1, master_evals->size() );
+        master_constraint_basis.resize( 2, master_evals->size() );
         multiplier_basis.resize( 1, multiplier_evals->size() );
 
         // Compute the following matrix
@@ -950,22 +786,84 @@ public:
         Matrix slave_jacobian = slave_domain->JacobianMatrix( slave_quadrature_abscissa );
         Matrix master_jacobian = master_domain->JacobianMatrix( master_quadrature_abscissa );
         // Matrix master_to_slave = slave_jacobian * master_jacobian.inverse();
-        Eigen::Matrix<T, 3, 1> s_s, s_t, m_s, m_t, s_n, m_n;
-        s_s = slave_jacobian.col( 0 );
-        s_t = slave_jacobian.col( 1 );
-        m_s = master_jacobian.col( 0 );
-        m_t = master_jacobian.col( 1 );
-        s_n = s_s.cross( s_t );
-        m_n = m_s.cross( m_t );
+        Eigen::Matrix<T, 3, 1> A1_s, A2_s, A1_m, A2_m;
 
-        Eigen::Matrix<T, 3, 3> rotation_matrix = Accessory::RotationMatrix( m_n, s_n );
+        A1_m = master_jacobian.col( 0 );
+        A2_m = master_jacobian.col( 1 );
+
+        switch ( edge->GetOrient() )
+        {
+        // For south and north edge derivative w.r.t η_s should be consistent
+        case Orientation::south:
+        case Orientation::north:
+        {
+            A1_s = slave_jacobian.col( 1 );
+            A2_s = -slave_jacobian.col( 0 );
+            break;
+        }
+        // For south and north edge derivative w.r.t ξ_s should be consistent
+        case Orientation::east:
+        case Orientation::west:
+        {
+            A1_s = slave_jacobian.col( 0 );
+            A2_s = slave_jacobian.col( 1 );
+            break;
+        }
+        }
+
+        switch ( edge->Counterpart().lock()->GetOrient() )
+        {
+        // For south and north edge derivative w.r.t η_s should be consistent
+        case Orientation::south:
+        case Orientation::north:
+        {
+            // std::cout << ( A2_s - A2_s.dot( A1_m.normalized() ) * A1_m.normalized() ).norm() << std::endl;
+            A2_s = A2_s.dot( A1_m.normalized() ) * A1_m.normalized();
+            break;
+        }
+        // For south and north edge derivative w.r.t ξ_s should be consistent
+        case Orientation::east:
+        case Orientation::west:
+        {
+            // std::cout << ( A2_s - A2_s.dot( A2_m.normalized() ) * A2_m.normalized() ).norm() << std::endl;
+            A2_s = A2_s.dot( A2_m.normalized() ) * A2_m.normalized();
+            break;
+        }
+        }
+
+        const Eigen::Matrix<T, 3, 1> nA2_s = A2_s.normalized();
+        T angle = 0;
+        if ( it == _quadratureMap.end() )
+        {
+            Eigen::Matrix<T, 3, 1> A3_s = A1_s.cross( A2_s );
+            Eigen::Matrix<T, 3, 1> A3_m = A1_m.cross( A2_m );
+            A3_s.normalize();
+            A3_m.normalize();
+            auto sc = Accessory::SinCosBetweenTwoUniVec( A3_m, A3_s, nA2_s );
+            if ( sc.second >= 1 )
+                sc.second = 1;
+            if ( sc.second <= -1 )
+                sc.second = -1;
+            angle = sc.first > 0 ? std::acos( sc.second ) : 2 * M_PI - std::acos( sc.second );
+            // angle = 0;
+            _quadratureMap[u.first( 0 )] = SlaveMasterAndAngle( slave_quadrature_abscissa, master_quadrature_abscissa, angle );
+        }
+        else
+        {
+            angle = ( it->second )._angle;
+        }
+
+        const Eigen::Matrix<T, 3, 3> rotation_from_m_to_s =
+            Accessory::RotationMatrix( nA2_s, std::sin( angle ), std::cos( angle ) );
+
+        Eigen::Matrix<T, 3, 1> A1_m_prime, A2_m_prime;
+        A1_m_prime = rotation_from_m_to_s.transpose() * A1_s;
+        A2_m_prime = rotation_from_m_to_s.transpose() * A2_s;
 
         Matrix gramian = master_jacobian.transpose() * master_jacobian;
-        Matrix rhs = master_jacobian.transpose() * rotation_matrix.transpose() * slave_jacobian;
+        Vector A1_m_jac = gramian.partialPivLu().solve( master_jacobian.transpose() * A1_m_prime );
+        Vector A2_m_jac = gramian.partialPivLu().solve( master_jacobian.transpose() * A2_m_prime );
 
-        Matrix sol = gramian.partialPivLu().solve( rhs );
-
-        // Two strategies for horizontal edge and vertical edge.
         switch ( edge->GetOrient() )
         {
         // For south and north edge derivative w.r.t η_s should be consistent
@@ -975,11 +873,6 @@ public:
             for ( int j = 0; j < slave_evals->size(); ++j )
             {
                 slave_constraint_basis( 0, j ) = ( *slave_evals )[j].second[2];
-            }
-            for ( int j = 0; j < master_evals->size(); ++j )
-            {
-                master_constraint_basis( 0, j ) =
-                    ( *master_evals )[j].second[1] * sol( 0, 1 ) + ( *master_evals )[j].second[2] * sol( 1, 1 );
             }
             break;
         }
@@ -991,13 +884,13 @@ public:
             {
                 slave_constraint_basis( 0, j ) = ( *slave_evals )[j].second[1];
             }
-            for ( int j = 0; j < master_evals->size(); ++j )
-            {
-                master_constraint_basis( 0, j ) =
-                    ( *master_evals )[j].second[1] * sol( 0, 0 ) + ( *master_evals )[j].second[2] * sol( 1, 0 );
-            }
             break;
         }
+        }
+        for ( int j = 0; j < master_evals->size(); ++j )
+        {
+            master_constraint_basis( 0, j ) = ( *master_evals )[j].second[1];
+            master_constraint_basis( 1, j ) = ( *master_evals )[j].second[2];
         }
 
         // Lagrange multiplier basis
@@ -1006,15 +899,20 @@ public:
             multiplier_basis( 0, j ) = ( *multiplier_evals )[j].second[0];
         }
 
+        Matrix u1_m = A1_m_jac.transpose() * master_constraint_basis;
+        Matrix u2_m = A2_m_jac.transpose() * master_constraint_basis;
+
         Eigen::Matrix<T, 3, 3> identity;
         identity.setIdentity();
 
-        master_constraint_basis = kroneckerProduct( master_constraint_basis, identity ).eval();
         slave_constraint_basis = kroneckerProduct( slave_constraint_basis, identity ).eval();
         multiplier_basis = kroneckerProduct( multiplier_basis, identity ).eval();
-
-        master_constraint_basis = ( rotation_matrix * master_constraint_basis ).eval();
-
+        u1_m = kroneckerProduct( u1_m, identity ).eval();
+        u2_m = kroneckerProduct( u2_m, identity ).eval();
+        master_constraint_basis = rotation_from_m_to_s * u1_m + DRdotA1m( A1_m_prime, A2_m_prime, angle ) * u2_m;
+        // master_constraint_basis = rotation_from_m_to_s * u1_m;
+        // std::cout << std::setprecision( 4 ) << DRdotA1m( A1_m_prime, A2_m_prime, angle ) * u2_m << std::endl
+        //           << std::endl;
         // set up local indices corresponding to test basis functions and trial basis functions
         if ( slave_constraint_basis_indices.size() == 0 )
         {

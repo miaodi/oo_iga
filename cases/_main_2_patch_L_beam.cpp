@@ -1,24 +1,31 @@
+
 #include "BendingStiffnessVisitor.hpp"
 #include "BiharmonicInterfaceVisitor.hpp"
 #include "BiharmonicStiffnessVisitor.hpp"
-#include "BoundaryAssembler.hpp"
+#include "BsplineBasis.h"
+#include "CahnHilliardVisitor.hpp"
 #include "ConstraintAssembler.hpp"
 #include "DofMapper.hpp"
+#include "Elasticity2DStiffnessVisitor.hpp"
 #include "L2StiffnessVisitor.hpp"
 #include "MembraneStiffnessVisitor.hpp"
+#include "NeumannBoundaryVisitor.hpp"
 #include "PhyTensorNURBSBasis.h"
+#include "PoissonStiffnessVisitor.hpp"
 #include "PostProcess.h"
 #include "StiffnessAssembler.hpp"
 #include "Surface.hpp"
 #include "Utility.hpp"
-#include <boost/math/constants/constants.hpp>
-#include <boost/math/special_functions/legendre.hpp>
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
-#include <unsupported/Eigen/KroneckerProduct>
+#include <ctime>
 #include <fstream>
 #include <iostream>
+#include <random>
 #include <time.h>
+#include <unsupported/Eigen/KroneckerProduct>
+
+// #define EIGEN_DONT_PARALLELIZE
 
 using namespace Eigen;
 using namespace std;
@@ -36,8 +43,7 @@ int main()
     KnotVector<double> knot_vector;
     knot_vector.InitClosed( 1, 0, 1 );
 
-    Vector3d point11( 0.0, 0.0, 0.0 ), point12( 0.0, 10.0, 0.0 ), point13( 2.0, 0.0, 0.0 ),
-        point14( 2.0, 10.0, 0.0 );
+    Vector3d point11( 0.0, 0.0, 0.0 ), point12( 0.0, 10.0, 0.0 ), point13( 2.0, 0.0, 0.0 ), point14( 2.0, 10.0, 0.0 );
     Vector3d point21( 0.0, 0.0, 0.0 ), point22( 0.0, 10.0, 0.0 ), point23( 0.0, 0.0, -2.0 ), point24( 0.0, 10.0, -2.0 );
     GeometryVector points1{point11, point12, point13, point14};
     GeometryVector points2{point21, point22, point23, point24};
@@ -57,31 +63,22 @@ int main()
 
     domain1->UniformRefine( refine );
     domain2->UniformRefine( refine );
-
     vector<shared_ptr<Surface<3, double>>> cells;
     cells.push_back( make_shared<Surface<3, double>>( domain1 ) );
     cells[0]->SurfaceInitialize();
     cells.push_back( make_shared<Surface<3, double>>( domain2 ) );
     cells[1]->SurfaceInitialize();
+    function<vector<double>( const VectorXd& )> body_force = []( const VectorXd& u ) {
+        return vector<double>{0, 0, -90};
+    };
     DofMapper dof;
+    cells[0]->Match( cells[1] );
     for ( auto& i : cells )
     {
         dof.Insert( i->GetID(), 3 * i->GetDomain()->GetDof() );
     }
-    for ( int i = 0; i < 1; i++ )
-    {
-        for ( int j = i + 1; j < 2; j++ )
-        {
-            cells[i]->Match( cells[j] );
-        }
-    }
-    StiffnessAssembler<BendingStiffnessVisitor<double>> bending_stiffness_assemble( dof );
-    SparseMatrix<double> stiffness_matrix, load_vector;
-    stiffness_matrix.resize( dof.TotalDof(), dof.TotalDof() );
-    load_vector.resize( dof.TotalDof(), 1 );
-    bending_stiffness_assemble.Assemble( cells, stiffness_matrix );
-    StiffnessAssembler<MembraneStiffnessVisitor<double>> membrane_stiffness_assemble( dof );
-    membrane_stiffness_assemble.Assemble( cells, stiffness_matrix );
+
+    int master_start_index, slave_start_index;
 
     vector<int> boundary_indices;
     auto indices = cells[0]->EdgePointerGetter( 0 )->Indices( 1, 1 );
@@ -115,28 +112,42 @@ int main()
     sort( boundary_indices.begin(), boundary_indices.end() );
     boundary_indices.erase( unique( boundary_indices.begin(), boundary_indices.end() ), boundary_indices.end() );
 
+    KLShellConstraintAssembler<double> ca( dof );
+    ca.ConstraintInitialize( cells );
+    // ConstraintAssembler<2, 3, double> ca( dof );
+
+    ca.ConstraintCreator( cells );
+    ca.Additional_Constraint( boundary_indices );
+    SparseMatrix<double> constraint_basis;
+    ca.AssembleConstraints( constraint_basis );
+
+    // SparseMatrix<double, RowMajor> constraint_matrix;
+    // ca.AssembleConstraintWithAdditionalConstraint( constraint_matrix );
+    // constraint_matrix.pruned( 1e-10 );
+    // constraint_matrix.makeCompressed();
+    // MatrixXd dense_constraint = constraint_matrix;
+    // FullPivLU<MatrixXd> lu_decomp( dense_constraint );
+    // SparseMatrix<double> constraint_basis = ( lu_decomp.kernel() ).sparseView();
+
+    StiffnessAssembler<BendingStiffnessVisitor<double>> bending_stiffness_assemble( dof );
+    SparseMatrix<double> stiffness_matrix_bend, stiffness_matrix_mem, load_vector;
+    stiffness_matrix_bend.resize( dof.TotalDof(), dof.TotalDof() );
+    stiffness_matrix_mem.resize( dof.TotalDof(), dof.TotalDof() );
+    load_vector.resize( dof.TotalDof(), 1 );
+
     indices = cells[0]->VertexPointerGetter( 2 )->Indices( 1, 0 );
-    load_vector.coeffRef( 3 * indices[0] + 2, 0 ) = -1;
+    load_vector.coeffRef( 3 * indices[0] + 2, 0 ) = -10000;
 
-    ConstraintAssembler<2, 3, double> constraint_assemble( dof );
-    constraint_assemble.ConstraintCreator( cells );
-    constraint_assemble.Additional_Constraint( boundary_indices );
+    bending_stiffness_assemble.Assemble( cells, stiffness_matrix_bend );
+    StiffnessAssembler<MembraneStiffnessVisitor<double>> membrane_stiffness_assemble( dof );
+    membrane_stiffness_assemble.Assemble( cells, stiffness_matrix_mem );
+    SparseMatrix<double> stiffness_matrix = stiffness_matrix_bend + stiffness_matrix_mem;
 
-    SparseMatrix<double, RowMajor> constraint_matrix;
-    constraint_assemble.AssembleConstraintWithAdditionalConstraint( constraint_matrix );
-
-    constraint_matrix.makeCompressed();
-    MatrixXd dense_constraint = constraint_matrix;
-
-    FullPivLU<MatrixXd> lu_decomp( dense_constraint );
-    lu_decomp.setThreshold( 6e-10 );
-    MatrixXd x = lu_decomp.kernel();
-    SparseMatrix<double> stiff_sol = ( x.transpose() * stiffness_matrix * x ).sparseView();
-
-    SparseMatrix<double> load_sol = ( x.transpose() * load_vector ).sparseView();
+    SparseMatrix<double> stiff_sol = ( constraint_basis.transpose() * stiffness_matrix * constraint_basis );
+    SparseMatrix<double> load_sol = ( constraint_basis.transpose() * load_vector );
     ConjugateGradient<SparseMatrix<double>, Lower | Upper> cg;
     cg.compute( stiff_sol );
-    VectorXd solution = x * cg.solve( load_sol );
+    VectorXd solution = constraint_basis * cg.solve( load_sol );
 
     GeometryVector solution_ctrl_pts1, solution_ctrl_pts2;
     for ( int i = 0; i < domain1->GetDof(); i++ )

@@ -125,6 +125,15 @@ public:
 
     virtual HyperPlaneSharedPts MakeHyperPlane( const int& orientation, const int& layer ) const;
 
+    std::function<std::vector<T>( const Pts& pos )> AffineMapFunc()
+    {
+        return [this]( const Pts& pos ) {
+            PhyPts tmp = AffineMap( pos );
+
+            return std::vector<T>( tmp.data(), tmp.data() + N );
+        };
+    }
+
     // Only defined for 2D domain represented by 2D parametric domain
     template <int D = d, int n = N>
     typename std::enable_if<D == 2 && n == 2, BasisFunValDerAllList_ptr>::type Eval1PhyDerAllTensor( const vector& u ) const;

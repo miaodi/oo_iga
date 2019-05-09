@@ -11,14 +11,14 @@
 #include "StiffnessAssembler.hpp"
 #include "Surface.hpp"
 #include "Utility.hpp"
-#include <boost/math/constants/constants.hpp>
-#include <boost/math/special_functions/legendre.hpp>
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
-#include <unsupported/Eigen/KroneckerProduct>
+#include <boost/math/constants/constants.hpp>
+#include <boost/math/special_functions/legendre.hpp>
 #include <fstream>
 #include <iostream>
 #include <time.h>
+#include <unsupported/Eigen/KroneckerProduct>
 
 using namespace Eigen;
 using namespace std;
@@ -245,206 +245,181 @@ int main()
 
     int degree, refine;
     cin >> degree >> refine;
-    for ( int i = 0; i <= degree; i++ )
+    array<shared_ptr<PhyTensorNURBSBasis<2, 3, double>>, 12> domains;
+    domains[0] = make_shared<PhyTensorNURBSBasis<2, 3, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points1 );
+    domains[1] = make_shared<PhyTensorNURBSBasis<2, 3, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points2 );
+    domains[2] = make_shared<PhyTensorNURBSBasis<2, 3, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points3 );
+    domains[3] = make_shared<PhyTensorNURBSBasis<2, 3, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points4 );
+    domains[4] = make_shared<PhyTensorNURBSBasis<2, 3, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points5 );
+    domains[5] = make_shared<PhyTensorNURBSBasis<2, 3, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points6 );
+    domains[6] = make_shared<PhyTensorNURBSBasis<2, 3, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points7 );
+    domains[7] = make_shared<PhyTensorNURBSBasis<2, 3, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points8 );
+    domains[8] = make_shared<PhyTensorNURBSBasis<2, 3, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points9 );
+    domains[9] = make_shared<PhyTensorNURBSBasis<2, 3, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points10 );
+    domains[10] =
+        make_shared<PhyTensorNURBSBasis<2, 3, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points11 );
+    domains[11] =
+        make_shared<PhyTensorNURBSBasis<2, 3, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points12 );
+
+    for ( auto& k : domains )
     {
-        for ( int j = 0; j <= refine; j++ )
+        k->DegreeElevate( degree );
+    }
+
+    domains[0]->KnotsInsertion( 0, {1.0 / 3, 2.0 / 3} );
+    domains[0]->KnotsInsertion( 1, {1.0 / 3, 2.0 / 3} );
+    domains[1]->KnotsInsertion( 0, {1.0 / 2} );
+    domains[1]->KnotsInsertion( 1, {1.0 / 2} );
+    domains[2]->KnotsInsertion( 0, {1.0 / 2} );
+    domains[2]->KnotsInsertion( 1, {1.0 / 2} );
+    domains[3]->KnotsInsertion( 0, {1.0 / 3, 2.0 / 3} );
+    domains[3]->KnotsInsertion( 1, {1.0 / 3, 2.0 / 3} );
+    domains[4]->KnotsInsertion( 0, {1.0 / 2} );
+    domains[4]->KnotsInsertion( 1, {1.0 / 2} );
+    domains[5]->KnotsInsertion( 0, {1.0 / 3, 2.0 / 3} );
+    domains[5]->KnotsInsertion( 1, {1.0 / 3, 2.0 / 3} );
+    domains[6]->KnotsInsertion( 0, {1.0 / 3, 2.0 / 3} );
+    domains[6]->KnotsInsertion( 1, {1.0 / 3, 2.0 / 3} );
+    domains[7]->KnotsInsertion( 0, {1.0 / 2} );
+    domains[7]->KnotsInsertion( 1, {1.0 / 2} );
+    domains[9]->KnotsInsertion( 0, {1.0 / 4, 2.0 / 4, 3.0 / 4} );
+    domains[9]->KnotsInsertion( 1, {1.0 / 4, 2.0 / 4, 3.0 / 4} );
+    domains[10]->KnotsInsertion( 0, {1.0 / 4, 2.0 / 4, 3.0 / 4} );
+    domains[10]->KnotsInsertion( 1, {1.0 / 4, 2.0 / 4, 3.0 / 4} );
+
+    for ( auto& k : domains )
+    {
+        k->UniformRefine( refine );
+    }
+
+    vector<shared_ptr<Surface<3, double>>> cells;
+    for ( int i = 0; i < 12; i++ )
+    {
+        cells.push_back( make_shared<Surface<3, double>>( domains[i] ) );
+        cells[i]->SurfaceInitialize();
+    }
+    function<vector<double>( const VectorXd& )> body_force = []( const VectorXd& u ) {
+        return vector<double>{0, 0, 0};
+    };
+    DofMapper dof;
+    for ( auto& i : cells )
+    {
+        dof.Insert( i->GetID(), 3 * i->GetDomain()->GetDof() );
+    }
+    for ( int i = 0; i < 11; i++ )
+    {
+        for ( int j = i + 1; j < 12; j++ )
         {
-            array<shared_ptr<PhyTensorNURBSBasis<2, 3, double>>, 12> domains;
-            domains[0] = make_shared<PhyTensorNURBSBasis<2, 3, double>>(
-                std::vector<KnotVector<double>>{knot_vector, knot_vector}, points1 );
-            domains[1] = make_shared<PhyTensorNURBSBasis<2, 3, double>>(
-                std::vector<KnotVector<double>>{knot_vector, knot_vector}, points2 );
-            domains[2] = make_shared<PhyTensorNURBSBasis<2, 3, double>>(
-                std::vector<KnotVector<double>>{knot_vector, knot_vector}, points3 );
-            domains[3] = make_shared<PhyTensorNURBSBasis<2, 3, double>>(
-                std::vector<KnotVector<double>>{knot_vector, knot_vector}, points4 );
-            domains[4] = make_shared<PhyTensorNURBSBasis<2, 3, double>>(
-                std::vector<KnotVector<double>>{knot_vector, knot_vector}, points5 );
-            domains[5] = make_shared<PhyTensorNURBSBasis<2, 3, double>>(
-                std::vector<KnotVector<double>>{knot_vector, knot_vector}, points6 );
-            domains[6] = make_shared<PhyTensorNURBSBasis<2, 3, double>>(
-                std::vector<KnotVector<double>>{knot_vector, knot_vector}, points7 );
-            domains[7] = make_shared<PhyTensorNURBSBasis<2, 3, double>>(
-                std::vector<KnotVector<double>>{knot_vector, knot_vector}, points8 );
-            domains[8] = make_shared<PhyTensorNURBSBasis<2, 3, double>>(
-                std::vector<KnotVector<double>>{knot_vector, knot_vector}, points9 );
-            domains[9] = make_shared<PhyTensorNURBSBasis<2, 3, double>>(
-                std::vector<KnotVector<double>>{knot_vector, knot_vector}, points10 );
-            domains[10] = make_shared<PhyTensorNURBSBasis<2, 3, double>>(
-                std::vector<KnotVector<double>>{knot_vector, knot_vector}, points11 );
-            domains[11] = make_shared<PhyTensorNURBSBasis<2, 3, double>>(
-                std::vector<KnotVector<double>>{knot_vector, knot_vector}, points12 );
-
-            for ( auto& k : domains )
-            {
-                k->DegreeElevate( i );
-            }
-
-            domains[0]->KnotsInsertion( 0, {1.0 / 3, 2.0 / 3} );
-            domains[0]->KnotsInsertion( 1, {1.0 / 3, 2.0 / 3} );
-            domains[1]->KnotsInsertion( 0, {1.0 / 2} );
-            domains[1]->KnotsInsertion( 1, {1.0 / 2} );
-            domains[2]->KnotsInsertion( 0, {1.0 / 2} );
-            domains[2]->KnotsInsertion( 1, {1.0 / 2} );
-            domains[3]->KnotsInsertion( 0, {1.0 / 3, 2.0 / 3} );
-            domains[3]->KnotsInsertion( 1, {1.0 / 3, 2.0 / 3} );
-            domains[4]->KnotsInsertion( 0, {1.0 / 2} );
-            domains[4]->KnotsInsertion( 1, {1.0 / 2} );
-            domains[5]->KnotsInsertion( 0, {1.0 / 3, 2.0 / 3} );
-            domains[5]->KnotsInsertion( 1, {1.0 / 3, 2.0 / 3} );
-            domains[6]->KnotsInsertion( 0, {1.0 / 3, 2.0 / 3} );
-            domains[6]->KnotsInsertion( 1, {1.0 / 3, 2.0 / 3} );
-            domains[7]->KnotsInsertion( 0, {1.0 / 2} );
-            domains[7]->KnotsInsertion( 1, {1.0 / 2} );
-            domains[9]->KnotsInsertion( 0, {1.0 / 4, 2.0 / 4, 3.0 / 4} );
-            domains[9]->KnotsInsertion( 1, {1.0 / 4, 2.0 / 4, 3.0 / 4} );
-            domains[10]->KnotsInsertion( 0, {1.0 / 4, 2.0 / 4, 3.0 / 4} );
-            domains[10]->KnotsInsertion( 1, {1.0 / 4, 2.0 / 4, 3.0 / 4} );
-
-            for ( auto& k : domains )
-            {
-                k->UniformRefine( j );
-            }
-
-            vector<shared_ptr<Surface<3, double>>> cells;
-            for ( int i = 0; i < 12; i++ )
-            {
-                cells.push_back( make_shared<Surface<3, double>>( domains[i] ) );
-                cells[i]->SurfaceInitialize();
-            }
-            function<vector<double>( const VectorXd& )> body_force = []( const VectorXd& u ) {
-                return vector<double>{0, 0, 0};
-            };
-            DofMapper dof;
-            for ( auto& i : cells )
-            {
-                dof.Insert( i->GetID(), 3 * i->GetDomain()->GetDof() );
-            }
-            for ( int i = 0; i < 11; i++ )
-            {
-                for ( int j = i + 1; j < 12; j++ )
-                {
-                    cells[i]->Match( cells[j] );
-                }
-            }
-
-            StiffnessAssembler<BendingStiffnessVisitor<double>> bending_stiffness_assemble( dof );
-            SparseMatrix<double> stiffness_matrix, load_vector;
-            stiffness_matrix.resize( dof.TotalDof(), dof.TotalDof() );
-            load_vector.resize( dof.TotalDof(), 1 );
-            bending_stiffness_assemble.Assemble( cells, stiffness_matrix );
-            StiffnessAssembler<MembraneStiffnessVisitor<double>> membrane_stiffness_assemble( dof );
-            membrane_stiffness_assemble.Assemble( cells, stiffness_matrix );
-
-            vector<int> boundary_indices;
-            auto start_index = dof.StartingDof( cells[0]->GetID() );
-            auto indices = cells[0]->VertexPointerGetter( 2 )->Indices( 1, 1 );
-            for ( auto& i : indices )
-            {
-                boundary_indices.push_back( start_index + 3 * i );
-            }
-            for ( auto& i : indices )
-            {
-                boundary_indices.push_back( start_index + 3 * i + 1 );
-            }
-            for ( auto& i : indices )
-            {
-                boundary_indices.push_back( start_index + 3 * i + 2 );
-            }
-
-            sort( boundary_indices.begin(), boundary_indices.end() );
-            boundary_indices.erase( unique( boundary_indices.begin(), boundary_indices.end() ), boundary_indices.end() );
-
-            ConstraintAssembler<2, 3, double> constraint_assemble( dof );
-            constraint_assemble.ConstraintCreator( cells );
-            constraint_assemble.Additional_Constraint( boundary_indices );
-
-            SparseMatrix<double, RowMajor> constraint_matrix;
-            constraint_assemble.AssembleConstraintWithAdditionalConstraint( constraint_matrix );
-            constraint_matrix.pruned( 1e-10 );
-            constraint_matrix.makeCompressed();
-            MatrixXd dense_constraint = constraint_matrix;
-
-            load_vector.coeffRef( dof.StartingDof( cells[6]->GetID() ) +
-                                      3 * *( cells[6]->VertexPointerGetter( 2 )->Indices( 1, 0 ).begin() ) + 1,
-                                  0 ) = -2.0;
-            load_vector.coeffRef( dof.StartingDof( cells[4]->GetID() ) +
-                                      3 * *( cells[4]->VertexPointerGetter( 3 )->Indices( 1, 0 ).begin() ) + 1,
-                                  0 ) = 2.0;
-            load_vector.coeffRef(
-                dof.StartingDof( cells[9]->GetID() ) + 3 * *( cells[9]->VertexPointerGetter( 3 )->Indices( 1, 0 ).begin() ), 0 ) = 2.0;
-            load_vector.coeffRef( dof.StartingDof( cells[11]->GetID() ) +
-                                      3 * *( cells[11]->VertexPointerGetter( 0 )->Indices( 1, 0 ).begin() ),
-                                  0 ) = -2.0;
-
-            FullPivLU<MatrixXd> lu_decomp( dense_constraint );
-            MatrixXd x = lu_decomp.kernel();
-            SparseMatrix<double> stiff_sol = ( x.transpose() * stiffness_matrix * x ).sparseView();
-            stiff_sol.pruned( 1e-10 );
-            SparseMatrix<double> load_sol = ( x.transpose() * load_vector ).sparseView();
-            ConjugateGradient<SparseMatrix<double>, Lower | Upper> cg;
-            cg.compute( stiff_sol );
-            VectorXd solution = x * cg.solve( load_sol );
-
-            array<GeometryVector, 12> solution_ctrl_pts;
-            for ( int i = 0; i < 12; i++ )
-            {
-                for ( int j = 0; j < domains[i]->GetDof(); j++ )
-                {
-                    Vector3d temp;
-                    temp << solution( dof.StartingDof( cells[i]->GetID() ) + 3 * j + 0 ),
-                        solution( dof.StartingDof( cells[i]->GetID() ) + 3 * j + 1 ),
-                        solution( dof.StartingDof( cells[i]->GetID() ) + 3 * j + 2 );
-                    solution_ctrl_pts[i].push_back( temp );
-                }
-            }
-
-            array<shared_ptr<PhyTensorNURBSBasis<2, 3, double>>, 12> solution_domains;
-            for ( int i = 0; i < 12; i++ )
-            {
-                solution_domains[i] = make_shared<PhyTensorNURBSBasis<2, 3, double>>(
-                    std::vector<KnotVector<double>>{domains[i]->KnotVectorGetter( 0 ), domains[i]->KnotVectorGetter( 1 )},
-                    solution_ctrl_pts[i], domains[i]->WeightVectorGetter() );
-            }
-            Vector2d u;
-            u << 0, 1;
-            cout << solution_domains[9]->AffineMap( u ) << endl;
-            array<ofstream, 12> myfiles;
-
-            // myfiles[0].open( "domain1.txt" );
-            // myfiles[1].open( "domain2.txt" );
-            // myfiles[2].open( "domain3.txt" );
-            // myfiles[3].open( "domain4.txt" );
-            // myfiles[4].open( "domain5.txt" );
-            // myfiles[5].open( "domain6.txt" );
-            // myfiles[6].open( "domain7.txt" );
-            // myfiles[7].open( "domain8.txt" );
-            // myfiles[8].open( "domain9.txt" );
-            // myfiles[9].open( "domain10.txt" );
-            // myfiles[10].open( "domain11.txt" );
-            // myfiles[11].open( "domain12.txt" );
-            // VectorXd position;
-            // VectorXd result;
-            // for ( int i = 0; i < 51; i++ )
-            // {
-            //     for ( int j = 0; j < 51; j++ )
-            //     {
-            //         u << 1.0 * i / 50, 1.0 * j / 50;
-            //         for ( int k = 0; k < 12; k++ )
-            //         {
-            //             position = domains[k]->AffineMap( u );
-            //             result = solution_domains[k]->AffineMap( u );
-            //             myfiles[k] << 50 * result( 0 ) + position( 0 ) << " " << 50 * result( 1 ) + position( 1 ) << " "
-            //                        << 50 * result( 2 ) + position( 2 ) << " " << result( 0 ) << endl;
-            //             if ( abs( position.norm() - 10 ) > 1e-13 )
-            //             {
-            //                 cout << "retard" << endl;
-            //             }
-            //         }
-            //     }
-            // }
-            cout << dof.TotalDof() << endl;
+            cells[i]->Match( cells[j] );
         }
     }
+
+    StiffnessAssembler<BendingStiffnessVisitor<double>> bending_stiffness_assemble( dof );
+    SparseMatrix<double> stiffness_matrix_bend, stiffness_matrix_mem, load_vector;
+    stiffness_matrix_bend.resize( dof.TotalDof(), dof.TotalDof() );
+    stiffness_matrix_mem.resize( dof.TotalDof(), dof.TotalDof() );
+    load_vector.resize( dof.TotalDof(), 1 );
+    bending_stiffness_assemble.Assemble( cells, body_force, stiffness_matrix_bend, load_vector );
+    StiffnessAssembler<MembraneStiffnessVisitor<double>> membrane_stiffness_assemble( dof );
+    membrane_stiffness_assemble.Assemble( cells, stiffness_matrix_mem );
+    SparseMatrix<double> stiffness_matrix = stiffness_matrix_bend + stiffness_matrix_mem;
+
+    vector<int> boundary_indices;
+    auto start_index = dof.StartingDof( cells[0]->GetID() );
+    auto indices = cells[0]->VertexPointerGetter( 2 )->Indices( 1, 1 );
+    for ( auto& i : indices )
+    {
+        boundary_indices.push_back( start_index + 3 * i );
+    }
+    for ( auto& i : indices )
+    {
+        boundary_indices.push_back( start_index + 3 * i + 1 );
+    }
+    for ( auto& i : indices )
+    {
+        boundary_indices.push_back( start_index + 3 * i + 2 );
+    }
+
+    sort( boundary_indices.begin(), boundary_indices.end() );
+    boundary_indices.erase( unique( boundary_indices.begin(), boundary_indices.end() ), boundary_indices.end() );
+
+    load_vector.coeffRef(
+        dof.StartingDof( cells[6]->GetID() ) + 3 * *( cells[6]->VertexPointerGetter( 2 )->Indices( 1, 0 ).begin() ) + 1, 0 ) = -2.0;
+    load_vector.coeffRef(
+        dof.StartingDof( cells[4]->GetID() ) + 3 * *( cells[4]->VertexPointerGetter( 3 )->Indices( 1, 0 ).begin() ) + 1, 0 ) = 2.0;
+    load_vector.coeffRef(
+        dof.StartingDof( cells[9]->GetID() ) + 3 * *( cells[9]->VertexPointerGetter( 3 )->Indices( 1, 0 ).begin() ), 0 ) = 2.0;
+    load_vector.coeffRef(
+        dof.StartingDof( cells[11]->GetID() ) + 3 * *( cells[11]->VertexPointerGetter( 0 )->Indices( 1, 0 ).begin() ), 0 ) = -2.0;
+
+    KLShellConstraintAssembler<double> ca( dof );
+    ca.ConstraintInitialize( cells );
+    ca.ConstraintCreator( cells );
+    ca.Additional_Constraint( boundary_indices );
+    SparseMatrix<double> constraint_basis;
+    ca.AssembleConstraints( constraint_basis );
+    SparseMatrix<double> stiff_sol = ( constraint_basis.transpose() * stiffness_matrix * constraint_basis );
+    SparseMatrix<double> load_sol = ( constraint_basis.transpose() * load_vector );
+    ConjugateGradient<SparseMatrix<double>, Lower | Upper> cg;
+    cg.compute( stiff_sol );
+    VectorXd solution = constraint_basis * cg.solve( load_sol );
+
+    array<GeometryVector, 12> solution_ctrl_pts;
+    for ( int i = 0; i < 12; i++ )
+    {
+        for ( int j = 0; j < domains[i]->GetDof(); j++ )
+        {
+            Vector3d temp;
+            temp << solution( dof.StartingDof( cells[i]->GetID() ) + 3 * j + 0 ),
+                solution( dof.StartingDof( cells[i]->GetID() ) + 3 * j + 1 ),
+                solution( dof.StartingDof( cells[i]->GetID() ) + 3 * j + 2 );
+            solution_ctrl_pts[i].push_back( temp );
+        }
+    }
+
+    array<shared_ptr<PhyTensorNURBSBasis<2, 3, double>>, 12> solution_domains;
+    for ( int i = 0; i < 12; i++ )
+    {
+        solution_domains[i] = make_shared<PhyTensorNURBSBasis<2, 3, double>>(
+            std::vector<KnotVector<double>>{domains[i]->KnotVectorGetter( 0 ), domains[i]->KnotVectorGetter( 1 )},
+            solution_ctrl_pts[i], domains[i]->WeightVectorGetter() );
+    }
+    Vector2d u;
+    u << 0, 1;
+    cout << solution_domains[9]->AffineMap( u ) << endl;
+    array<ofstream, 12> myfiles;
+
+    // myfiles[0].open( "domain1.txt" );
+    // myfiles[1].open( "domain2.txt" );
+    // myfiles[2].open( "domain3.txt" );
+    // myfiles[3].open( "domain4.txt" );
+    // myfiles[4].open( "domain5.txt" );
+    // myfiles[5].open( "domain6.txt" );
+    // myfiles[6].open( "domain7.txt" );
+    // myfiles[7].open( "domain8.txt" );
+    // myfiles[8].open( "domain9.txt" );
+    // myfiles[9].open( "domain10.txt" );
+    // myfiles[10].open( "domain11.txt" );
+    // myfiles[11].open( "domain12.txt" );
+    // VectorXd position;
+    // VectorXd result;
+    // for ( int i = 0; i < 51; i++ )
+    // {
+    //     for ( int j = 0; j < 51; j++ )
+    //     {
+    //         u << 1.0 * i / 50, 1.0 * j / 50;
+    //         for ( int k = 0; k < 12; k++ )
+    //         {
+    //             position = domains[k]->AffineMap( u );
+    //             result = solution_domains[k]->AffineMap( u );
+    //             myfiles[k] << 50 * result( 0 ) + position( 0 ) << " " << 50 * result( 1 ) + position( 1 ) << " "
+    //                        << 50 * result( 2 ) + position( 2 ) << " " << result( 0 ) << endl;
+    //             if ( abs( position.norm() - 10 ) > 1e-13 )
+    //             {
+    //                 cout << "retard" << endl;
+    //             }
+    //         }
+    //     }
+    // }
     return 0;
 }

@@ -42,6 +42,10 @@ protected:
     T _nu{.0};
     T _E{4.32e8};
     T _h{0.25};
+
+    // T _nu{.3};
+    // T _E{6.825e7};
+    // T _h{0.04};
 };
 
 template <typename T>

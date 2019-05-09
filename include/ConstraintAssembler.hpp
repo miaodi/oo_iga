@@ -609,6 +609,7 @@ public:
                 {
                     for ( int j = 0; j < global_constraint._rowIndices->size(); ++j )
                     {
+                        // if ( abs( ( *global_constraint._matrix )( j, pos ) ) > 1e-11 )
                         constraint_triplets.push_back( Eigen::Triplet<T>( ( *global_constraint._rowIndices )[j], basis_size,
                                                                           ( *global_constraint._matrix )( j, pos ) ) );
                     }

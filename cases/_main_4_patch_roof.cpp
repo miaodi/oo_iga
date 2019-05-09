@@ -1,24 +1,31 @@
+
 #include "BendingStiffnessVisitor.hpp"
 #include "BiharmonicInterfaceVisitor.hpp"
 #include "BiharmonicStiffnessVisitor.hpp"
-#include "BoundaryAssembler.hpp"
+#include "BsplineBasis.h"
+#include "CahnHilliardVisitor.hpp"
 #include "ConstraintAssembler.hpp"
 #include "DofMapper.hpp"
+#include "Elasticity2DStiffnessVisitor.hpp"
 #include "L2StiffnessVisitor.hpp"
 #include "MembraneStiffnessVisitor.hpp"
+#include "NeumannBoundaryVisitor.hpp"
 #include "PhyTensorNURBSBasis.h"
+#include "PoissonStiffnessVisitor.hpp"
 #include "PostProcess.h"
 #include "StiffnessAssembler.hpp"
 #include "Surface.hpp"
 #include "Utility.hpp"
-#include <boost/math/constants/constants.hpp>
-#include <boost/math/special_functions/legendre.hpp>
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
-#include <unsupported/Eigen/KroneckerProduct>
+#include <ctime>
 #include <fstream>
 #include <iostream>
+#include <random>
 #include <time.h>
+#include <unsupported/Eigen/KroneckerProduct>
+
+// #define EIGEN_DONT_PARALLELIZE
 
 using namespace Eigen;
 using namespace std;
@@ -63,202 +70,154 @@ int main()
     WeightVector weights2{weight1, weight1, weight1, weight2, weight2, weight2, weight2, weight2, weight2};
     WeightVector weights3{weight2, weight2, weight2, weight2, weight2, weight2, weight1, weight1, weight1};
     WeightVector weights4{weight2, weight2, weight2, weight2, weight2, weight2, weight1, weight1, weight1};
-    auto domain1 = make_shared<PhyTensorNURBSBasis<2, 3, double>>(
-        std::vector<KnotVector<double>>{knot_vector, knot_vector}, points1, weights1 );
-    auto domain2 = make_shared<PhyTensorNURBSBasis<2, 3, double>>(
-        std::vector<KnotVector<double>>{knot_vector, knot_vector}, points2, weights2 );
-    auto domain3 = make_shared<PhyTensorNURBSBasis<2, 3, double>>(
-        std::vector<KnotVector<double>>{knot_vector, knot_vector}, points3, weights3 );
-    auto domain4 = make_shared<PhyTensorNURBSBasis<2, 3, double>>(
-        std::vector<KnotVector<double>>{knot_vector, knot_vector}, points4, weights4 );
 
     int degree, refine;
     cin >> degree >> refine;
-    domain1->DegreeElevate( degree );
-    domain2->DegreeElevate( degree );
-    domain3->DegreeElevate( degree );
-    domain4->DegreeElevate( degree );
-
-    // domain1->KnotInsertion( 0, .5 );
-    // domain2->KnotInsertion( 0, 1.0 / 3 );
-    // domain2->KnotInsertion( 0, 2.0 / 3 );
-    // domain1->KnotInsertion( 1, .5 );
-    // domain2->KnotInsertion( 1, 1.0 / 3 );
-    // domain2->KnotInsertion( 1, 2.0 / 3 );
-    // domain4->KnotInsertion( 0, .5 );
-    // domain3->KnotInsertion( 0, 1.0 / 3 );
-    // domain3->KnotInsertion( 0, 2.0 / 3 );
-    // domain4->KnotInsertion( 1, .5 );
-    // domain3->KnotInsertion( 1, 1.0 / 3 );
-    // domain3->KnotInsertion( 1, 2.0 / 3 );
-
-    domain1->UniformRefine( refine );
-    domain2->UniformRefine( refine );
-    domain3->UniformRefine( refine );
-    domain4->UniformRefine( refine );
-    vector<shared_ptr<Surface<3, double>>> cells;
-    cells.push_back( make_shared<Surface<3, double>>( domain1 ) );
-    cells[0]->SurfaceInitialize();
-    cells.push_back( make_shared<Surface<3, double>>( domain2 ) );
-    cells[1]->SurfaceInitialize();
-    cells.push_back( make_shared<Surface<3, double>>( domain3 ) );
-    cells[2]->SurfaceInitialize();
-    cells.push_back( make_shared<Surface<3, double>>( domain4 ) );
-    cells[3]->SurfaceInitialize();
-    function<vector<double>( const VectorXd& )> body_force = []( const VectorXd& u ) {
-        return vector<double>{0, 0, -90};
-    };
-    DofMapper dof;
-    for ( auto& i : cells )
+    for ( int d = 0; d < degree; ++d )
     {
-        dof.Insert( i->GetID(), 3 * i->GetDomain()->GetDof() );
-    }
-    for ( int i = 0; i < 3; i++ )
-    {
-        for ( int j = i + 1; j < 4; j++ )
+        for ( int r = 0; r < refine; ++r )
         {
-            cells[i]->Match( cells[j] );
+            auto domain1 = make_shared<PhyTensorNURBSBasis<2, 3, double>>(
+                std::vector<KnotVector<double>>{knot_vector, knot_vector}, points1, weights1 );
+            auto domain2 = make_shared<PhyTensorNURBSBasis<2, 3, double>>(
+                std::vector<KnotVector<double>>{knot_vector, knot_vector}, points2, weights2 );
+            auto domain3 = make_shared<PhyTensorNURBSBasis<2, 3, double>>(
+                std::vector<KnotVector<double>>{knot_vector, knot_vector}, points3, weights3 );
+            auto domain4 = make_shared<PhyTensorNURBSBasis<2, 3, double>>(
+                std::vector<KnotVector<double>>{knot_vector, knot_vector}, points4, weights4 );
+
+            domain1->DegreeElevate( d );
+            domain2->DegreeElevate( d );
+            domain3->DegreeElevate( d );
+            domain4->DegreeElevate( d );
+
+            domain1->KnotInsertion( 0, .5 );
+            domain2->KnotInsertion( 0, 1.0 / 3 );
+            domain2->KnotInsertion( 0, 2.0 / 3 );
+            domain1->KnotInsertion( 1, .5 );
+            domain2->KnotInsertion( 1, 1.0 / 3 );
+            domain2->KnotInsertion( 1, 2.0 / 3 );
+            domain4->KnotInsertion( 0, .5 );
+            domain3->KnotInsertion( 0, 1.0 / 3 );
+            domain3->KnotInsertion( 0, 2.0 / 3 );
+            domain4->KnotInsertion( 1, .5 );
+            domain3->KnotInsertion( 1, 1.0 / 3 );
+            domain3->KnotInsertion( 1, 2.0 / 3 );
+
+            domain1->UniformRefine( r );
+            domain2->UniformRefine( r );
+            domain3->UniformRefine( r );
+            domain4->UniformRefine( r );
+            vector<shared_ptr<Surface<3, double>>> cells;
+            cells.push_back( make_shared<Surface<3, double>>( domain1 ) );
+            cells[0]->SurfaceInitialize();
+            cells.push_back( make_shared<Surface<3, double>>( domain2 ) );
+            cells[1]->SurfaceInitialize();
+            cells.push_back( make_shared<Surface<3, double>>( domain3 ) );
+            cells[2]->SurfaceInitialize();
+            cells.push_back( make_shared<Surface<3, double>>( domain4 ) );
+            cells[3]->SurfaceInitialize();
+            function<vector<double>( const VectorXd& )> body_force = []( const VectorXd& u ) {
+                return vector<double>{0, 0, -90};
+            };
+            DofMapper dof;
+            for ( auto& i : cells )
+            {
+                dof.Insert( i->GetID(), 3 * i->GetDomain()->GetDof() );
+            }
+            for ( int i = 0; i < 3; i++ )
+            {
+                for ( int j = i + 1; j < 4; j++ )
+                {
+                    cells[i]->Match( cells[j] );
+                }
+            }
+            StiffnessAssembler<BendingStiffnessVisitor<double>> bending_stiffness_assemble( dof );
+            SparseMatrix<double> stiffness_matrix_bend, stiffness_matrix_mem, load_vector;
+            stiffness_matrix_bend.resize( dof.TotalDof(), dof.TotalDof() );
+            stiffness_matrix_mem.resize( dof.TotalDof(), dof.TotalDof() );
+            load_vector.resize( dof.TotalDof(), 1 );
+            bending_stiffness_assemble.Assemble( cells, body_force, stiffness_matrix_bend, load_vector );
+            StiffnessAssembler<MembraneStiffnessVisitor<double>> membrane_stiffness_assemble( dof );
+            membrane_stiffness_assemble.Assemble( cells, stiffness_matrix_mem );
+            SparseMatrix<double> stiffness_matrix = stiffness_matrix_bend + stiffness_matrix_mem;
+
+            vector<int> boundary_indices;
+            auto indices = cells[0]->EdgePointerGetter( 0 )->Indices( 1, 0 );
+            auto start_index = dof.StartingDof( cells[0]->GetID() );
+            for ( auto& i : indices )
+            {
+                boundary_indices.push_back( start_index + 3 * i );
+            }
+            for ( auto& i : indices )
+            {
+                boundary_indices.push_back( start_index + 3 * i + 2 );
+            }
+            boundary_indices.push_back( start_index + 1 );
+
+            indices = cells[1]->EdgePointerGetter( 2 )->Indices( 1, 0 );
+            start_index = dof.StartingDof( cells[1]->GetID() );
+            for ( auto& i : indices )
+            {
+                boundary_indices.push_back( start_index + 3 * i );
+            }
+            for ( auto& i : indices )
+            {
+                boundary_indices.push_back( start_index + 3 * i + 2 );
+            }
+            indices = cells[2]->EdgePointerGetter( 0 )->Indices( 1, 0 );
+            start_index = dof.StartingDof( cells[2]->GetID() );
+            for ( auto& i : indices )
+            {
+                boundary_indices.push_back( start_index + 3 * i );
+            }
+            for ( auto& i : indices )
+            {
+                boundary_indices.push_back( start_index + 3 * i + 2 );
+            }
+            indices = cells[3]->EdgePointerGetter( 2 )->Indices( 1, 0 );
+            start_index = dof.StartingDof( cells[3]->GetID() );
+            for ( auto& i : indices )
+            {
+                boundary_indices.push_back( start_index + 3 * i );
+            }
+            for ( auto& i : indices )
+            {
+                boundary_indices.push_back( start_index + 3 * i + 2 );
+            }
+            sort( boundary_indices.begin(), boundary_indices.end() );
+            boundary_indices.erase( unique( boundary_indices.begin(), boundary_indices.end() ), boundary_indices.end() );
+
+            KLShellConstraintAssembler<double> ca( dof );
+            ca.ConstraintInitialize( cells );
+            ca.ConstraintCreator( cells );
+            ca.Additional_Constraint( boundary_indices );
+            SparseMatrix<double> constraint_basis;
+            ca.AssembleConstraints( constraint_basis );
+            SparseMatrix<double> stiff_sol = ( constraint_basis.transpose() * stiffness_matrix * constraint_basis );
+            SparseMatrix<double> load_sol = ( constraint_basis.transpose() * load_vector );
+            ConjugateGradient<SparseMatrix<double>, Lower | Upper> cg;
+            cg.compute( stiff_sol );
+            VectorXd solution = constraint_basis * cg.solve( load_sol );
+
+            GeometryVector solution_ctrl_pts1, solution_ctrl_pts2, solution_ctrl_pts3, solution_ctrl_pts4;
+            for ( int i = 0; i < domain1->GetDof(); i++ )
+            {
+                Vector3d temp;
+                temp << solution( 3 * i + 0 ), solution( 3 * i + 1 ), solution( 3 * i + 2 );
+                solution_ctrl_pts1.push_back( temp );
+            }
+
+            auto solution_domain1 = make_shared<PhyTensorNURBSBasis<2, 3, double>>(
+                std::vector<KnotVector<double>>{domain1->KnotVectorGetter( 0 ), domain1->KnotVectorGetter( 1 )},
+                solution_ctrl_pts1, domain1->WeightVectorGetter() );
+            Vector2d u;
+            u << 0, 1;
+            cout << setprecision( 12 ) << solution_domain1->AffineMap( u ) << std::endl;
+            cout << dof.TotalDof() << endl;
+            cout << abs( solution_domain1->AffineMap( u )( 2 ) + 0.300592457 ) / 0.300592457 << endl;
         }
+        cout << endl;
     }
-    StiffnessAssembler<BendingStiffnessVisitor<double>> bending_stiffness_assemble( dof );
-    SparseMatrix<double> stiffness_matrix, load_vector;
-    stiffness_matrix.resize( dof.TotalDof(), dof.TotalDof() );
-    load_vector.resize( dof.TotalDof(), 1 );
-    bending_stiffness_assemble.Assemble( cells, body_force, stiffness_matrix, load_vector );
-    StiffnessAssembler<MembraneStiffnessVisitor<double>> membrane_stiffness_assemble( dof );
-    membrane_stiffness_assemble.Assemble( cells, stiffness_matrix );
-
-    vector<int> boundary_indices;
-    auto indices = cells[0]->EdgePointerGetter( 0 )->Indices( 1, 0 );
-    auto start_index = dof.StartingDof( cells[0]->GetID() );
-    for ( auto& i : indices )
-    {
-        boundary_indices.push_back( start_index + 3 * i );
-    }
-    for ( auto& i : indices )
-    {
-        boundary_indices.push_back( start_index + 3 * i + 2 );
-    }
-    boundary_indices.push_back( start_index + 1 );
-
-    indices = cells[1]->EdgePointerGetter( 2 )->Indices( 1, 0 );
-    start_index = dof.StartingDof( cells[1]->GetID() );
-    for ( auto& i : indices )
-    {
-        boundary_indices.push_back( start_index + 3 * i );
-    }
-    for ( auto& i : indices )
-    {
-        boundary_indices.push_back( start_index + 3 * i + 2 );
-    }
-    indices = cells[2]->EdgePointerGetter( 0 )->Indices( 1, 0 );
-    start_index = dof.StartingDof( cells[2]->GetID() );
-    for ( auto& i : indices )
-    {
-        boundary_indices.push_back( start_index + 3 * i );
-    }
-    for ( auto& i : indices )
-    {
-        boundary_indices.push_back( start_index + 3 * i + 2 );
-    }
-    indices = cells[3]->EdgePointerGetter( 2 )->Indices( 1, 0 );
-    start_index = dof.StartingDof( cells[3]->GetID() );
-    for ( auto& i : indices )
-    {
-        boundary_indices.push_back( start_index + 3 * i );
-    }
-    for ( auto& i : indices )
-    {
-        boundary_indices.push_back( start_index + 3 * i + 2 );
-    }
-    sort( boundary_indices.begin(), boundary_indices.end() );
-    boundary_indices.erase( unique( boundary_indices.begin(), boundary_indices.end() ), boundary_indices.end() );
-
-    ConstraintAssembler<2, 3, double> constraint_assemble( dof );
-    constraint_assemble.ConstraintCreator( cells );
-    constraint_assemble.Additional_Constraint( boundary_indices );
-
-    SparseMatrix<double, RowMajor> constraint_matrix;
-    constraint_assemble.AssembleConstraintWithAdditionalConstraint( constraint_matrix );
-    constraint_matrix.pruned( 1e-10 );
-    constraint_matrix.makeCompressed();
-    MatrixXd dense_constraint = constraint_matrix;
-
-    FullPivLU<MatrixXd> lu_decomp( dense_constraint );
-    MatrixXd x = lu_decomp.kernel();
-    SparseMatrix<double> stiff_sol = ( x.transpose() * stiffness_matrix * x ).sparseView();
-    stiff_sol.pruned( 1e-10 );
-    SparseMatrix<double> load_sol = ( x.transpose() * load_vector ).sparseView();
-    ConjugateGradient<SparseMatrix<double>, Lower | Upper> cg;
-    cg.compute( stiff_sol );
-    VectorXd solution = x * cg.solve( load_sol );
-
-    GeometryVector solution_ctrl_pts1, solution_ctrl_pts2, solution_ctrl_pts3, solution_ctrl_pts4;
-    for ( int i = 0; i < domain1->GetDof(); i++ )
-    {
-        Vector3d temp;
-        temp << solution( 3 * i + 0 ), solution( 3 * i + 1 ), solution( 3 * i + 2 );
-        solution_ctrl_pts1.push_back( temp );
-    }
-    for ( int i = 0; i < domain2->GetDof(); i++ )
-    {
-        Vector3d temp;
-        temp << solution( dof.StartingDof( cells[1]->GetID() ) + 3 * i + 0 ),
-            solution( dof.StartingDof( cells[1]->GetID() ) + 3 * i + 1 ),
-            solution( dof.StartingDof( cells[1]->GetID() ) + 3 * i + 2 );
-        solution_ctrl_pts2.push_back( temp );
-    }
-    for ( int i = 0; i < domain3->GetDof(); i++ )
-    {
-        Vector3d temp;
-        temp << solution( dof.StartingDof( cells[2]->GetID() ) + 3 * i + 0 ),
-            solution( dof.StartingDof( cells[2]->GetID() ) + 3 * i + 1 ),
-            solution( dof.StartingDof( cells[2]->GetID() ) + 3 * i + 2 );
-        solution_ctrl_pts3.push_back( temp );
-    }
-    for ( int i = 0; i < domain4->GetDof(); i++ )
-    {
-        Vector3d temp;
-        temp << solution( dof.StartingDof( cells[3]->GetID() ) + 3 * i + 0 ),
-            solution( dof.StartingDof( cells[3]->GetID() ) + 3 * i + 1 ),
-            solution( dof.StartingDof( cells[3]->GetID() ) + 3 * i + 2 );
-        solution_ctrl_pts4.push_back( temp );
-    }
-    for ( int i = 0; i < domain1->GetDof(); i++ )
-    {
-        Vector3d temp = 20 * solution_ctrl_pts1[i] + domain1->CtrPtsGetter( i );
-        cout << "(" << temp( 0 ) << ", " << temp( 1 ) << ", " << temp( 2 ) << ")," << endl;
-    }
-    domain1->PrintWtCtrPts();
-    cout << endl;
-    for ( int i = 0; i < domain2->GetDof(); i++ )
-    {
-        Vector3d temp = 20 * solution_ctrl_pts2[i] + domain2->CtrPtsGetter( i );
-        cout << "(" << temp( 0 ) << ", " << temp( 1 ) << ", " << temp( 2 ) << ")," << endl;
-    }
-    domain2->PrintWtCtrPts();
-    cout << endl;
-    for ( int i = 0; i < domain3->GetDof(); i++ )
-    {
-        Vector3d temp = 20 * solution_ctrl_pts3[i] + domain3->CtrPtsGetter( i );
-        cout << "(" << temp( 0 ) << ", " << temp( 1 ) << ", " << temp( 2 ) << ")," << endl;
-    }
-    domain3->PrintWtCtrPts();
-    cout << endl;
-    for ( int i = 0; i < domain4->GetDof(); i++ )
-    {
-        Vector3d temp = 20 * solution_ctrl_pts4[i] + domain4->CtrPtsGetter( i );
-        cout << "(" << temp( 0 ) << ", " << temp( 1 ) << ", " << temp( 2 ) << ")," << endl;
-    }
-    domain4->PrintWtCtrPts();
-    cout << endl;
-    auto solution_domain1 = make_shared<PhyTensorNURBSBasis<2, 3, double>>(
-        std::vector<KnotVector<double>>{domain1->KnotVectorGetter( 0 ), domain1->KnotVectorGetter( 1 )},
-        solution_ctrl_pts1, domain1->WeightVectorGetter() );
-    Vector2d u;
-    u << 0, 1;
-    cout << setprecision( 10 ) << solution_domain1->AffineMap( u ) << std::endl;
-    cout << dof.TotalDof() << endl;
-    cout << abs( solution_domain1->AffineMap( u )( 2 ) + 0.300592457 ) / 0.300592457 << endl;
     return 0;
 }
