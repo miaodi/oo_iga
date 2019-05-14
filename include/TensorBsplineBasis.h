@@ -45,6 +45,14 @@ public:
 
     virtual ~TensorBsplineBasis(){};
 
+    std::vector<KnotVector<T>> KnotVectorsGetter() const
+    {
+        std::vector<KnotVector<T>> res( d );
+        for ( int i = 0; i != d; ++i )
+            res[i] = KnotVectorGetter( i );
+        return res;
+    }
+
     int GetDegree( const int i ) const;
 
     //! Return the global d.o.f in this patch

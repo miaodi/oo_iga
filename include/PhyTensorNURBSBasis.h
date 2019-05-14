@@ -79,6 +79,12 @@ public:
 
     virtual BasisFunValDerAllList_ptr EvalDualAllTensor( const vector& u ) const;
 
+    virtual void CreateCurrentConfig()
+    {
+        this->_currentConfig = std::unique_ptr<PhyTensorNURBSBasis<d, N, T>>(
+            new PhyTensorNURBSBasis<d, N, T>( this->KnotVectorsGetter(), this->_geometricInfo, WeightVectorGetter() ) );
+    }
+
 protected:
     PhyTensorBsplineBasis<d, 1, T> _weightFunction;
 };

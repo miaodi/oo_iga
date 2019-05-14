@@ -6,6 +6,7 @@
 #include "TensorBsplineBasis.h"
 #include "Utility.hpp"
 #include <Eigen/StdVector>
+#include <memory>
 #include <unordered_map>
 
 template <int d, int N, typename T>
@@ -22,6 +23,7 @@ public:
     using GeometryVector = Accessory::ContPtsList<T, N>;
     typedef std::vector<int> DiffPattern;
     using vector = Eigen::Matrix<T, Eigen::Dynamic, 1>;
+    using matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
     typedef typename TensorBsplineBasis<d, T>::BasisFunValDerAll BasisFunValDerAll;
     typedef typename TensorBsplineBasis<d, T>::BasisFunValDerAllList BasisFunValDerAllList;
     typedef typename TensorBsplineBasis<d, T>::BasisFunValDerAllList_ptr BasisFunValDerAllList_ptr;
@@ -71,9 +73,9 @@ public:
         return AffineMap( Middle() );
     }
 
-    bool InversePts( const PhyPts&, Pts&, int = 1e8, T = std::numeric_limits<T>::epsilon() * 1e2 ) const;
+    bool InversePts( const PhyPts&, Pts&, int = 1e2, T = std::numeric_limits<T>::epsilon() * 1e3 ) const;
 
-    bool InversePts( const vector&, vector&, int = 1e8, T = std::numeric_limits<T>::epsilon() * 1e2 ) const;
+    bool InversePts( const vector&, vector&, int = 1e2, T = std::numeric_limits<T>::epsilon() * 1e3 ) const;
 
     virtual void DegreeElevate( int, int );
 
@@ -144,8 +146,45 @@ public:
     template <int D = d, int n = N>
     typename std::enable_if<D == 2 && n == 2, BasisFunValDerAllList_ptr>::type Eval3PhyDerAllTensor( const vector& u ) const;
 
+    virtual void CreateCurrentConfig()
+    {
+        _currentConfig = std::unique_ptr<PhyTensorBsplineBasis<d, N, T>>(
+            new PhyTensorBsplineBasis<d, N, T>( this->KnotVectorsGetter(), _geometricInfo ) );
+    }
+
+    inline const PhyTensorBsplineBasis<d, N, T>& CurrentConfigGetter() const
+    {
+        ASSERT( _currentConfig != nullptr, "You have not created the current configuration yet." );
+        return *_currentConfig;
+    }
+
+    void UpdateGeometryVector( const matrix& u )
+    {
+        ASSERT( u.rows() == N && u.cols() == _geometricInfo.size(), "The size of u is incorrect." );
+        for ( int i = 0; i < _geometricInfo.size(); i++ )
+        {
+            _geometricInfo[i] += u.col( i );
+        }
+    }
+
+    void UpdateCurrentGeometryVector( const matrix& u )
+    {
+        ASSERT( _currentConfig != nullptr, "You have not created the current configuration yet." );
+        for ( int i = 0; i < ( _currentConfig->_geometricInfo ).size(); i++ )
+        {
+            ( _currentConfig->_geometricInfo )[i] += u.col( i );
+        }
+    }
+
+    void UpdateGeometryVector()
+    {
+        ASSERT( _currentConfig != nullptr, "You have not created the current configuration yet." );
+        _geometricInfo = _currentConfig->_geometricInfo;
+    }
+
 protected:
     GeometryVector _geometricInfo;
+    std::unique_ptr<PhyTensorBsplineBasis<d, N, T>> _currentConfig{nullptr};
 };
 
 template <>

@@ -123,3 +123,135 @@ void BendingStiffnessVisitor<T>::IntegralElementAssembler( Matrix& bilinear_form
         v22 * v22, v22 * v12, v11 * v12, v22 * v12, .5 * ( ( 1 - _nu ) * v11 * v22 + ( 1 + _nu ) * v12 * v12 );
     bilinear_form_test = _E * pow( _h, 3 ) / 12 / ( 1 - _nu * _nu ) * H * bilinear_form_trail;
 }
+
+template <typename T>
+class NonlinearBendingStiffnessVisitor : public StiffnessVisitor<3, 3, T>
+{
+public:
+    using Knot = typename StiffnessVisitor<3, 3, T>::Knot;
+    using Quadrature = typename StiffnessVisitor<3, 3, T>::Quadrature;
+    using QuadList = typename StiffnessVisitor<3, 3, T>::QuadList;
+    using KnotSpan = typename StiffnessVisitor<3, 3, T>::KnotSpan;
+    using KnotSpanlist = typename StiffnessVisitor<3, 3, T>::KnotSpanlist;
+    using LoadFunctor = typename StiffnessVisitor<3, 3, T>::LoadFunctor;
+    using Matrix = typename StiffnessVisitor<3, 3, T>::Matrix;
+    using Vector = typename StiffnessVisitor<3, 3, T>::Vector;
+    using DomainShared_ptr = typename StiffnessVisitor<3, 3, T>::DomainShared_ptr;
+    using DataType = T;
+
+public:
+    NonlinearBendingStiffnessVisitor( const LoadFunctor& body_force ) : StiffnessVisitor<3, 3, T>( body_force )
+    {
+    }
+
+    void SetStateDatas( T* disp, T* vel )
+    {
+    }
+
+protected:
+    virtual void IntegralElementAssembler( Matrix& bilinear_form_trail,
+                                           Matrix& bilinear_form_test,
+                                           Matrix& linear_form_value,
+                                           Matrix& linear_form_test,
+                                           const DomainShared_ptr domain,
+                                           const Knot& u ) const;
+
+protected:
+    // T _nu{.0};
+    // T _E{4.32e8};
+    // T _h{0.25};
+
+    T _nu{.0};
+    T _E{1.2e6};
+    T _h{0.1};
+
+    // T _nu{.3};
+    // T _E{6.825e7};
+    // T _h{0.04};
+};
+
+template <typename T>
+void NonlinearBendingStiffnessVisitor<T>::IntegralElementAssembler( Matrix& bilinear_form_trail,
+                                                                    Matrix& bilinear_form_test,
+                                                                    Matrix& linear_form_value,
+                                                                    Matrix& linear_form_test,
+                                                                    const DomainShared_ptr domain,
+                                                                    const Knot& u ) const
+{
+    const auto& current_config = domain->CurrentConfigGetter();
+    const auto current_config_evals = current_config.EvalDerAllTensor( u, 2 );
+    linear_form_value.resize( 3, 1 );
+    bilinear_form_trail.resize( 3, 3 * current_config_evals->size() );
+    bilinear_form_trail.setZero();
+
+    Eigen::Matrix<T, 3, 1> U1, U2, U3, U11, U12, U22, V1, V2, V3, u1, u2, u3, u11, u12, u22;
+
+    U1 = domain->AffineMap( u, {1, 0} );
+    U2 = domain->AffineMap( u, {0, 1} );
+    U11 = domain->AffineMap( u, {2, 0} );
+    U12 = domain->AffineMap( u, {1, 1} );
+    U22 = domain->AffineMap( u, {0, 2} );
+    U3 = U1.cross( U2 );
+    const T jacobian = U3.norm();
+    U3 *= 1.0 / jacobian;
+
+    u1 = current_config.AffineMap( u, {1, 0} );
+    u2 = current_config.AffineMap( u, {0, 1} );
+    u11 = current_config.AffineMap( u, {2, 0} );
+    u12 = current_config.AffineMap( u, {1, 1} );
+    u22 = current_config.AffineMap( u, {0, 2} );
+    u3 = ( u1.cross( u2 ) ).normalized();
+
+    linear_form_value.resize( 3, 1 );
+    linear_form_value( 0, 0 ) = U11.dot( U3 ) - u11.dot( u3 );
+    linear_form_value( 1, 0 ) = U22.dot( U3 ) - u22.dot( u3 );
+    linear_form_value( 2, 0 ) = 2 * ( U12.dot( U3 ) - u12.dot( u3 ) );
+
+    std::tie( V1, V2, V3 ) = Accessory::CovariantToContravariant( U1, U2, U3 );
+
+    for ( int j = 0; j < current_config_evals->size(); ++j )
+    {
+        Eigen::Matrix<T, 3, 1> B1, B2, B3;
+        B1 = -( *current_config_evals )[j].second[3] * u3 +
+             1.0 / jacobian *
+                 ( ( *current_config_evals )[j].second[1] * u11.cross( u2 ) +
+                   ( *current_config_evals )[j].second[2] * u1.cross( u11 ) +
+                   u3.dot( u11 ) * ( ( *current_config_evals )[j].second[1] * u2.cross( u3 ) +
+                                     ( *current_config_evals )[j].second[2] * u3.cross( u1 ) ) );
+        B2 = -( *current_config_evals )[j].second[5] * u3 +
+             1.0 / jacobian *
+                 ( ( *current_config_evals )[j].second[1] * u22.cross( u2 ) +
+                   ( *current_config_evals )[j].second[2] * u1.cross( u22 ) +
+                   u3.dot( u22 ) * ( ( *current_config_evals )[j].second[1] * u2.cross( u3 ) +
+                                     ( *current_config_evals )[j].second[2] * u3.cross( u1 ) ) );
+        B3 = 2 * ( -( *current_config_evals )[j].second[4] * u3 +
+                   1.0 / jacobian *
+                       ( ( *current_config_evals )[j].second[1] * u12.cross( u2 ) +
+                         ( *current_config_evals )[j].second[2] * u1.cross( u12 ) +
+                         u3.dot( u12 ) * ( ( *current_config_evals )[j].second[1] * u2.cross( u3 ) +
+                                           ( *current_config_evals )[j].second[2] * u3.cross( u1 ) ) ) );
+
+        bilinear_form_trail( 0, 3 * j ) = B1( 0 );
+        bilinear_form_trail( 0, 3 * j + 1 ) = B1( 1 );
+        bilinear_form_trail( 0, 3 * j + 2 ) = B1( 2 );
+
+        bilinear_form_trail( 1, 3 * j ) = B2( 0 );
+        bilinear_form_trail( 1, 3 * j + 1 ) = B2( 1 );
+        bilinear_form_trail( 1, 3 * j + 2 ) = B2( 2 );
+
+        bilinear_form_trail( 2, 3 * j ) = B3( 0 );
+        bilinear_form_trail( 2, 3 * j + 1 ) = B3( 1 );
+        bilinear_form_trail( 2, 3 * j + 2 ) = B3( 2 );
+    }
+
+    T V11, V12, V22;
+    V11 = V1.dot( V1 );
+    V22 = V2.dot( V2 );
+    V12 = V1.dot( V2 );
+
+    Matrix H( 3, 3 );
+    H << V11 * V11, _nu * V11 * V22 + ( 1 - _nu ) * V12 * V12, V11 * V12, _nu * V11 * V22 + ( 1 - _nu ) * V12 * V12,
+        V22 * V22, V22 * V12, V11 * V12, V22 * V12, .5 * ( ( 1 - _nu ) * V11 * V22 + ( 1 + _nu ) * V12 * V12 );
+    bilinear_form_test = _E * pow( _h, 3 ) / 12 / ( 1 - _nu * _nu ) * H * bilinear_form_trail;
+    linear_form_test = bilinear_form_test;
+}

@@ -666,7 +666,7 @@ public:
     using DomainShared_ptr = typename BiharmonicInterfaceVisitor<3, T>::DomainShared_ptr;
     using ConstraintIntegralElementAssembler = typename BiharmonicInterfaceVisitor<3, T>::ConstraintIntegralElementAssembler;
 
-    // using BiharmonicInterfaceVisitor<3, T>::C1IntegralElementAssembler;
+    using BiharmonicInterfaceVisitor<3, T>::C1IntegralElementAssembler;
 
 private:
     struct SlaveMasterAndAngle
@@ -733,44 +733,44 @@ public:
         auto master_evals = master_domain->EvalDerAllTensor( master_quadrature_abscissa, 1 );
 
         //  Evaluate Lagrange multiplier basis
-        // auto multiplier_evals = multiplier_domain->EvalDualAllTensor( u.first );
+        auto multiplier_evals = multiplier_domain->EvalDualAllTensor( u.first );
         // auto multiplier_evals = ( multiplier_domain->BasisGetter( 0 ) ).EvalCodimensionBezierDual( u.first( 0 ) );
 
-        auto knot_vector = ( multiplier_domain->BasisGetter( 0 ) ).Knots();
-        for ( auto it = knot_vector.begin(); it != knot_vector.end(); ++it )
-        {
-            if ( *it != 0 )
-            {
-                knot_vector.erase( it );
-                break;
-            }
-        }
-        for ( auto it = knot_vector.begin(); it != knot_vector.end(); ++it )
-        {
-            if ( *it != 0 )
-            {
-                knot_vector.erase( it );
-                break;
-            }
-        }
-        for ( auto it = knot_vector.end() - 1; it != knot_vector.begin(); --it )
-        {
-            if ( *it != 1 )
-            {
-                knot_vector.erase( it );
-                break;
-            }
-        }
-        for ( auto it = knot_vector.end() - 1; it != knot_vector.begin(); --it )
-        {
-            if ( *it != 1 )
-            {
-                knot_vector.erase( it );
-                break;
-            }
-        }
-        BsplineBasis<T> tmp( knot_vector );
-        auto multiplier_evals = tmp.EvalDerAll( u.first( 0 ), 0 );
+        // auto knot_vector = ( multiplier_domain->BasisGetter( 0 ) ).Knots();
+        // for ( auto it = knot_vector.begin(); it != knot_vector.end(); ++it )
+        // {
+        //     if ( *it != 0 )
+        //     {
+        //         knot_vector.erase( it );
+        //         break;
+        //     }
+        // }
+        // for ( auto it = knot_vector.begin(); it != knot_vector.end(); ++it )
+        // {
+        //     if ( *it != 0 )
+        //     {
+        //         knot_vector.erase( it );
+        //         break;
+        //     }
+        // }
+        // for ( auto it = knot_vector.end() - 1; it != knot_vector.begin(); --it )
+        // {
+        //     if ( *it != 1 )
+        //     {
+        //         knot_vector.erase( it );
+        //         break;
+        //     }
+        // }
+        // for ( auto it = knot_vector.end() - 1; it != knot_vector.begin(); --it )
+        // {
+        //     if ( *it != 1 )
+        //     {
+        //         knot_vector.erase( it );
+        //         break;
+        //     }
+        // }
+        // BsplineBasis<T> tmp( knot_vector );
+        // auto multiplier_evals = tmp.EvalDerAll( u.first( 0 ), 0 );
 
         // Resize integration matrices
         slave_constraint_basis.resize( 1, slave_evals->size() );
@@ -1093,14 +1093,14 @@ protected:
         this->clear();
     }
 
-    void LocalAssemble( Element<1, 3, T>* g, const QuadratureRule<T>& quadrature_rule, const KnotSpan& knot_span )
-    {
-        // non-static member function take this pointer.
-        using namespace std::placeholders;
-        auto c1_function =
-            std::bind( &KLShellC1InterfaceVisitor<T>::C1IntegralElementAssembler, this, _1, _2, _3, _4, _5, _6, _7, _8, _9 );
-        this->ConstraintLocalAssemble( g, quadrature_rule, knot_span, c1_function, this->_c1Slave, this->_c1Master );
-    }
+    // void LocalAssemble( Element<1, 3, T>* g, const QuadratureRule<T>& quadrature_rule, const KnotSpan& knot_span )
+    // {
+    //     // non-static member function take this pointer.
+    //     using namespace std::placeholders;
+    //     auto c1_function =
+    //         std::bind( &KLShellC1InterfaceVisitor<T>::C1IntegralElementAssembler, this, _1, _2, _3, _4, _5, _6, _7, _8, _9 );
+    //     this->ConstraintLocalAssemble( g, quadrature_rule, knot_span, c1_function, this->_c1Slave, this->_c1Master );
+    // }
 
 protected:
     MatrixData<T> _slaveMasterConstraintData;
