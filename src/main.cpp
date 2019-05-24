@@ -51,7 +51,7 @@ int main()
     v << 0, 0, 1;
     Vector3d point1( 0, 0, -R ), point2( 0, 2 * R, -R ), point3( 0, 2 * R, R ), point4( 0, 0, R );
     Vector3d point5( 0, 0, R ), point6( 0, -2 * R, R ), point7( 0, -2 * R, -R ), point8( 0, 0, -R );
-    Vector3d x_translate( L, 0, 0 );
+    Vector3d x_translate( L / 2, 0, 0 );
     GeometryVector points1{point1,
                            point2,
                            point3,
@@ -159,24 +159,24 @@ int main()
     {
         boundary_indices.push_back( start_index + i );
     }
-    indices = cells[1]->VertexPointerGetter( 1 )->Indices( 3, 0 );
-    start_index = dof.StartingDof( cells[1]->GetID() );
-    for ( auto& i : indices )
-    {
-        boundary_indices.push_back( start_index + i );
-    }
-    indices = cells[2]->VertexPointerGetter( 3 )->Indices( 3, 0 );
-    start_index = dof.StartingDof( cells[2]->GetID() );
-    for ( auto& i : indices )
-    {
-        boundary_indices.push_back( start_index + i );
-    }
-    indices = cells[3]->VertexPointerGetter( 2 )->Indices( 3, 0 );
-    start_index = dof.StartingDof( cells[3]->GetID() );
-    for ( auto& i : indices )
-    {
-        boundary_indices.push_back( start_index + i );
-    }
+    // indices = cells[1]->VertexPointerGetter( 1 )->Indices( 3, 0 );
+    // start_index = dof.StartingDof( cells[1]->GetID() );
+    // for ( auto& i : indices )
+    // {
+    //     boundary_indices.push_back( start_index + i );
+    // }
+    // indices = cells[2]->VertexPointerGetter( 3 )->Indices( 3, 0 );
+    // start_index = dof.StartingDof( cells[2]->GetID() );
+    // for ( auto& i : indices )
+    // {
+    //     boundary_indices.push_back( start_index + i );
+    // }
+    // indices = cells[3]->VertexPointerGetter( 2 )->Indices( 3, 0 );
+    // start_index = dof.StartingDof( cells[3]->GetID() );
+    // for ( auto& i : indices )
+    // {
+    //     boundary_indices.push_back( start_index + i );
+    // }
 
     KLShellConstraintAssembler<double> ca( dof );
     ca.ConstraintInitialize( cells );
@@ -191,7 +191,7 @@ int main()
     int thd;
     cout << "How many threads?" << endl;
     cin >> thd;
-    for ( int i = 1; i <= 50; i++ )
+    for ( int i = 1; i <= 20; i++ )
     {
         double err;
         double init_err = 0;
@@ -231,7 +231,7 @@ int main()
             VectorXd F_ext( dof.TotalDof() );
 
             F_ext.setZero();
-            F_ext( indices[2] ) = P * .02;
+            F_ext( indices[2] ) = P * .05 * i;
             VectorXd F = F_ext - F_int_mem - F_int_bend;
             cout << "Constructed load vector.\n";
 
@@ -261,14 +261,11 @@ int main()
             domain4->UpdateCurrentGeometryVector(
                 umat.middleCols( domain1->GetDof() + domain2->GetDof() + domain3->GetDof(), domain4->GetDof() ) );
 
-        } while ( err > 1e-6 );
+        } while ( err > 1e-7 );
         Vector2d pos;
-        pos << 1, 0;
-        VectorXd res = ( domain3->CurrentConfigGetter() ).AffineMap( pos ) - domain3->AffineMap( pos );
-        file << i * .1 << " " << res( 2 ) << " ";
-        pos << 1, 1;
-        res = ( domain3->CurrentConfigGetter() ).AffineMap( pos ) - domain3->AffineMap( pos );
-        file << res( 2 ) << endl;
+        pos << 0, 1;
+        VectorXd res = ( domain1->CurrentConfigGetter() ).AffineMap( pos ) - domain1->AffineMap( pos );
+        file << i << " " << res( 2 ) / 2 << endl;
     }
     file.close();
 
