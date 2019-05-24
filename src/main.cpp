@@ -104,18 +104,22 @@ int main()
 
     domain1->DegreeElevate( 1, degree );
     domain1->DegreeElevate( 0, degree + 2 );
+    domain1->KnotInsertion( 1, 1.0 / 2 );
     domain1->UniformRefine( refine );
 
     domain2->DegreeElevate( 1, degree );
     domain2->DegreeElevate( 0, degree + 2 );
+    domain2->KnotInsertion( 1, 1.0 / 2 );
     domain2->UniformRefine( refine );
 
     domain3->DegreeElevate( 1, degree );
     domain3->DegreeElevate( 0, degree + 2 );
+    domain3->KnotInsertion( 1, 1.0 / 2 );
     domain3->UniformRefine( refine );
 
     domain4->DegreeElevate( 1, degree );
     domain4->DegreeElevate( 0, degree + 2 );
+    domain4->KnotInsertion( 1, 1.0 / 2 );
     domain4->UniformRefine( refine );
 
     domain1->CreateCurrentConfig();
@@ -159,24 +163,24 @@ int main()
     {
         boundary_indices.push_back( start_index + i );
     }
-    // indices = cells[1]->VertexPointerGetter( 1 )->Indices( 3, 0 );
-    // start_index = dof.StartingDof( cells[1]->GetID() );
-    // for ( auto& i : indices )
-    // {
-    //     boundary_indices.push_back( start_index + i );
-    // }
-    // indices = cells[2]->VertexPointerGetter( 3 )->Indices( 3, 0 );
-    // start_index = dof.StartingDof( cells[2]->GetID() );
-    // for ( auto& i : indices )
-    // {
-    //     boundary_indices.push_back( start_index + i );
-    // }
-    // indices = cells[3]->VertexPointerGetter( 2 )->Indices( 3, 0 );
-    // start_index = dof.StartingDof( cells[3]->GetID() );
-    // for ( auto& i : indices )
-    // {
-    //     boundary_indices.push_back( start_index + i );
-    // }
+    indices = cells[1]->VertexPointerGetter( 1 )->Indices( 3, 0 );
+    start_index = dof.StartingDof( cells[1]->GetID() );
+    for ( auto& i : indices )
+    {
+        boundary_indices.push_back( start_index + i );
+    }
+    indices = cells[2]->VertexPointerGetter( 3 )->Indices( 3, 0 );
+    start_index = dof.StartingDof( cells[2]->GetID() );
+    for ( auto& i : indices )
+    {
+        boundary_indices.push_back( start_index + i );
+    }
+    indices = cells[3]->VertexPointerGetter( 2 )->Indices( 3, 0 );
+    start_index = dof.StartingDof( cells[3]->GetID() );
+    for ( auto& i : indices )
+    {
+        boundary_indices.push_back( start_index + i );
+    }
 
     KLShellConstraintAssembler<double> ca( dof );
     ca.ConstraintInitialize( cells );
@@ -265,35 +269,50 @@ int main()
         Vector2d pos;
         pos << 0, 1;
         VectorXd res = ( domain1->CurrentConfigGetter() ).AffineMap( pos ) - domain1->AffineMap( pos );
-        file << i << " " << res( 2 ) / 2 << endl;
+        file << i << " " << res( 2 ) / 2 << " ";
+        pos << 0, .5;
+        res = ( domain1->CurrentConfigGetter() ).AffineMap( pos ) - domain1->AffineMap( pos );
+        file << res( 1 ) << " ";
+        pos << 1, .5;
+        res = ( domain1->CurrentConfigGetter() ).AffineMap( pos ) - domain1->AffineMap( pos );
+        file << res( 1 ) << endl;
     }
     file.close();
 
-    // array<ofstream, 3> myfiles;
+    array<ofstream, 8> myfiles;
 
-    // myfiles[0].open( "domain1.txt" );
-    // myfiles[1].open( "domain2.txt" );
-    // myfiles[2].open( "domain3.txt" );
-    // Vector2d pos;
-    // for ( int i = 0; i < 51; i++ )
-    // {
-    //     for ( int j = 0; j < 51; j++ )
-    //     {
-    //         pos << 1.0 * i / 50, 1.0 * j / 50;
-    //         VectorXd res = ( domain1->CurrentConfigGetter() ).AffineMap( pos );
-    //         myfiles[0] << res( 0 ) << " " << res( 1 ) << " " << res( 2 ) << endl;
-    //         res = ( domain2->CurrentConfigGetter() ).AffineMap( pos );
-    //         myfiles[1] << res( 0 ) << " " << res( 1 ) << " " << res( 2 ) << endl;
-    //         res = ( domain3->CurrentConfigGetter() ).AffineMap( pos );
-    //         myfiles[2] << res( 0 ) << " " << res( 1 ) << " " << res( 2 ) << endl;
+    myfiles[0].open( "domain1.txt" );
+    myfiles[1].open( "domain2.txt" );
+    myfiles[2].open( "domain3.txt" );
+    myfiles[3].open( "domain4.txt" );
+    myfiles[4].open( "domain11.txt" );
+    myfiles[5].open( "domain22.txt" );
+    myfiles[6].open( "domain33.txt" );
+    myfiles[7].open( "domain44.txt" );
+    Vector2d pos;
+    for ( int i = 0; i < 51; i++ )
+    {
+        for ( int j = 0; j < 51; j++ )
+        {
+            pos << 1.0 * i / 50, 1.0 * j / 50;
+            VectorXd res = ( domain1->CurrentConfigGetter() ).AffineMap( pos );
+            myfiles[0] << res( 0 ) << " " << res( 1 ) << " " << res( 2 ) << endl;
+            res = ( domain2->CurrentConfigGetter() ).AffineMap( pos );
+            myfiles[1] << res( 0 ) << " " << res( 1 ) << " " << res( 2 ) << endl;
+            res = ( domain3->CurrentConfigGetter() ).AffineMap( pos );
+            myfiles[2] << res( 0 ) << " " << res( 1 ) << " " << res( 2 ) << endl;
+            res = ( domain4->CurrentConfigGetter() ).AffineMap( pos );
+            myfiles[3] << res( 0 ) << " " << res( 1 ) << " " << res( 2 ) << endl;
 
-    //         // VectorXd res = domain1->AffineMap( pos );
-    //         // myfiles[0] << res( 0 ) << " " << res( 1 ) << " " << res( 2 ) << endl;
-    //         // res = domain2->AffineMap( pos );
-    //         // myfiles[1] << res( 0 ) << " " << res( 1 ) << " " << res( 2 ) << endl;
-    //         // res = domain3->AffineMap( pos );
-    //         // myfiles[2] << res( 0 ) << " " << res( 1 ) << " " << res( 2 ) << endl;
-    //     }
-    // }
+            res = domain1->AffineMap( pos );
+            myfiles[4] << res( 0 ) << " " << res( 1 ) << " " << res( 2 ) << endl;
+            res = domain2->AffineMap( pos );
+            myfiles[5] << res( 0 ) << " " << res( 1 ) << " " << res( 2 ) << endl;
+            res = domain3->AffineMap( pos );
+            myfiles[6] << res( 0 ) << " " << res( 1 ) << " " << res( 2 ) << endl;
+            res = domain4->AffineMap( pos );
+            myfiles[7] << res( 0 ) << " " << res( 1 ) << " " << res( 2 ) << endl;
+        }
+    }
     return 0;
 }
