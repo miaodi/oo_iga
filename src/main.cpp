@@ -163,24 +163,24 @@ int main()
     {
         boundary_indices.push_back( start_index + i );
     }
-    indices = cells[1]->VertexPointerGetter( 1 )->Indices( 3, 0 );
-    start_index = dof.StartingDof( cells[1]->GetID() );
-    for ( auto& i : indices )
-    {
-        boundary_indices.push_back( start_index + i );
-    }
-    indices = cells[2]->VertexPointerGetter( 3 )->Indices( 3, 0 );
-    start_index = dof.StartingDof( cells[2]->GetID() );
-    for ( auto& i : indices )
-    {
-        boundary_indices.push_back( start_index + i );
-    }
-    indices = cells[3]->VertexPointerGetter( 2 )->Indices( 3, 0 );
-    start_index = dof.StartingDof( cells[3]->GetID() );
-    for ( auto& i : indices )
-    {
-        boundary_indices.push_back( start_index + i );
-    }
+    // indices = cells[1]->VertexPointerGetter( 1 )->Indices( 3, 0 );
+    // start_index = dof.StartingDof( cells[1]->GetID() );
+    // for ( auto& i : indices )
+    // {
+    //     boundary_indices.push_back( start_index + i );
+    // }
+    // indices = cells[2]->VertexPointerGetter( 3 )->Indices( 3, 0 );
+    // start_index = dof.StartingDof( cells[2]->GetID() );
+    // for ( auto& i : indices )
+    // {
+    //     boundary_indices.push_back( start_index + i );
+    // }
+    // indices = cells[3]->VertexPointerGetter( 2 )->Indices( 3, 0 );
+    // start_index = dof.StartingDof( cells[3]->GetID() );
+    // for ( auto& i : indices )
+    // {
+    //     boundary_indices.push_back( start_index + i );
+    // }
 
     KLShellConstraintAssembler<double> ca( dof );
     ca.ConstraintInitialize( cells );
