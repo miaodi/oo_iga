@@ -908,4 +908,13 @@ std::pair<T, T> AffineMappingCoef( const std::pair<T, T>& ab0, const std::pair<T
     return std::make_pair( ( ab1.first - ab0.first ) / ( ab0.second - ab0.first ),
                            ( ab1.second - ab0.first ) / ( ab0.second - ab0.first ) );
 }
+
+template <typename Derived>
+Eigen::Matrix<typename Derived::Scalar, 3, 3> CrossProductMatrix( const Eigen::MatrixBase<Derived>& v )
+{
+    ASSERT( v.rows() == 3 && v.cols() == 1, "vector size incorrect." );
+    Eigen::Matrix<typename Derived::Scalar, 3, 3> res;
+    res << 0, -v( 2 ), v( 1 ), v( 2 ), 0, -v( 0 ), -v( 1 ), v( 0 ), 0;
+    return res;
+}
 } // namespace Accessory

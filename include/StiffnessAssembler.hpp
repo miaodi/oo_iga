@@ -29,7 +29,7 @@ public:
             {
                 biharmonic->SetStateDatas( _c + _dof.StartingDof( i->GetID() ) * Dim, _ct + _dof.StartingDof( i->GetID() ) * Dim );
             }
-            biharmonic->ThreadSetter( _thd );
+            // biharmonic->ThreadSetter( _thd );
             i->Accept( *biharmonic );
             bihamronic_visitors.push_back( std::move( biharmonic ) );
         }

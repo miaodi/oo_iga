@@ -91,18 +91,18 @@ int main()
     cin >> degree >> refine;
 
     domain1->DegreeElevate( degree );
-    domain1->KnotsInsertion( 0, {1.0 / 6, 2.0 / 6, 3.0 / 6, 4.0 / 6, 5.0 / 6} );
-    domain1->KnotsInsertion( 1, {.5} );
+    // domain1->KnotsInsertion( 0, {.2, .4, .6, .8} );
+    // domain1->KnotsInsertion( 1, {1.0 / 3, 2.0 / 3} );
     domain1->UniformRefine( refine );
 
     domain2->DegreeElevate( degree );
-    domain2->KnotsInsertion( 0, {1.0 / 6, 2.0 / 6, 3.0 / 6, 4.0 / 6, 5.0 / 6} );
-    domain2->KnotsInsertion( 1, {.2, .4, .6, .8} );
+    // domain2->KnotsInsertion( 0, {.2, .4, .6, .8} );
+    // domain2->KnotsInsertion( 1, {.2, .4, .6, .8} );
     domain2->UniformRefine( refine );
 
     domain3->DegreeElevate( degree );
-    domain3->KnotsInsertion( 0, {1.0 / 6, 2.0 / 6, 3.0 / 6, 4.0 / 6, 5.0 / 6} );
-    domain3->KnotsInsertion( 1, {1.0 / 3, 2.0 / 3} );
+    // domain3->KnotsInsertion( 0, {.2, .4, .6, .8} );
+    // domain3->KnotsInsertion( 1, {1.0 / 3, 2.0 / 3} );
     domain3->UniformRefine( refine );
 
     domain1->CreateCurrentConfig();
@@ -144,7 +144,7 @@ int main()
     std::ofstream file;
     file.open( "data.txt" );
 
-    for ( int i = 1; i <= 20; i++ )
+    for ( int i = 1; i <= 10; i++ )
     {
         double err;
         double init_err = 0;
@@ -220,38 +220,8 @@ int main()
         Vector2d pos;
         pos << 1, 0;
         VectorXd res = ( domain3->CurrentConfigGetter() ).AffineMap( pos ) - domain3->AffineMap( pos );
-        file << i * .1 << " " << res( 2 ) << " ";
-        pos << 1, 1;
-        res = ( domain3->CurrentConfigGetter() ).AffineMap( pos ) - domain3->AffineMap( pos );
-        file << res( 2 ) << endl;
+        file << i * .1 << " " << res( 0 ) << " " << res( 1 ) << " " << res( 2 ) << endl;
     }
     file.close();
-
-    array<ofstream, 3> myfiles;
-
-    myfiles[0].open( "domain1.txt" );
-    myfiles[1].open( "domain2.txt" );
-    myfiles[2].open( "domain3.txt" );
-    Vector2d pos;
-    for ( int i = 0; i < 51; i++ )
-    {
-        for ( int j = 0; j < 51; j++ )
-        {
-            pos << 1.0 * i / 50, 1.0 * j / 50;
-            VectorXd res = ( domain1->CurrentConfigGetter() ).AffineMap( pos );
-            myfiles[0] << res( 0 ) << " " << res( 1 ) << " " << res( 2 ) << endl;
-            res = ( domain2->CurrentConfigGetter() ).AffineMap( pos );
-            myfiles[1] << res( 0 ) << " " << res( 1 ) << " " << res( 2 ) << endl;
-            res = ( domain3->CurrentConfigGetter() ).AffineMap( pos );
-            myfiles[2] << res( 0 ) << " " << res( 1 ) << " " << res( 2 ) << endl;
-
-            // VectorXd res = domain1->AffineMap( pos );
-            // myfiles[0] << res( 0 ) << " " << res( 1 ) << " " << res( 2 ) << endl;
-            // res = domain2->AffineMap( pos );
-            // myfiles[1] << res( 0 ) << " " << res( 1 ) << " " << res( 2 ) << endl;
-            // res = domain3->AffineMap( pos );
-            // myfiles[2] << res( 0 ) << " " << res( 1 ) << " " << res( 2 ) << endl;
-        }
-    }
     return 0;
 }

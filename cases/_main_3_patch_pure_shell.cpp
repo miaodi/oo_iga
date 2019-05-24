@@ -42,66 +42,34 @@ int main()
 {
     const double L = 10;
     KnotVector<double> knot_vector;
-    knot_vector.InitClosed( 2, 0, 1 );
-    Vector3d v;
-    v << 0, 0, 1;
-    Vector3d inner( 0, 6, 0 ), outer( 0, 10, 0 ), middle( 0, 8, 0 );
-    Vector3d point1 = Accessory::RotationMatrix( v, sin( -2 * M_PI / 3 ), cos( -2 * M_PI / 3 ) ) * outer;
-    Vector3d point2 = Accessory::RotationMatrix( v, sin( -2 * M_PI / 3 ), cos( -2 * M_PI / 3 ) ) * middle;
-    Vector3d point3 = Accessory::RotationMatrix( v, sin( -2 * M_PI / 3 ), cos( -2 * M_PI / 3 ) ) * inner;
+    knot_vector.InitClosed( 1, 0, 1 );
+    Vector3d point1( 0, 0, 0 ), point2( 0, .4, 0 ), point3( 0, 1, 0 ), point4( 5, 0, 0 ), point5( 6, .6, 0 ),
+        point6( 10, 0, 0 ), point7( 10, 1, 0 );
+    GeometryVector points1{point1, point2, point4, point5};
+    GeometryVector points2{point2, point3, point5, point7};
+    GeometryVector points3{point4, point5, point6, point7};
 
-    Vector3d point4 = Accessory::RotationMatrix( v, sin( -M_PI / 3 ), cos( -M_PI / 3 ) ) * outer * 2;
-    Vector3d point5 = Accessory::RotationMatrix( v, sin( -M_PI / 3 ), cos( -M_PI / 3 ) ) * middle * 2;
-    Vector3d point6 = Accessory::RotationMatrix( v, sin( -M_PI / 3 ), cos( -M_PI / 3 ) ) * inner * 2;
-
-    Vector3d point7 = outer;
-    Vector3d point8 = middle;
-    Vector3d point9 = inner;
-
-    GeometryVector points1{point1, point2, point3, point4, point5, point6, point7, point8, point9};
-    GeometryVector points2{Accessory::RotationMatrix( v, sin( 2 * M_PI / 3 ), cos( 2 * M_PI / 3 ) ) * point1,
-                           Accessory::RotationMatrix( v, sin( 2 * M_PI / 3 ), cos( 2 * M_PI / 3 ) ) * point2,
-                           Accessory::RotationMatrix( v, sin( 2 * M_PI / 3 ), cos( 2 * M_PI / 3 ) ) * point3,
-                           Accessory::RotationMatrix( v, sin( 2 * M_PI / 3 ), cos( 2 * M_PI / 3 ) ) * point4,
-                           Accessory::RotationMatrix( v, sin( 2 * M_PI / 3 ), cos( 2 * M_PI / 3 ) ) * point5,
-                           Accessory::RotationMatrix( v, sin( 2 * M_PI / 3 ), cos( 2 * M_PI / 3 ) ) * point6,
-                           Accessory::RotationMatrix( v, sin( 2 * M_PI / 3 ), cos( 2 * M_PI / 3 ) ) * point7,
-                           Accessory::RotationMatrix( v, sin( 2 * M_PI / 3 ), cos( 2 * M_PI / 3 ) ) * point8,
-                           Accessory::RotationMatrix( v, sin( 2 * M_PI / 3 ), cos( 2 * M_PI / 3 ) ) * point9};
-
-    GeometryVector points3{Accessory::RotationMatrix( v, sin( 4 * M_PI / 3 ), cos( 4 * M_PI / 3 ) ) * point1,
-                           Accessory::RotationMatrix( v, sin( 4 * M_PI / 3 ), cos( 4 * M_PI / 3 ) ) * point2,
-                           Accessory::RotationMatrix( v, sin( 4 * M_PI / 3 ), cos( 4 * M_PI / 3 ) ) * point3,
-                           Accessory::RotationMatrix( v, sin( 4 * M_PI / 3 ), cos( 4 * M_PI / 3 ) ) * point4,
-                           Accessory::RotationMatrix( v, sin( 4 * M_PI / 3 ), cos( 4 * M_PI / 3 ) ) * point5,
-                           Accessory::RotationMatrix( v, sin( 4 * M_PI / 3 ), cos( 4 * M_PI / 3 ) ) * point6,
-                           Accessory::RotationMatrix( v, sin( 4 * M_PI / 3 ), cos( 4 * M_PI / 3 ) ) * point7,
-                           Accessory::RotationMatrix( v, sin( 4 * M_PI / 3 ), cos( 4 * M_PI / 3 ) ) * point8,
-                           Accessory::RotationMatrix( v, sin( 4 * M_PI / 3 ), cos( 4 * M_PI / 3 ) ) * point9};
-    Vector1d weight1( 1 ), weight2( 1.0 / 2 ), weight3( 1 );
-    WeightVector weights{weight1, weight1, weight1, weight2, weight2, weight2, weight1, weight1, weight1};
-    auto domain1 = make_shared<PhyTensorNURBSBasis<2, 3, double>>(
-        std::vector<KnotVector<double>>{knot_vector, knot_vector}, points1, weights );
-    auto domain2 = make_shared<PhyTensorNURBSBasis<2, 3, double>>(
-        std::vector<KnotVector<double>>{knot_vector, knot_vector}, points2, weights );
-    auto domain3 = make_shared<PhyTensorNURBSBasis<2, 3, double>>(
-        std::vector<KnotVector<double>>{knot_vector, knot_vector}, points3, weights );
-
+    auto domain1 =
+        make_shared<PhyTensorBsplineBasis<2, 3, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points1 );
+    auto domain2 =
+        make_shared<PhyTensorBsplineBasis<2, 3, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points2 );
+    auto domain3 =
+        make_shared<PhyTensorBsplineBasis<2, 3, double>>( std::vector<KnotVector<double>>{knot_vector, knot_vector}, points3 );
     int degree, refine;
     cin >> degree >> refine;
 
     domain1->DegreeElevate( degree );
-    domain1->KnotsInsertion( 0, {1.0 / 6, 2.0 / 6, 3.0 / 6, 4.0 / 6, 5.0 / 6} );
+    domain1->KnotsInsertion( 0, {.2, .4, .6, .8} );
     domain1->KnotsInsertion( 1, {.5} );
     domain1->UniformRefine( refine );
 
     domain2->DegreeElevate( degree );
-    domain2->KnotsInsertion( 0, {1.0 / 6, 2.0 / 6, 3.0 / 6, 4.0 / 6, 5.0 / 6} );
-    domain2->KnotsInsertion( 1, {.2, .4, .6, .8} );
+    domain2->KnotsInsertion( 0, {1.0 / 9, 2.0 / 9, 3.0 / 9, 4.0 / 9, 5.0 / 9, 6.0 / 9, 7.0 / 9, 8.0 / 9} );
+    domain2->KnotsInsertion( 1, {1.0 / 3, 2.0 / 3} );
     domain2->UniformRefine( refine );
 
     domain3->DegreeElevate( degree );
-    domain3->KnotsInsertion( 0, {1.0 / 6, 2.0 / 6, 3.0 / 6, 4.0 / 6, 5.0 / 6} );
+    domain3->KnotsInsertion( 0, {.2, .4, .6, .8} );
     domain3->KnotsInsertion( 1, {1.0 / 3, 2.0 / 3} );
     domain3->UniformRefine( refine );
 
@@ -127,6 +95,7 @@ int main()
     }
     cells[0]->Match( cells[1] );
     cells[1]->Match( cells[2] );
+    cells[0]->Match( cells[2] );
 
     VectorXd u( dof.TotalDof() );
 
@@ -137,6 +106,14 @@ int main()
     {
         boundary_indices.push_back( start_index + i );
     }
+    indices = cells[1]->EdgePointerGetter( 3 )->Indices( 3, 1 );
+    start_index = dof.StartingDof( cells[1]->GetID() );
+
+    for ( auto& i : indices )
+    {
+        boundary_indices.push_back( start_index + i );
+    }
+    sort( boundary_indices.begin(), boundary_indices.end() );
 
     KLShellConstraintAssembler<double> ca( dof );
     ca.ConstraintInitialize( cells );
@@ -144,7 +121,7 @@ int main()
     std::ofstream file;
     file.open( "data.txt" );
 
-    for ( int i = 1; i <= 20; i++ )
+    for ( int i = 1; i <= 10; i++ )
     {
         double err;
         double init_err = 0;
@@ -218,39 +195,36 @@ int main()
 
         } while ( err > 1e-6 );
         Vector2d pos;
-        pos << 1, 0;
-        VectorXd res = ( domain3->CurrentConfigGetter() ).AffineMap( pos ) - domain3->AffineMap( pos );
-        file << i * .1 << " " << res( 2 ) << " ";
-        pos << 1, 1;
-        res = ( domain3->CurrentConfigGetter() ).AffineMap( pos ) - domain3->AffineMap( pos );
-        file << res( 2 ) << endl;
+        pos << 1, .5;
+        VectorXd res = ( domain3->CurrentConfigGetter() ).AffineMap( pos );
+        file << i * .1 << " " << res( 0 ) << " " << res( 1 ) << " " << res( 2 ) << endl;
     }
     file.close();
 
     array<ofstream, 3> myfiles;
 
-    myfiles[0].open( "domain1.txt" );
-    myfiles[1].open( "domain2.txt" );
-    myfiles[2].open( "domain3.txt" );
+    myfiles[0].open( "domain4.txt" );
+    myfiles[1].open( "domain5.txt" );
+    myfiles[2].open( "domain6.txt" );
     Vector2d pos;
     for ( int i = 0; i < 51; i++ )
     {
         for ( int j = 0; j < 51; j++ )
         {
             pos << 1.0 * i / 50, 1.0 * j / 50;
-            VectorXd res = ( domain1->CurrentConfigGetter() ).AffineMap( pos );
-            myfiles[0] << res( 0 ) << " " << res( 1 ) << " " << res( 2 ) << endl;
-            res = ( domain2->CurrentConfigGetter() ).AffineMap( pos );
-            myfiles[1] << res( 0 ) << " " << res( 1 ) << " " << res( 2 ) << endl;
-            res = ( domain3->CurrentConfigGetter() ).AffineMap( pos );
-            myfiles[2] << res( 0 ) << " " << res( 1 ) << " " << res( 2 ) << endl;
-
-            // VectorXd res = domain1->AffineMap( pos );
+            // VectorXd res = ( domain1->CurrentConfigGetter() ).AffineMap( pos );
             // myfiles[0] << res( 0 ) << " " << res( 1 ) << " " << res( 2 ) << endl;
-            // res = domain2->AffineMap( pos );
+            // res = ( domain2->CurrentConfigGetter() ).AffineMap( pos );
             // myfiles[1] << res( 0 ) << " " << res( 1 ) << " " << res( 2 ) << endl;
-            // res = domain3->AffineMap( pos );
+            // res = ( domain3->CurrentConfigGetter() ).AffineMap( pos );
             // myfiles[2] << res( 0 ) << " " << res( 1 ) << " " << res( 2 ) << endl;
+
+            VectorXd res = domain1->AffineMap( pos );
+            myfiles[0] << res( 0 ) << " " << res( 1 ) << " " << res( 2 ) << endl;
+            res = domain2->AffineMap( pos );
+            myfiles[1] << res( 0 ) << " " << res( 1 ) << " " << res( 2 ) << endl;
+            res = domain3->AffineMap( pos );
+            myfiles[2] << res( 0 ) << " " << res( 1 ) << " " << res( 2 ) << endl;
         }
     }
     return 0;

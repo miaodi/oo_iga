@@ -486,9 +486,13 @@ public:
                                      Edge<3, T>* edge,
                                      const Quadrature& u )
     {
-        auto multiplier_domain = edge->GetDomain();
-        auto slave_domain = edge->Parent( 0 ).lock()->GetDomain();
-        auto master_domain = edge->Counterpart().lock()->Parent( 0 ).lock()->GetDomain();
+        const auto& multiplier_domain = *( edge->GetDomain() );
+        const auto& slave_domain = edge->Parent( 0 ).lock()->GetDomain()->IsCurrentAvailable()
+                                       ? edge->Parent( 0 ).lock()->GetDomain()->CurrentConfigGetter()
+                                       : *( edge->Parent( 0 ).lock()->GetDomain() );
+        const auto& master_domain = edge->Counterpart().lock()->Parent( 0 ).lock()->GetDomain()->IsCurrentAvailable()
+                                        ? edge->Counterpart().lock()->Parent( 0 ).lock()->GetDomain()->CurrentConfigGetter()
+                                        : *( edge->Counterpart().lock()->Parent( 0 ).lock()->GetDomain() );
 
         //    set up integration weights
         integral_weight = u.second;
@@ -501,14 +505,16 @@ public:
 
         if ( it == _quadratureMap.end() )
         {
-            if ( !Accessory::MapParametricPoint( &*multiplier_domain, u.first, &*slave_domain, slave_quadrature_abscissa ) )
+            if ( !Accessory::MapParametricPoint( &multiplier_domain, u.first, &slave_domain, slave_quadrature_abscissa ) )
             {
                 std::cout << "MapParametericPoint failed" << std::endl;
             }
-            if ( !Accessory::MapParametricPoint( &*multiplier_domain, u.first, &*master_domain, master_quadrature_abscissa ) )
+            if ( !Accessory::MapParametricPoint( &multiplier_domain, u.first, &master_domain, master_quadrature_abscissa ) )
             {
                 std::cout << "MapParametericPoint failed" << std::endl;
             }
+
+            std::lock_guard<std::mutex> lock( this->_mutex );
             _quadratureMap[u.first( 0 )] = SlaveAndMaster( slave_quadrature_abscissa, master_quadrature_abscissa );
         }
         else
@@ -517,12 +523,12 @@ public:
             master_quadrature_abscissa = ( it->second )._masterQuadrature;
         }
 
-        auto slave_evals = slave_domain->EvalDerAllTensor( slave_quadrature_abscissa, 0 );
-        auto master_evals = master_domain->EvalDerAllTensor( master_quadrature_abscissa, 0 );
-        auto multiplier_evals = multiplier_domain->EvalDualAllTensor( u.first );
+        auto slave_evals = slave_domain.EvalDerAllTensor( slave_quadrature_abscissa, 0 );
+        auto master_evals = master_domain.EvalDerAllTensor( master_quadrature_abscissa, 0 );
+        auto multiplier_evals = multiplier_domain.EvalDualAllTensor( u.first );
         // auto multiplier_evals = ( multiplier_domain->BasisGetter( 0 ) ).EvalCodimensionBezierDual( u.first( 0 ) );
 
-        // auto knot_vector = ( multiplier_domain->BasisGetter( 0 ) ).Knots();
+        // auto knot_vector = ( multiplier_domain.BasisGetter( 0 ) ).Knots();
         // for ( auto it = knot_vector.begin(); it != knot_vector.end(); ++it )
         // {
         //     if ( *it != 0 )
@@ -585,7 +591,7 @@ public:
         // set up local indices corresponding to test basis functions and trial basis functions
         if ( slave_constraint_basis_indices.size() == 0 )
         {
-            auto index = slave_domain->ActiveIndex( slave_quadrature_abscissa );
+            auto index = slave_domain.ActiveIndex( slave_quadrature_abscissa );
             for ( auto& i : index )
             {
                 for ( int j = 0; j < 3; j++ )
@@ -596,7 +602,7 @@ public:
         }
         if ( master_constraint_basis_indices.size() == 0 )
         {
-            auto index = master_domain->ActiveIndex( master_quadrature_abscissa );
+            auto index = master_domain.ActiveIndex( master_quadrature_abscissa );
             for ( auto& i : index )
             {
                 for ( int j = 0; j < 3; j++ )

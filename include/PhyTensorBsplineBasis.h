@@ -158,7 +158,8 @@ public:
         return *_currentConfig;
     }
 
-    void UpdateGeometryVector( const matrix& u )
+    template <typename Derived>
+    void UpdateGeometryVector( const Eigen::MatrixBase<Derived>& u )
     {
         ASSERT( u.rows() == N && u.cols() == _geometricInfo.size(), "The size of u is incorrect." );
         for ( int i = 0; i < _geometricInfo.size(); i++ )
@@ -167,7 +168,8 @@ public:
         }
     }
 
-    void UpdateCurrentGeometryVector( const matrix& u )
+    template <typename Derived>
+    void UpdateCurrentGeometryVector( const Eigen::MatrixBase<Derived>& u )
     {
         ASSERT( _currentConfig != nullptr, "You have not created the current configuration yet." );
         for ( int i = 0; i < ( _currentConfig->_geometricInfo ).size(); i++ )
@@ -180,6 +182,10 @@ public:
     {
         ASSERT( _currentConfig != nullptr, "You have not created the current configuration yet." );
         _geometricInfo = _currentConfig->_geometricInfo;
+    }
+    bool IsCurrentAvailable()
+    {
+        return _currentConfig != nullptr;
     }
 
 protected:

@@ -547,6 +547,6 @@ protected:
 
 protected:
     std::mutex _mutex;
-    unsigned int _num_of_threads{1};
+    unsigned int _num_of_threads{std::thread::hardware_concurrency()};
     // u_int _num_of_threads{1};
 };
