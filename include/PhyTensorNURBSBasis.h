@@ -6,7 +6,7 @@
 #define OO_IGA_PHYTENSORNURBSBASIS_H
 
 #include "PhyTensorBsplineBasis.h"
-#include <boost/math/special_functions/binomial.hpp>
+// #include <boost/math/special_functions/binomial.hpp>
 
 template <int d, int N, typename T = double>
 class PhyTensorNURBSBasis : public PhyTensorBsplineBasis<d, N, T>
@@ -179,7 +179,6 @@ template <int d, int N, typename T>
 typename PhyTensorNURBSBasis<d, N, T>::BasisFunValDerAllList_ptr PhyTensorNURBSBasis<d, N, T>::EvalDerAllTensor(
     const PhyTensorNURBSBasis<d, N, T>::vector& u, const int i ) const
 {
-    using namespace boost::math;
     auto bspline_result = TensorBsplineBasis<d, T>::EvalDerAllTensor( u, i );
     for ( auto& it : *bspline_result )
     {
@@ -205,7 +204,7 @@ typename PhyTensorNURBSBasis<d, N, T>::BasisFunValDerAllList_ptr PhyTensorNURBSB
                 auto v = temp[k];
                 for ( int j = 1; j <= k; j++ )
                 {
-                    v -= binomial_coefficient<T>( k, j ) * weight_ders[j] * it.second[k - j];
+                    v -= Accessory::Binomial<T>( k, j ) * weight_ders[j] * it.second[k - j];
                 }
                 it.second[k] = v / weight_ders[0];
             }
@@ -242,17 +241,17 @@ typename PhyTensorNURBSBasis<d, N, T>::BasisFunValDerAllList_ptr PhyTensorNURBSB
                     auto v = temp( k, l );
                     for ( int n = 1; n <= l; n++ )
                     {
-                        v -= binomial_coefficient<T>( l, n ) * weight_ders( 0, n ) * SKL( k, l - n );
+                        v -= Accessory::Binomial<T>( l, n ) * weight_ders( 0, n ) * SKL( k, l - n );
                     }
                     for ( int m = 1; m <= k; m++ )
                     {
-                        v -= binomial_coefficient<T>( k, m ) * weight_ders( m, 0 ) * SKL( k - m, l );
+                        v -= Accessory::Binomial<T>( k, m ) * weight_ders( m, 0 ) * SKL( k - m, l );
                         T v2 = 0.0;
                         for ( int n = 1; n <= l; n++ )
                         {
-                            v2 += binomial_coefficient<T>( l, n ) * weight_ders( m, n ) * SKL( k - m, l - n );
+                            v2 += Accessory::Binomial<T>( l, n ) * weight_ders( m, n ) * SKL( k - m, l - n );
                         }
-                        v -= binomial_coefficient<T>( k, m ) * v2;
+                        v -= Accessory::Binomial<T>( k, m ) * v2;
                     }
                     SKL( k, l ) = v / weight_ders( 0, 0 );
                 }
@@ -271,6 +270,8 @@ typename PhyTensorNURBSBasis<d, N, T>::BasisFunValDerAllList_ptr PhyTensorNURBSB
 template <int d, int N, typename T>
 void PhyTensorNURBSBasis<d, N, T>::DegreeElevate( int orientation, int r )
 {
+    if ( r == 0 )
+        return;
     auto dof = this->GetDof();
     for ( int i = 0; i < dof; i++ )
     {

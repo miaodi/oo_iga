@@ -91,8 +91,6 @@ public:
 
     inline virtual void DegreeElevate( int p )
     {
-        if ( p == 0 )
-            return;
         for ( int i = 0; i != d; ++i )
             DegreeElevate( i, p );
     }
