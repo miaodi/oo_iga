@@ -271,11 +271,11 @@ int main()
         VectorXd res = ( domain1->CurrentConfigGetter() ).AffineMap( pos ) - domain1->AffineMap( pos );
         file << i << " " << res( 2 ) / 2 << " ";
         pos << 0, .5;
-        res = ( domain1->CurrentConfigGetter() ).AffineMap( pos ) - domain1->AffineMap( pos );
-        file << res( 1 ) << " ";
+        res = ( domain1->CurrentConfigGetter() ).AffineMap( pos ) - ( domain3->CurrentConfigGetter() ).AffineMap( pos );
+        file << ( 2 * R - res.norm() ) / 2 << " ";
         pos << 1, .5;
-        res = ( domain1->CurrentConfigGetter() ).AffineMap( pos ) - domain1->AffineMap( pos );
-        file << res( 1 ) << endl;
+        res = ( domain1->CurrentConfigGetter() ).AffineMap( pos ) - ( domain3->CurrentConfigGetter() ).AffineMap( pos );
+        file << ( 2 * R - res.norm() ) / 2 << endl;
     }
     file.close();
 
